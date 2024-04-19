@@ -1,0 +1,13 @@
+FROM public.ecr.aws/bitnami/node:20 AS build
+WORKDIR /app
+COPY package.json ./
+COPY yarn.lock ./
+RUN yarn
+COPY . .
+RUN yarn build user
+
+FROM public.ecr.aws/bitnami/node:20
+WORKDIR /app
+COPY --from=build /app ./
+EXPOSE 3010
+CMD ["npm", "run", "start:user"]

@@ -1,0 +1,52 @@
+{
+  "name": "application",
+  "version": "0.0.1",
+  "description": "",
+  "author": "",
+  "private": true,
+  "license": "MIT-0",
+  "engines": {
+    "node": ">=14.18 || >= 16.13"
+  },
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "build": "nest build",
+    "start": "nest start",
+    "start:order": "node dist/microservices/order/main",
+    "start:product": "node dist/microservices/product/main",
+    "start:user": "node dist/microservices/user/main"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.533.0",
+    "@aws-sdk/client-dynamodb": "^3.533.0",
+    "@aws-sdk/client-sts": "^3.533.0",
+    "@aws-sdk/lib-dynamodb": "^3.533.0",
+    "@nestjs/common": "^10.3.3",
+    "@nestjs/config": "^3.2.0",
+    "@nestjs/core": "^10.3.3",
+    "@nestjs/jwt": "^10.2.0",
+    "@nestjs/mapped-types": "^2.0.5",
+    "@nestjs/passport": "^10.0.3",
+    "@nestjs/platform-express": "^10.3.3",
+    "@types/mustache": "^4.2.5",
+    "jwks-rsa": "^3.1.0",
+    "mustache": "^4.2.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "reflect-metadata": "^0.2.1",
+    "rimraf": "^5.0.5",
+    "rxjs": "^7.8.1",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^10.3.2",
+    "@nestjs/schematics": "^8.0.0",
+    "@nestjs/testing": "^10.0.0",
+    "@types/express": "^4.17.11",
+    "@types/node": "^14.14.36",
+    "ts-loader": "^8.0.18",
+    "ts-node": "^9.1.1",
+    "tsconfig-paths": "^3.9.0",
+    "typescript": "^4.3.5"
+  }
+}

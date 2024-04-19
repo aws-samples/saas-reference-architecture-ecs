@@ -1,0 +1,77 @@
+{
+    "Rproxy": {
+      "name": "rproxy",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/rproxy",
+      "memoryLimitMiB": 512,
+      "cpu": 256,
+      "containerPort":80
+    },
+    "Containers": [
+      {
+        "name": "orders",
+        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/order",
+        "memoryLimitMiB": 512,
+        "cpu": 256,
+        "containerPort": 3010,
+        "sortKey": "orderId",
+        "tableName": "ORDER_TABLE_NAME",
+        "policy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:BatchGetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchWriteItem", "dynamodb:UpdateItem", "dynamodb:GetRecords"
+              ],
+              "Resource": "<TABLE_ARN>",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      },
+      {
+        "name": "products",
+        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/product",
+        "memoryLimitMiB": 512,
+        "cpu": 256,
+        "containerPort": 3010,
+        "sortKey": "productId",
+        "tableName": "PRODUCT_TABLE_NAME",
+        "policy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:BatchGetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchWriteItem", "dynamodb:UpdateItem", "dynamodb:GetRecords"
+              ],
+              "Resource": "<TABLE_ARN>",
+              "Effect": "Allow"
+            }
+          ]
+        }
+      },
+      {
+        "name": "users",
+        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/user",
+        "memoryLimitMiB": 512,
+        "cpu": 256,
+        "containerPort": 3010,
+        "sortKey": "",
+        "tableName": "USER_TABLE_NAME",
+        "policy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "cognito-idp:AdminDeleteUser", "cognito-idp:AdminEnableUser","cognito-idp:AdminCreateUser", "cognito-idp:CreateGroup", "cognito-idp:AdminDisableUser", "cognito-idp:AdminAddUserToGroup","cognito-idp:GetGroup", "cognito-idp:AdminUpdateUserAttributes","cognito-idp:AdminGetUser", "cognito-idp:ListUsers","cognito-idp:ListUsersInGroup", "cognito-idp:AdminListGroupsForUser"
+              ],
+              "Resource": 
+                "arn:aws:cognito-idp:<REGION>:<ACCOUNT_ID>:userpool/<USER_POOL_ID>"
+              ,
+              "Effect": "Allow"
+            }
+          ]
+        }
+      }
+    ]
+}
+  
