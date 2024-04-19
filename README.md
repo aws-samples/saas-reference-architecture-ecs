@@ -68,7 +68,7 @@ And, ```install.sh``` deploys the following:
 
 ## Steps to Clean-up
 
-Run the following script to clean up reference solution resources. Please make sure that "jq" JSON processor installed in your environment before invoking below script.
+Run the following script to clean up reference solution resources from your AWS account. Please make sure that [jq](https://jqlang.github.io/jq/download/) JSON processor installed in your environment before invoking below script.
 
 ```bash
 cd scripts
