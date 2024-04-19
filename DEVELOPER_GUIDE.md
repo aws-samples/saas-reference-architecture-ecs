@@ -45,7 +45,7 @@ The fig 1 shows the high-level architecture of the solution that outlines the co
 1. Basic Tier: Shared ECS Services across all the tenants ([Pool model](https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/silo-pool-and-bridge-models.html))
 2. Premium Tier: Dedicated ECS Cluster per tenant ([Silo model](https://docs.aws.amazon.com/wellarchitected/latest/saas-lens/silo-pool-and-bridge-models.html))
 
-<p style="text-align:center">
+<p align="center">
 <img src="images/archi-high-level.png" alt="High-level Architecture"/>
 Fig 1: ECS SaaS - High-level infrastructure
 </p>
@@ -70,7 +70,7 @@ Core Utils section is an extension of AWS SBT that represents the supportive fun
 # Baseline Infrastructure Provisioning
 The instructions in the [deployment steps](README.md#deployment-steps) would allow you to install the baseline infrastructure of this solution architecture. The baseline resources represent those elements of the architecture, that establish the foundation of our environment before any tenants are onboarded into the system. Figure 2 provides a high-level representation of the architecture deployed as part of baseline infrastructure.
 
-<p style="text-align:center">
+<p align="center">
 <img src="images/archi-base-infra.png" alt="Baseline Infrastructure"/>Fig 2: Baseline infrastructure
 </p>
 
@@ -150,7 +150,7 @@ One of the main core-utils we have implemented here is the AWS CodePipeline that
 
 Following diagram provides a deeper technical view of the reference architecture with all the tiers and with sample tenants onboarded into each tier.
 
-<p style="text-align:center">
+<p align="center">
 <img src="images/solution-architecture-tiers.png" alt="Tenant Onboarding"/>Fig 3: Solution Architecture - Application Plane Services with Tiers 
 </p>
 
@@ -170,7 +170,7 @@ The Basic tier represents an all-shared implementation of the SaaS using Amazon 
 
 Because of this pooled implementation, the compute workload in this tier would become very dynamic when increasing number of tenants, and so the ECS cluster would need to handle it seamlessly with right sized autoscaling to optimize the overall ECS cost. Here, the reference architecture provides code and configurations needed to implement ECS cluster on AWS Fargate to provide additional operational efficiency to the tier where SaaS providers will not manage the underneath compute it will help for optimized economy of scale for large number of tenants, long term. While there is no difference in the implementation, the SaaS providers can pick the right compute hosting mode (EC2 or Fargate) to run ECS workload based on the nature of the use-case, number of tenants expected, resource utilization of the microservices, etc.
 
-<p style="text-align:center">
+<p align="center">
 <img src="images/basic-tier.png" alt="Tenant Onboarding"/>Fig 4: Basic Tier Architecture 
 </p>
 
@@ -180,7 +180,7 @@ This tier will be preloaded in the solution as a part of the baseline architectu
 ## Premium Tier: ECS Cluster per tenant (Silo model)
 This tier dedicates silo AWS components, where there will be a ECS cluster with own microservices and own databases per-tenant basis.
 
-<p style="text-align:center">
+<p align="center">
 <img src="images/premium-tier.png" alt="Tenant Onboarding"/>Fig 5: Premium Tier Architecture 
 </p>
 
@@ -339,7 +339,7 @@ In this ECS SaaS reference solution, we have used the ALB to be shared across al
 The premium tenants usually demand dedicated infrastructure in order to reduce cross tenant influence and leverage better tenant isolation, where an ALB per tenant can be allocated as shown in the following diagram. Given there are less than 100 microservices in the SaaS, an ALB itself can route requests for the microservices using target groups without any Nginx components allowing the SaaS providers to have a full-stack isolation with native AWS services. The flip side would be the additional infrastructure (ie NLB) required to connect the ALBs to the API Gateway and extra cost involved in this setup.
 
 
-<p style="text-align:center">
+<p align="center">
 <img src="images/routing-premium-tier.png" alt="Tenant Onboarding"/>Fig 6: Premium tier routing at scale with dedicated ALBs 
 </p>
 
@@ -348,7 +348,7 @@ The premium tenants usually demand dedicated infrastructure in order to reduce c
 A single ALB will route the request to max 100 tenants irrespective of if it is advanced tier (Services per tenant) or Premium tier (Cluster per tenant). To facilitate this, there will be a dedicated REST API resources per ALB that serves the requests for given 100 tenants. So, this APIGW endpoint URL is now tenant-specific and it will be saved against the tenant Id during tenant onboarding flow in the tenant management data table, and then will be passed to the front-end client app when a particular user logs in, so the front-end will use it to access the downstream microservices via the right APIGW → ALB → ECS cluster/services.
 
 
-<p style="text-align:center">
+<p align="center">
 <img src="images/routing-parallel-albs.png" alt="Tenant Onboarding"/>Fig 7: Scaling the routing using parallel ALBs 
 </p>
 
@@ -359,7 +359,7 @@ Amazon ECS Service Connect provides management of service communication within A
 The main purpose of ECS Service connect is to provide the routing capability along with [Niginx](#nginx-routing-) for incoming requests, and facilitate the inter-microservice communication within the cluster. When an ECS cluster is created with Service Connect enabled, each ECS service will be running in a way that each task in the service will have their own Service Connect agent as shown in the following diagram that enables the request routing. 
 
 
-<p style="text-align:center">
+<p align="center">
 <img src="images/service-connect.png" alt="Tenant Onboarding"/>Fig 8: API Request workflow with ECS Service connect 
 </p>
 
