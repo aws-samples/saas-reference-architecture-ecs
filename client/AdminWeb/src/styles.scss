@@ -1,0 +1,14 @@
+/* You can add global styles to this file, and also import other style files */
+@import url("https://fonts.googleapis.com/icon?family=Material+Symbols|Material+Symbols+Outlined");
+
+@import "styles/variables";
+// Custom.scss
+// Option A: Include all of Bootstrap
+
+// Include any default variable overrides here (though functions won't be available)
+
+@import "../node_modules/bootstrap/scss/bootstrap";
+
+// Then add additional custom code here
+// Import functions, variables, and mixins needed by other Bootstrap files
+@import "styles/reset";

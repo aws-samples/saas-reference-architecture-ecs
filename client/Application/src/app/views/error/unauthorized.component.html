@@ -1,0 +1,44 @@
+<!-- <alert type="danger" *ngIf="error" [dismissible]="true">
+  <p class="text-center"><strong>Oh snap!</strong> {{this.errorMessage}}</p>
+</alert> -->
+<div class="jumbotron jumbotron-fluid center-screen">
+  <div>
+    <form [formGroup]="tenantForm" (submit)="login()">
+      <mat-card class="card">
+        <mat-card-title>Unauthorized</mat-card-title>
+        <mat-card-subtitle
+          >Enter your tenant name and click submit below</mat-card-subtitle
+        >
+        <mat-card-content>
+          <mat-form-field appearance="outline">
+            <mat-label>Tenant Name</mat-label>
+            <input
+              matInput
+              type="tenantname"
+              id="tenantname"
+              name="tenantname"
+              class="form-control"
+              formControlName="tenantName"
+              placeholder="Enter Tenant Name"
+              [ngClass]="displayFieldCss('tenantName')"
+              required
+            />
+            <mat-icon matSuffix>home</mat-icon>
+          </mat-form-field>
+          <mat-card-actions>
+            <div class="button-panel">
+              <button
+                mat-raised-button
+                color="primary"
+                type="submit"
+                [disabled]="!tenantForm.valid"
+              >
+                Submit
+              </button>
+            </div>
+          </mat-card-actions>
+        </mat-card-content>
+      </mat-card>
+    </form>
+  </div>
+</div>
