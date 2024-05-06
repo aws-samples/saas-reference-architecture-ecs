@@ -9,7 +9,7 @@ fi
 
 # Create CodeCommit repo
 REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')  # Region setting
-export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="ecs-saas-reference-architecture"
+export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="saas-reference-architecture-ecs"
 if ! aws codecommit get-repository --repository-name $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME; then
   CREATE_REPO=$(aws codecommit create-repository --repository-name $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME --repository-description "ECS saas reference architecture repository")
   echo "$CREATE_REPO"
@@ -27,7 +27,7 @@ export CDK_PARAM_COMMIT_ID=$(git log --format="%H" -n 1)
 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || echo "ECS Service linked role exists"
 
 # Preprovision basic infrastructure
-cd ../server/infrastructure
+cd ../server
 
 export ECR_REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -50,6 +50,6 @@ npx cdk deploy --all --require-approval never #--concurrency 10 --asset-parallel
 
 # Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name controlplane-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)
-APP_SITE_URL=$(aws cloudformation describe-stacks --stack-name coreappplane-stack --query "Stacks[0].Outputs[?OutputKey=='appSiteUrl'].OutputValue" --output text)
+APP_SITE_URL=$(aws cloudformation describe-stacks --stack-name core-appplane-stack --query "Stacks[0].Outputs[?OutputKey=='appSiteUrl'].OutputValue" --output text)
 echo "Admin site url: $ADMIN_SITE_URL"
 echo "Application site url: $APP_SITE_URL"

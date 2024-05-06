@@ -193,7 +193,7 @@ Now let's dive deeper into the implementation details of multi-tenant strategies
 ## Compute Isolation with Amazon ECS  
 The main AWS construct to use in implementing the compute level isolation in ECS is the VPC Security Groups. The idea is that each tenant will have a dedicated Security Group to where we attach all the services of the tenant. Traffic controlling is implemented in a way that Security group only accepts the incoming traffic from tenant users from the ALB (that makes sure to filter the traffic by tenant Id) and traffic from services within the same Security Group to facilitate. Inter service communication. This prevents the network communication of microservices each other across tenants, hence the compute isolation is preserved.  
 
-[`ecs-cluster.ts`](./server/infrastructure/lib/tenant-template/ecs-cluster.ts) contains the sample implementation of this mechanism as follows. First, we will create AWS VCP security group and restrict the network traffic in a way that it will allow the requests only form ALB and the backend services of the same cluster as follows.  
+[`ecs-cluster.ts`](./server/lib/tenant-template/ecs-cluster.ts) contains the sample implementation of this mechanism as follows. First, we will create AWS VCP security group and restrict the network traffic in a way that it will allow the requests only form ALB and the backend services of the same cluster as follows.  
 
 ```typescript
 this.ecsSG = new ec2.SecurityGroup(this, "ecsSG", {

@@ -5,6 +5,8 @@ import { NagSuppressions } from 'cdk-nag';
 export interface TenantInfraNagProps {
   tenantId: string
   isEc2Tier: boolean
+  tier: string
+  advancedCluster: string
   isRProxy: boolean
 }
 
@@ -155,10 +157,13 @@ export class TenantInfraNag extends Construct {
       );
     }
 
+    if('advanced' !== props.tier.toLocaleLowerCase() || 'ACTIVE' !== props.advancedCluster ) {
     if (props.isEc2Tier) {
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
-        [`${nagPath}/ecs-autoscaleG-${props.tenantId}/InstanceRole/Resource`],
+        [`${nagPath}/EniTrunking/CustomEniTrunkingRole/Resource`,
+        `${nagPath}/EniTrunking/EC2Role/Resource`,
+        ],
         [
           {
             id: 'AwsSolutions-IAM4',
@@ -171,7 +176,9 @@ export class TenantInfraNag extends Construct {
       );
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
-        [`${nagPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/ServiceRole/Resource`],
+        [`${nagPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/ServiceRole/Resource`,
+        `${nagPath}/EniTrunking/CustomEniTrunkingRole/Resource`,
+        ],
         [
           {
             id: 'AwsSolutions-IAM4',
@@ -194,7 +201,7 @@ export class TenantInfraNag extends Construct {
       );
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
-        [`${nagPath}/ecs-autoscaleG-${props.tenantId}/InstanceRole/DefaultPolicy/Resource`],
+        [`${nagPath}/EniTrunking/EC2Role/DefaultPolicy/Resource`],
         [
           {
             id: 'AwsSolutions-IAM5',
@@ -259,5 +266,6 @@ export class TenantInfraNag extends Construct {
         ]
       );
     }
+  }
   }
 }

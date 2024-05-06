@@ -22,6 +22,7 @@ interface TenantTemplateStackProps extends StackProps {
   commitId: string
   waveNumber?: string
   tier: string
+  advancedCluster: string
   appSiteUrl: string
 }
 
@@ -38,7 +39,7 @@ export class TenantTemplateStack extends Stack {
       appSiteUrl: props.appSiteUrl
     });
 
-    //= ====================================================================
+    //=====================================================================
     const ec2Tier = ['advanced', 'premium'];
     const isEc2Tier: boolean = ec2Tier.includes(props.tier.toLowerCase());
     const rProxy = ['advanced', 'premium'];
@@ -47,15 +48,17 @@ export class TenantTemplateStack extends Stack {
     new EcsCluster(this, 'EcsCluster', {
       stageName: props.stageName,
       tenantId: props.tenantId,
+      tier: props.tier,
       idpDetails: identityProvider.identityDetails,
       isEc2Tier,
       isRProxy,
+      advancedCluster: props.advancedCluster,
       env: {
         account: process.env.CDK_DEFAULT_ACCOUNT,
         region: process.env.CDK_DEFAULT_REGION
       }
     });
-    //= ====================================================================
+    //=====================================================================
 
     new AwsCustomResource(this, 'CreateTenantMapping', {
       installLatestAwsSdk: true,
@@ -114,6 +117,8 @@ export class TenantTemplateStack extends Stack {
     new TenantInfraNag(this, 'TenantInfraNag', {
       tenantId: props.tenantId,
       isEc2Tier,
+      tier: props.tier,
+      advancedCluster: props.advancedCluster,
       isRProxy
     });
   }

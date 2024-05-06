@@ -59,7 +59,7 @@ export class ControlPlaneStack extends Stack {
 
     this.StaticSite = new StaticSite(this, 'AdminWebUi', {
       name: 'AdminSite',
-      assetDirectory: path.join(__dirname, '../../../../client/AdminWeb/'),
+      assetDirectory: path.join(__dirname, '../../../client/AdminWeb/'),
       production: true,
       clientId: this.auth.clientId,
       issuer: this.auth.authorizationServer,

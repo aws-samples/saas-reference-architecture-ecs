@@ -9,7 +9,7 @@ export CDK_PARAM_OFFBOARDING_DETAIL_TYPE='Offboarding'
 export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
 export CDK_PARAM_PROVISIONING_EVENT_SOURCE="sbt-application-plane-api"
 
-cd server/infrastructure
+cd server
 npm install
 
 # Define the DynamoDB table name and initial parameters
