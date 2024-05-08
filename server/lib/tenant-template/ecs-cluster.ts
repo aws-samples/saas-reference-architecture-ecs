@@ -107,11 +107,6 @@ export class EcsCluster extends cdk.NestedStack {
         clusterName,
         vpc: this.vpc,
         containerInsights: true,
-        // defaultCloudMapNamespace: {
-        //   name: `ecs-sbt.local-${tenantId}`,
-        //   useForServiceConnect: true,
-        //   type: cdk.aws_servicediscovery.NamespaceType.HTTP
-        // }
       });
       if (this.isEc2Tier) {
         const trunking = new CustomEniTrunking(this, "EniTrunking");
@@ -394,7 +389,7 @@ export class EcsCluster extends cdk.NestedStack {
         logDriver: ecs.LogDrivers.awsLogs({
           streamPrefix: `${info.name}-traffic-`
         }),
-        namespace: this.namespace.namespaceArn,//this.cluster.defaultCloudMapNamespace?.namespaceArn,
+        namespace: this.namespace.namespaceArn,
         services: [
           {
             portMappingName: info.name,
