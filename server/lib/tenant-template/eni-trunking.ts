@@ -69,7 +69,6 @@ export class CustomEniTrunking extends Construct {
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
-    //   inlinePolicies: { CustomEniTrunkingPolicy: customEniTrunkingPolicy }
     });
 
     // Lambda function
@@ -80,15 +79,6 @@ export class CustomEniTrunking extends Construct {
         timeout: cdk.Duration.seconds(30),
         role: customEniTrunkingRole
       });
-
-
-    // customEniTrunkingFunction.role?.addToPolicy(
-    //   new iam.PolicyStatement({
-    //     effect: iam.Effect.ALLOW,
-    //     actions: ['sts:AssumeRole'],
-    //     resources: ['*'],
-    //   })
-    // );
 
 
     // Role for the EC2 instances
@@ -117,16 +107,6 @@ export class CustomEniTrunking extends Construct {
         resources: [this.ec2Role.roleArn],
       })
     );
-    // Allow the Lambda function to assume the EC2 role
-    // this.ec2Role.addToPolicy(
-    //   new iam.PolicyStatement({
-    //     effect: iam.Effect.ALLOW,
-    //     principals: [new iam.ArnPrincipal(customEniTrunkingRole.roleArn)],
-    //     actions: ['sts:AssumeRole'],
-    //   })
-    // );
-    // customEniTrunkingRole.grantAssumeRole(this.ec2Role);
-
 
     // Custom resource to trigger the Lambda function
     const customEniTrunking = new cdk.CustomResource(this, 'CustomEniTrunking', {
@@ -145,8 +125,3 @@ export class CustomEniTrunking extends Construct {
     });
   }
 }
-
-// Example usage:
-// const app = new cdk.App();
-// const stack = new cdk.Stack(app, 'MyStack');
-// const nestedStack = new CustomEniTrunkingNestedStack(stack, 'CustomEniTrunkingNestedStack');

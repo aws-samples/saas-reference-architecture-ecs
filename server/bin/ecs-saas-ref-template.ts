@@ -69,6 +69,8 @@ const apiKeyAdvancedTierParameter =
 const apiKeyBasicTierParameter =
   process.env.CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER || defaultApiKeyBasicTierParameter;
 const isPooledDeploy = tenantId == basicId;
+//A flag to check whether the Advanced cluster is exist.
+//If not exist, value is INACTIVE.
 const advancedCluster = process.env.CDK_ADV_CLUSTER || 'INACTIVE';
 
 // parameter names to facilitate sharing api keys
