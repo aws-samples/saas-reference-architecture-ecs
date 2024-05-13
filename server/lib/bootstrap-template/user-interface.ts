@@ -28,7 +28,7 @@ export class UserInterface extends Construct {
 
     new StaticSite(this, 'TenantWebUI', {
       name: 'AppSite',
-      assetDirectory: path.join(__dirname, '../../../../client/Application/'),
+      assetDirectory: path.join(__dirname, '../../../client/Application/'),
       production: true,
       apiUrl: props.regApiGatewayUrl,
       distribution: distro.cloudfrontDistribution,

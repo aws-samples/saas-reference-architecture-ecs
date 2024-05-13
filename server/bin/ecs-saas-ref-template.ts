@@ -2,11 +2,11 @@
 import * as cdk from 'aws-cdk-lib';
 import { TenantTemplateStack } from '../lib/tenant-template/tenant-template-stack';
 import { DestroyPolicySetter } from '../lib/utilities/destroy-policy-setter';
-import { CoreAppPlaneStack } from '../lib/bootstrap-template/core-app-plane-stack';
+import { CoreAppPlaneStack } from '../lib/bootstrap-template/core-appplane-stack';
 import { TenantUpdatePipeline } from '../lib/tenant-template/tenant-update-stack';
 import { getEnv } from '../lib/utilities/helper-functions';
 import { ControlPlaneStack } from '../lib/bootstrap-template/control-plane-stack';
-import { SharedInfraStack } from '../lib/sharedinfra-template/shared-infra-stack';
+import { SharedInfraStack } from '../lib/shared-infra/shared-infra-stack';
 import { AwsSolutionsChecks } from 'cdk-nag';
 
 const app = new cdk.App();
@@ -69,6 +69,9 @@ const apiKeyAdvancedTierParameter =
 const apiKeyBasicTierParameter =
   process.env.CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER || defaultApiKeyBasicTierParameter;
 const isPooledDeploy = tenantId == basicId;
+//A flag to check whether the Advanced cluster is exist.
+//If not exist, value is INACTIVE.
+const advancedCluster = process.env.CDK_ADV_CLUSTER || 'INACTIVE';
 
 // parameter names to facilitate sharing api keys
 // between the bootstrap template and the tenant template stack(s)
@@ -103,7 +106,7 @@ const controlPlaneStack = new ControlPlaneStack(app, 'controlplane-stack', {
   }
 });
 
-const coreAppPlaneStack = new CoreAppPlaneStack(app, 'coreappplane-stack', {
+const coreAppPlaneStack = new CoreAppPlaneStack(app, 'core-appplane-stack', {
   systemAdminEmail: systemAdminEmail,
   regApiGatewayUrl: controlPlaneStack.regApiGatewayUrl,
   eventBusArn: controlPlaneStack.eventBusArn,
@@ -142,6 +145,7 @@ const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-
   tenantMappingTable: coreAppPlaneStack.tenantMappingTable,
   commitId: commitId,
   tier: tier,
+  advancedCluster: advancedCluster,
   appSiteUrl: coreAppPlaneStack.userInterface.appSiteUrl,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,

@@ -115,7 +115,7 @@ def lambda_handler(event, context):
     credentials = assumed_role["Credentials"]
 
     tenantPath = tenant_id
-    if (tenant_tier.upper() != utils.TenantTier.PREMIUM.value.upper()):
+    if (tenant_tier.upper() == utils.TenantTier.BASIC.value.upper()):
         tenantPath = tenant_tier.lower()
     
     logger.info("Tenant Path: " + tenantPath)

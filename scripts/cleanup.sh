@@ -12,11 +12,11 @@ for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^contr
 done
 
 
-cd ../server/infrastructure
+cd ../server
 npm install
 
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="NA"
-export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="ecs-saas-reference-architecture"
+export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="saas-reference-architecture-ecs"
 export CDK_PARAM_COMMIT_ID="NA"
 export CDK_PARAM_REG_API_GATEWAY_URL="NA"
 export CDK_PARAM_EVENT_BUS_ARN=arn:aws:service:::resource

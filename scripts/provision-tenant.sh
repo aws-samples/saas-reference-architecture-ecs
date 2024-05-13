@@ -14,9 +14,9 @@ sudo python3 -m pip install git-remote-codecommit
 shopt -s nocasematch
 
 # Clone the ecs reference solution repository
-export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="ecs-saas-reference-architecture"
+export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="saas-reference-architecture-ecs"
 git clone codecommit://$CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME --quiet
-cd $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME/server/infrastructure
+cd $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME/server
 
 export ECR_REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -39,9 +39,14 @@ API_GATEWAY_URL_OUTPUT_PARAM_NAME="ApiGatewayUrl"
 APP_CLIENT_ID_OUTPUT_PARAM_NAME="UserPoolClientId"
 BOOTSTRAP_STACK_NAME="shared-infra-stack"
 
-# Deploy the tenant template for premium tier(silo)
-if [[ $TIER == "PREMIUM" ]]; then
+
+# Deploy the tenant template for premium && advanced tier(silo)
+if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   STACK_NAME="tenant-template-stack-$CDK_PARAM_TENANT_ID"
+  if [[ $TIER == "ADVANCED" ]]; then
+    export CDK_ADV_CLUSTER=$(aws ecs describe-clusters --cluster prod-advanced-${ACCOUNT_ID} | jq -r '.clusters[0].status')
+  fi
+
   export CDK_PARAM_CONTROL_PLANE_SOURCE='sbt-control-plane-api'
   export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'
   export CDK_PARAM_PROVISIONING_DETAIL_TYPE=$CDK_PARAM_ONBOARDING_DETAIL_TYPE

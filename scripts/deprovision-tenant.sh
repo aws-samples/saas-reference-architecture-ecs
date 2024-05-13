@@ -76,7 +76,7 @@ delete_items_if_exists() {
 }
 
 # Un deploy the tenant template for premium tier(silo)
-if [[ $TIER == "PREMIUM" ]]; then
+if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
 
   STACK_NAME=$(aws dynamodb get-item \
   --table-name $TENANT_STACK_MAPPING_TABLE  \
@@ -85,9 +85,9 @@ if [[ $TIER == "PREMIUM" ]]; then
   
   echo "Stack name from $TENANT_STACK_MAPPING_TABLE is  $STACK_NAME"
   # Clone the ecs reference solution repository
-  export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="ecs-saas-reference-architecture"
+  export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="saas-reference-architecture-ecs"
   git clone codecommit://$CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME
-  cd $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME/server/infrastructure
+  cd $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME/server
 
   export ECR_REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
   export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)

@@ -21,9 +21,9 @@ export class CoreAppPlaneNag extends Construct {
       ]
     };
 
-    const sbtNagPath = '/coreappplane-stack/coreappplane-sbt';
-    const nagWebPath = '/coreappplane-stack/saas-application-ui/TenantWebUI';
-    const nagStaticPath = '/coreappplane-stack/saas-application-ui/StaticSiteDistro';
+    const sbtNagPath = '/core-appplane-stack/coreappplane-sbt';
+    const nagWebPath = '/core-appplane-stack/saas-application-ui/TenantWebUI';
+    const nagStaticPath = '/core-appplane-stack/saas-application-ui/StaticSiteDistro';
 
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
@@ -111,7 +111,7 @@ export class CoreAppPlaneNag extends Construct {
 
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
-      '/coreappplane-stack/TenantMappingTable/Resource',
+      '/core-appplane-stack/TenantMappingTable/Resource',
       [
         {
           id: 'AwsSolutions-DDB3',

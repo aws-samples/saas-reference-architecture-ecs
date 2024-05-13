@@ -10,16 +10,19 @@ import { type IdentityDetails } from '../interfaces/identity-details';
 import getTimeString, { getHashCode } from '../utilities/helper-functions';
 import { type ContainerInfo } from '../interfaces/container-info';
 import { type RproxyInfo } from '../interfaces/rproxy-info';
-import { type HttpNamespace } from 'aws-cdk-lib/aws-servicediscovery';
+import { HttpNamespace } from 'aws-cdk-lib/aws-servicediscovery';
 import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
 import { type Construct } from 'constructs';
+import { CustomEniTrunking } from './eni-trunking';
 
 export interface EcsClusterProps extends cdk.NestedStackProps {
   stageName: string
   tenantId: string
+  tier: string
   idpDetails: IdentityDetails
   isEc2Tier: boolean
   isRProxy: boolean
+  advancedCluster: string
   env: cdk.Environment
 }
 
@@ -32,6 +35,7 @@ export class EcsCluster extends cdk.NestedStack {
   namespace: HttpNamespace;
   isEc2Tier: boolean;
   ecrRepository: string;
+  cluster: ecs.ICluster;
 
   constructor (scope: Construct, id: string, props: EcsClusterProps) {
     super(scope, id, props);
@@ -39,7 +43,7 @@ export class EcsCluster extends cdk.NestedStack {
     const tenantId = props.tenantId;
     const timeStr = getTimeString();
     this.isEc2Tier = props.isEc2Tier;
-
+  
     this.vpc = ec2.Vpc.fromVpcAttributes(this, 'Vpc', {
       availabilityZones: [`${props.env.region}a`, `${props.env.region}b`, `${props.env.region}c`],
       privateSubnetIds: [
@@ -69,9 +73,7 @@ export class EcsCluster extends cdk.NestedStack {
     // alb Security Group
     this.albSG = ec2.SecurityGroup.fromSecurityGroupId(this, 'albSG', albSGId);
 
-    this.listener = elbv2.ApplicationListener.fromApplicationListenerAttributes(
-      this,
-      'ecs-sbt-listener',
+    this.listener = elbv2.ApplicationListener.fromApplicationListenerAttributes(this, 'ecs-sbt-listener',
       {
         listenerArn: cdk.Fn.importValue('ListenerArn'),
         securityGroup: this.albSG
@@ -86,43 +88,63 @@ export class EcsCluster extends cdk.NestedStack {
     this.ecsSG.connections.allowFrom(this.albSG, ec2.Port.tcp(80), 'Application Load Balancer');
     this.ecsSG.connections.allowFrom(this.ecsSG, ec2.Port.tcp(3010), 'Backend Micrioservice');
 
-    // New ECS Cluster
-    const cluster = new ecs.Cluster(this, 'EcsCluster', {
-      clusterName: `${props.stageName}-${tenantId}-${timeStr}`,
-      vpc: this.vpc,
-      // cloudwatch insight enabled
-      containerInsights: true,
-      defaultCloudMapNamespace: {
-        name: `ecs-sbt.local-${tenantId}`,
-        useForServiceConnect: true,
-        type: cdk.aws_servicediscovery.NamespaceType.HTTP
+    // let clusters: ecs.ICluster|undefined;
+
+    this.cluster = this.getCluster(
+      // this.cluster,
+      props.tier,
+      props.stageName,
+    );
+
+    let clusterName = `${props.stageName}-${tenantId}-${timeStr}`;
+    if('advanced' === props.tier.toLocaleLowerCase() ) {
+      clusterName = `${props.stageName}-advanced-${cdk.Stack.of(this).account}`
+    }
+
+    if('advanced' !== props.tier.toLocaleLowerCase() || 'ACTIVE' !== props.advancedCluster ) {
+      // console.error('No Cluster Found -->', this.cluster);    
+      this.cluster = new ecs.Cluster(this, 'EcsCluster', {
+        clusterName,
+        vpc: this.vpc,
+        containerInsights: true,
+      });
+      if (this.isEc2Tier) {
+        const trunking = new CustomEniTrunking(this, "EniTrunking");
+
+        const autoScalingGroup = new AutoScalingGroup(this, `ecs-autoscaleG-${tenantId}`, {
+          vpc: this.vpc,
+          instanceType: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
+          machineImage: ecs.EcsOptimizedImage.amazonLinux2(ecs.AmiHardwareType.STANDARD),
+          desiredCapacity: 3,
+          minCapacity: 2,
+          maxCapacity: 5,
+          requireImdsv2: true,
+          newInstancesProtectedFromScaleIn: false,
+          role: trunking.ec2Role,
+        });
+        autoScalingGroup.role.addManagedPolicy(
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            'service-role/AmazonEC2ContainerServiceforEC2Role'
+          )
+        );
+        autoScalingGroup.scaleOnCpuUtilization('autoscaleCPU', {
+          targetUtilizationPercent: 50,
+        });
+        const capacityProvider = new ecs.AsgCapacityProvider(this, `AsgCapacityProvider-${tenantId}`, {
+            autoScalingGroup,
+            enableManagedTerminationProtection: false // important for offboarding.
+          }
+        );
+        const thiCluster = this.cluster as ecs.Cluster;
+        thiCluster.addAsgCapacityProvider(capacityProvider);
       }
+    }  
+
+
+    this.namespace = new HttpNamespace(this, 'CloudMapNamespace', {
+      name: `ecs-sbt.local-${tenantId}`,
     });
 
-    if (this.isEc2Tier) {
-      const autoScalingGroup = new AutoScalingGroup(this, `ecs-autoscaleG-${tenantId}`, {
-        vpc: this.vpc,
-        instanceType: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
-        machineImage: ecs.EcsOptimizedImage.amazonLinux2(ecs.AmiHardwareType.STANDARD),
-        desiredCapacity: 3,
-        requireImdsv2: true,
-        newInstancesProtectedFromScaleIn: false
-      });
-      autoScalingGroup.role.addManagedPolicy(
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'service-role/AmazonEC2ContainerServiceforEC2Role'
-        )
-      );
-      const capacityProvider = new ecs.AsgCapacityProvider(
-        this,
-        `AsgCapacityProvider-${tenantId}`,
-        {
-          autoScalingGroup,
-          enableManagedTerminationProtection: false // important for offboarding.
-        }
-      );
-      cluster.addAsgCapacityProvider(capacityProvider);
-    }
 
     // Read JSON file with container info
     const containerInfoJSON = fs.readFileSync(path.resolve(__dirname, '../service-info.json'));
@@ -142,7 +164,7 @@ export class EcsCluster extends cdk.NestedStack {
     if (props.isRProxy) {
       this.ecrRepository = info.image.split('/')[0];
       rproxyService = this.createRproxyService(
-        cluster,
+        // this.cluster,
         tenantId,
         info,
         taskExecutionRole,
@@ -236,15 +258,16 @@ export class EcsCluster extends cdk.NestedStack {
       });
 
       const serviceProps = {
-        cluster,
+        cluster: this.cluster,
         desiredCount: 2,
         taskDefinition,
         securityGroups: [this.ecsSG],
+        trunking: true,
         serviceConnectConfiguration: {
           logDriver: ecs.LogDrivers.awsLogs({
             streamPrefix: `${info.name}-sc-traffic-`
           }),
-          namespace: cluster.defaultCloudMapNamespace?.namespaceArn,
+          namespace: this.namespace.namespaceArn,//this.cluster.defaultCloudMapNamespace?.namespaceArn,
           services: [
             {
               portMappingName: info.name,
@@ -313,7 +336,7 @@ export class EcsCluster extends cdk.NestedStack {
   }
 
   private createRproxyService (
-    cluster: ecs.Cluster,
+    // cluster: ecs.ICluster,
     tenantId: string,
     info: RproxyInfo,
     taskExecutionRole: iam.Role,
@@ -356,7 +379,7 @@ export class EcsCluster extends cdk.NestedStack {
     });
 
     const serviceProps = {
-      cluster,
+      cluster: this.cluster,
       minHealthyPercent: 0, // for zero downtime rolling deployment set desiredcount=2 and minHealty = 50
       desiredCount: 1,
       taskDefinition: rproxyTaskDef,
@@ -366,7 +389,7 @@ export class EcsCluster extends cdk.NestedStack {
         logDriver: ecs.LogDrivers.awsLogs({
           streamPrefix: `${info.name}-traffic-`
         }),
-        namespace: cluster.defaultCloudMapNamespace?.namespaceArn,
+        namespace: this.namespace.namespaceArn,
         services: [
           {
             portMappingName: info.name,
@@ -416,5 +439,24 @@ export class EcsCluster extends cdk.NestedStack {
     );
 
     return service;
+  }
+
+
+  private getCluster (
+    tier: string,
+    stageName: string
+  ): ecs.ICluster {
+    
+    if('advanced' === tier.toLocaleLowerCase() ) {
+      let clusterName = `${stageName}-advanced-${cdk.Stack.of(this).account}`
+      this.cluster =  ecs.Cluster.fromClusterAttributes(this, 'advanced', {
+        clusterName: clusterName,
+        vpc: this.vpc,
+        securityGroups: [],
+      });
+
+    }
+  
+    return this.cluster;
   }
 }

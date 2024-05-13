@@ -57,7 +57,7 @@ export class CoreAppPlaneStack extends Stack {
 }
 `)
       ),
-      script: fs.readFileSync('../../scripts/provision-tenant.sh', 'utf8'),
+      script: fs.readFileSync('../scripts/provision-tenant.sh', 'utf8'),
       outgoingEvent: DetailType.PROVISION_SUCCESS,
       incomingEvent: DetailType.ONBOARDING_REQUEST,
 
@@ -96,7 +96,7 @@ export class CoreAppPlaneStack extends Stack {
 }
 `)
       ),
-      script: fs.readFileSync('../../scripts/deprovision-tenant.sh', 'utf8'),
+      script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
       environmentVariablesToOutgoingEvent: ['tenantStatus'],
       outgoingEvent: DetailType.DEPROVISION_SUCCESS,

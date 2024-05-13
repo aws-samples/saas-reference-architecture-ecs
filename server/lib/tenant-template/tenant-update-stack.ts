@@ -116,7 +116,7 @@ export class TenantUpdatePipeline extends cdk.Stack {
             }
           },
           build: {
-            commands: [fs.readFileSync('../../scripts/update-tenants.sh', 'utf8')]
+            commands: [fs.readFileSync('../scripts/update-tenants.sh', 'utf8')]
           }
         }
       }),
