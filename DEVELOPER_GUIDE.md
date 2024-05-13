@@ -17,12 +17,12 @@ This is the developer documentation of ECS SaaS References architecture. If you 
         + [Tenant Management](#tenant-management)
 - [Application Plane Architecture](#application-plane-architecture-)
     * [Basic Tier - Shared ECS Services (Pool model)](#basic-tier---shared-ecs-services-pool-model)
-    * [Advanced Tier: Shared cluster, dedicated ECS services (Silo model)](#todo) - TODO
+    * [Advanced Tier: Shared cluster, dedicated ECS services (Silo model)](#advanced-tier-dedicated-ecs-services-in-a-shard-cluster-per-tenant-silo-model)
     * [Premium Tier: ECS Cluster per tenant (Silo model)](#premium-tier-ecs-cluster-per-tenant-silo-model)
 - [Implementing Multi-tenancy in ECS SaaS](#implementing-multi-tenancy-in-ecs-saas-)
     * [Compute Isolation with Amazon ECS](#compute-isolation-with-amazon-ecs-)
     * [Implementing Storage Isolation](#implementing-storage-isolation-)
-        + [Data isolation with pooled databases](#1-data-isolation-with-pooled-databases-)
+        + [Data isolation with pooled databases](#1-data-isolation-with-pooled-databases)
         + [Data isolation with silo databases](#2-data-isolation-with-silo-databases)
     * [Scaling the Request Routing of the solution](#scaling-the-request-routing-of-the-solution)
         + [Nginx Routing](#nginx-routing-)
@@ -168,26 +168,47 @@ There are many AWS constructs have been used in order to implement the multi-ten
 
 ##  Basic Tier - Shared ECS Services (Pool model)
 
-The Basic tier represents an all-shared implementation of the SaaS using Amazon ECS. Here, we essentially, all microservices and underlying storage components are shared across all the tenants in the tier. Given this nature, this architecture is scalable for serving a large number of tenants within the tier, so SaaS providers can also refer this to implement Free of Freemium tiers in their SaaS solutions.
+The Basic tier represents an all-shared implementation. Here, all microservices and underlying storage components are shared across all the tenants. Given this nature, this architecture is scalable for serving a large number of tenants within the tier, so SaaS providers can also refer this to implement Free of Freemium tiers in their SaaS solutions.
 
-Because of this pooled implementation, the compute workload in this tier would become very dynamic when increasing number of tenants, and so the ECS cluster would need to handle it seamlessly with right sized autoscaling to optimize the overall ECS cost. Here, the reference architecture provides code and configurations needed to implement ECS cluster on AWS Fargate to provide additional operational efficiency to the tier where SaaS providers will not manage the underneath compute it will help for optimized economy of scale for large number of tenants, long term. While there is no difference in the implementation, the SaaS providers can pick the right compute hosting mode (EC2 or Fargate) to run ECS workload based on the nature of the use-case, number of tenants expected, resource utilization of the microservices, etc.
+Because of this pooled implementation, the compute workload in this tier would become very dynamic when increasing number of tenants, and so the ECS cluster would need to handle it seamlessly with right sized autoscaling to optimize the overall ECS cost. Here, the reference architecture provides code and configurations needed to implement ECS cluster on [AWS Fargate](https://aws.amazon.com/fargate/) - Serverless compute engine, to provide additional operational efficiency to the tier where SaaS providers will not need to manage the underneath compute. This could also help for optimized economy of scale for large number of tenants long term. However, SaaS providers should pick the right compute hosting mode (EC2 or Fargate) to run ECS workload based on the nature of the use-case, number of tenants expected, resource utilization of the microservices, etc.
 
 <p align="center">
 <img src="images/basic-tier.png" alt="Tenant Onboarding"/>Fig 4: Basic Tier Architecture 
 </p>
 
 
-This tier will be preloaded in the solution as a part of the baseline architecture. The product and order microservices have their own ECS task definition created so they can have their own task configurations. The microservices are attached to a Cloud Map namespace (services.pool). Each Basic tier tenant will connect to the ALB with a common HTTP header “tier = pooled”, which will be evaluated by the ALB and then traffic will be routed to the microservices. Nginx will be used as a reverse proxy to conduct the routing to the ECS tasks. From the data isolation standpoint, this model shares both Product and Order tables across all tenants, and implements fine-grained access control using dynamic IAM policies at runtime for tenant specific DB operations.
+This tier will be preloaded in the solution as a part of the baseline architecture. The product and order microservices have their own ECS task definition created so they can have their own task configurations. Each microservice is attached to a Cloud Map namespace (services.pool) to enable service discovery. 
+
+Each Basic tier tenant will connect to the ALB with a common HTTP header “tenantPath = basic”, which will be evaluated by the ALB and then traffic will be routed to the microservices. 
+
+From the data isolation standpoint, this model shares both Product and Order tables across all tenants, and implements fine-grained access control using dynamic IAM policies at runtime for tenant specific DB operations, (refer [here](#1-data-isolation-with-pooled-databases)).
+
+## Advanced Tier: Dedicated ECS services in a shard Cluster per tenant (Silo model)
+This allows SaaS providers to allocate dedicated ECS services per tenant within a shared ECS cluster, allowing to share the ECS compute capacity in the cluster across all the tenants. This could help improving overall cost efficiency and economy of scale of the compute layer when increasing the number of tenants.
+
+<p align="center">
+<img src="images/advanced-tier.png" alt="Tenant Onboarding"/>Fig 5: Advanced Tier Architecture 
+</p>
+
+
+Here, the same ECS Task definitions will be redeployed per tenant basis to create dedicated microservices and assign them into an own Cloud Map namespace to enable service discovery for ECS Service Connect. 
+
+Each tenant has a Security group which each service of the tenant is attached to. Traffic controlling is implemented in a way that Security group only accepts the incoming traffic from tenant users via ALB and traffic from services within the same Security Group, so the compute tenant Isolation is preserved, (refer [here](#compute-isolation-with-amazon-ecs)). 
+
+In order to handle request routing at scale, we have leveraged a custom routing mechanism with Nginx, that routes to ECS services of the same tenants, (refer [here](#nginx-routing)).
+
+The storage layer of this tier will follow a bridge model where product datab tables are shared across tenants while order tables will be silos. Shared data access is isolated using fine grained access control and the silo data access is protected by the tenant specific IAM role being injected as the ECS Task role which is explained [here](#2-data-isolation-with-silo-databases).
 
 ## Premium Tier: ECS Cluster per tenant (Silo model)
 This tier dedicates silo AWS components, where there will be a ECS cluster with own microservices and own databases per-tenant basis.
 
 <p align="center">
-<img src="images/premium-tier.png" alt="Tenant Onboarding"/>Fig 5: Premium Tier Architecture 
+<img src="images/premium-tier.png" alt="Tenant Onboarding"/>Fig 6: Premium Tier Architecture 
 </p>
 
+In order to provide better infrastructure isolation for their tenants, SaaS providers can refer to the Premium Tier implementation where we discuss a model with ECS cluster per tenant. Here, the microservices will be deployed in a new ECS cluster powered by ECS Service connect during tenant onboarding. Which means that each tenant will have their own EC2 capacity underneath which will enhance the overall resilience and reliability of the compute layer with reduced blast radius tenant-wise, which would be the key benefit for the SaaS providers in this model as opposed to the other tiers. 
 
-In order to provide better infrastructure isolation for their tenants, SaaS providers can refer to the Premium Tier implementation where we discuss a model with ECS cluster per tenant. Here, the microservices will be deployed in a new ECS cluster powered by ECS Service connect during tenant onboarding. Which means that each tenant will have their own EC2 capacity underneath which will enhance the overall resilience and reliability of the compute layer with reduced blast radius tenant-wise - This would be the key technical benefit for the SaaS providers in this model as opposed to the basic-tier architecture above. There will be dedicated Nginx service per cluster that will handle the service routing along with ECS service connect that will use a dedicated Cloud Map namespace for service discovery. Each tenant will be equipped with silo data resources here and data isolation is secured via the ECS Task role as mentioned in Appendix 03.
+There will be dedicated Nginx service per cluster that will handle the service routing along with ECS service connect that will use a dedicated Cloud Map namespace for service discovery as explained [here](#ecs-service-discovery). Each tenant will be equipped with silo data resources here and data isolation is secured via the ECS Task role.
 
 # Implementing Multi-tenancy in ECS SaaS
 Now let's dive deeper into the implementation details of multi-tenant strategies we have leveraged in this reference solution. We will discuss tenant isolation implemented at the application plane of ECS SaaS in terms of compute and storage.
@@ -342,7 +363,7 @@ The premium tenants usually demand dedicated infrastructure in order to reduce c
 
 
 <p align="center">
-<img src="images/routing-premium-tier.png" alt="Tenant Onboarding"/>Fig 6: Premium tier routing at scale with dedicated ALBs 
+<img src="images/routing-premium-tier.png" alt="Tenant Onboarding"/>Fig 7: Premium tier routing at scale with dedicated ALBs 
 </p>
 
 
@@ -351,7 +372,7 @@ A single ALB will route the request to max 100 tenants irrespective of if it is 
 
 
 <p align="center">
-<img src="images/routing-parallel-albs.png" alt="Tenant Onboarding"/>Fig 7: Scaling the routing using parallel ALBs 
+<img src="images/routing-parallel-albs.png" alt="Tenant Onboarding"/>Fig 8: Scaling the routing using parallel ALBs 
 </p>
 
 
@@ -362,7 +383,7 @@ The main purpose of ECS Service connect is to provide the routing capability alo
 
 
 <p align="center">
-<img src="images/service-connect.png" alt="Tenant Onboarding"/>Fig 8: API Request workflow with ECS Service connect 
+<img src="images/service-connect.png" alt="Tenant Onboarding"/>Fig 9: API Request workflow with ECS Service connect 
 </p>
 
 
