@@ -4,11 +4,12 @@ import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-paramete
 import { TenantApiKey } from './tenant-api-key';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyDocument } from 'aws-cdk-lib/aws-iam';
+import { EventBus } from 'aws-cdk-lib/aws-events';
 import { UserInterface } from './user-interface';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
 import * as fs from 'fs';
 import * as core_app_plane from '@cdklabs/sbt-aws';
-import { type CoreApplicationPlaneJobRunnerProps, DetailType } from '@cdklabs/sbt-aws';
+import { type CoreApplicationPlaneJobRunnerProps, DetailType, EventManager } from '@cdklabs/sbt-aws';
 
 interface CoreAppPlaneStackProps extends StackProps {
   ApiKeySSMParameterNames: ApiKeySSMParameterNames
@@ -16,9 +17,6 @@ interface CoreAppPlaneStackProps extends StackProps {
   apiKeyPremiumTierParameter: string
   apiKeyAdvancedTierParameter: string
   apiKeyBasicTierParameter: string
-
-  controlPlaneEventSource: string
-  applicationPlaneEventSource: string
   eventBusArn: string
   systemAdminEmail: string
   regApiGatewayUrl: string
@@ -31,9 +29,6 @@ export class CoreAppPlaneStack extends Stack {
     super(scope, id, props);
 
     const systemAdminEmail = props.systemAdminEmail;
-    const applicationPlaneEventSource = props.applicationPlaneEventSource;
-    const controlPlaneEventSource = props.controlPlaneEventSource;
-    const eventBusArn = props.eventBusArn;
 
     this.tenantMappingTable = new Table(this, 'TenantMappingTable', {
       partitionKey: { name: 'tenantId', type: AttributeType.STRING }
@@ -108,10 +103,13 @@ export class CoreAppPlaneStack extends Stack {
       }
     };
 
+    const eventBus = EventBus.fromEventBusArn(this, 'EventBus', props.eventBusArn);
+    const eventManager = new EventManager(this, 'EventManager', {
+      eventBus: eventBus,
+    });
+
     new core_app_plane.CoreApplicationPlane(this, 'coreappplane-sbt', {
-      eventBusArn: eventBusArn,
-      controlPlaneEventSource: controlPlaneEventSource,
-      applicationPlaneEventSource: applicationPlaneEventSource,
+      eventManager: eventManager,
       jobRunnerPropsList: [provisioningJobRunnerProps, deprovisioningJobRunnerProps]
     });
 

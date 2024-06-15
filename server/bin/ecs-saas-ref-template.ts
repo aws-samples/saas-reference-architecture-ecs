@@ -25,15 +25,10 @@ const basicId = 'basic';
 const systemAdminEmail = process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL;
 const tenantId = process.env.CDK_PARAM_TENANT_ID || basicId;
 const codeCommitRepositoryName = getEnv('CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME');
-const controlPlaneEventSource = getEnv('CDK_PARAM_CONTROL_PLANE_SOURCE');
 
-const applicationPlaneEventSource = getEnv('CDK_PARAM_APPLICATION_NAME_PLANE_SOURCE');
 const commitId = getEnv('CDK_PARAM_COMMIT_ID');
 const tier = getEnv('CDK_PARAM_TIER');
 
-if (!process.env.CDK_PARAM_IDP_NAME) {
-  process.env.CDK_PARAM_IDP_NAME = 'COGNITO';
-}
 if (!process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME) {
   process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME = 'SystemAdmin';
 }
@@ -46,11 +41,9 @@ const defaultApiKeyPlatinumTierParameter = '34135b26-7704-4ebc-adcc-9e0c604d4f04
 const defaultApiKeyPremiumTierParameter = '508d335c-a768-4cfb-aaff-45a89129853c-sbt';
 const defaultApiKeyAdvancedTierParameter = '49cbd97a-7499-4939-bc3d-b116ca479dda-sbt';
 const defaultApiKeyBasicTierParameter = 'a6e257c3-a19d-4461-90a3-c998665a0d6b-sbt';
-const defaultIdpName = 'COGNITO';
 const defaultSystemAdminRoleName = 'SystemAdmin';
 
 // optional input parameters
-const idpName = process.env.CDK_PARAM_IDP_NAME || defaultIdpName;
 const systemAdminRoleName =
   process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME || defaultSystemAdminRoleName;
 const stageName = process.env.CDK_PARAM_STAGE_NAME || defaultStageName;
@@ -95,11 +88,8 @@ const apiKeySSMParameterNames = {
 };
 
 const controlPlaneStack = new ControlPlaneStack(app, 'controlplane-stack', {
-  idpName: idpName,
   systemAdminEmail: systemAdminEmail,
   systemAdminRoleName: systemAdminRoleName,
-  controlPlaneEventSource: controlPlaneEventSource,
-  applicationPlaneEventSource: applicationPlaneEventSource,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION
@@ -115,8 +105,6 @@ const coreAppPlaneStack = new CoreAppPlaneStack(app, 'core-appplane-stack', {
   apiKeyAdvancedTierParameter: apiKeyAdvancedTierParameter,
   apiKeyBasicTierParameter: apiKeyBasicTierParameter,
   ApiKeySSMParameterNames: apiKeySSMParameterNames,
-  controlPlaneEventSource: controlPlaneEventSource,
-  applicationPlaneEventSource: applicationPlaneEventSource,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION
