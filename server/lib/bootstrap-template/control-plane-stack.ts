@@ -9,9 +9,6 @@ import { StaticSite } from './static-site';
 import { ControlPlaneNag } from '../cdknag/control-plane-nag';
 
 interface ControlPlaneStackProps extends StackProps {
-  controlPlaneEventSource: string
-  applicationPlaneEventSource: string
-  idpName: string
   systemAdminRoleName: string
   systemAdminEmail: string
 }
@@ -41,20 +38,17 @@ export class ControlPlaneStack extends Stack {
     this.adminSiteUrl = `https://${distro.cloudfrontDistribution.domainName}`;
 
     const cognitoAuth = new CognitoAuth(this, 'CognitoAuth', {
-      idpName: props.idpName,
       systemAdminRoleName: props.systemAdminRoleName,
       systemAdminEmail: props.systemAdminEmail,
       controlPlaneCallbackURL: this.adminSiteUrl
     });
 
     const controlPlane = new control_plane.ControlPlane(this, 'controlplane-sbt', {
-      applicationPlaneEventSource: props.applicationPlaneEventSource,
-      controlPlaneEventSource: props.controlPlaneEventSource,
       auth: cognitoAuth
     });
 
     this.regApiGatewayUrl = controlPlane.controlPlaneAPIGatewayUrl;
-    this.eventBusArn = controlPlane.eventBusArn;
+    this.eventBusArn = controlPlane.eventManager.busArn;
     this.auth = cognitoAuth;
 
     this.StaticSite = new StaticSite(this, 'AdminWebUi', {

@@ -36,10 +36,8 @@ sed "s/<REGION>/$ECR_REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt 
 npm install
 
 # npx cdk bootstrap
-export CDK_PARAM_CONTROL_PLANE_SOURCE='sbt-control-plane-api' # 'controlPlaneEventSource'
 export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'
 export CDK_PARAM_PROVISIONING_DETAIL_TYPE=$CDK_PARAM_ONBOARDING_DETAIL_TYPE
-export CDK_PARAM_APPLICATION_NAME_PLANE_SOURCE='sbt-application-plane-api' # 'applicationPlaneEventSource'
 export CDK_PARAM_OFFBOARDING_DETAIL_TYPE='Offboarding'
 export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
 export CDK_PARAM_TIER='basic'
