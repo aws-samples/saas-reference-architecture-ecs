@@ -45,7 +45,6 @@ export class EcsCluster extends cdk.NestedStack {
     this.isEc2Tier = props.isEc2Tier;
   
     this.vpc = ec2.Vpc.fromVpcAttributes(this, 'Vpc', {
-      // availabilityZones: [`${props.env.region}a`, `${props.env.region}b`, `${props.env.region}c`],
       availabilityZones: [
         cdk.Fn.importValue('az1'),
         cdk.Fn.importValue('az2'),
@@ -106,8 +105,7 @@ export class EcsCluster extends cdk.NestedStack {
       clusterName = `${props.stageName}-advanced-${cdk.Stack.of(this).account}`
     }
 
-    if('advanced' !== props.tier.toLocaleLowerCase() || 'ACTIVE' !== props.advancedCluster ) {
-      // console.error('No Cluster Found -->', this.cluster);    
+    if('advanced' !== props.tier.toLocaleLowerCase() || 'ACTIVE' !== props.advancedCluster ) {  
       this.cluster = new ecs.Cluster(this, 'EcsCluster', {
         clusterName,
         vpc: this.vpc,

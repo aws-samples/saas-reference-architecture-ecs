@@ -38,7 +38,6 @@ export class SharedInfraStack extends Stack {
     this.vpc = new ec2.Vpc(this, 'sbt-ecs-vpc', {
       // maxAzs: 3,
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
-      // availabilityZones: [`${props.env.region}a`, `${props.env.region}b`, `${props.env.region}c`],
       availabilityZones: [
         Fn.select(0, azs),
         Fn.select(1, azs),
