@@ -45,7 +45,12 @@ export class EcsCluster extends cdk.NestedStack {
     this.isEc2Tier = props.isEc2Tier;
   
     this.vpc = ec2.Vpc.fromVpcAttributes(this, 'Vpc', {
-      availabilityZones: [`${props.env.region}a`, `${props.env.region}b`, `${props.env.region}c`],
+      // availabilityZones: [`${props.env.region}a`, `${props.env.region}b`, `${props.env.region}c`],
+      availabilityZones: [
+        cdk.Fn.importValue('az1'),
+        cdk.Fn.importValue('az2'),
+        cdk.Fn.importValue('az3')
+      ],
       privateSubnetIds: [
         cdk.Fn.importValue('PrivSubId1EcsSbt'),
         cdk.Fn.importValue('PrivSubId2EcsSbt'),
