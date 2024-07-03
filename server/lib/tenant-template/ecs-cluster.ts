@@ -289,6 +289,10 @@ export class EcsCluster extends cdk.NestedStack {
         service = new ecs.FargateService(this, `${info.name}-service`, serviceProps);
       }
 
+      const cfnService = service.node.defaultChild as ecs.CfnService;
+      cfnService.overrideLogicalId(`${info.name}service`);
+      cfnService.serviceName = `${info.name}service`;
+
       if (props.isRProxy) {
         rproxyService.node.addDependency(service);
       } else {
@@ -409,6 +413,10 @@ export class EcsCluster extends cdk.NestedStack {
     } else {
       service = new ecs.FargateService(this, `${info.name}-nginx`, serviceProps);
     }
+
+    const cfnService = service.node.defaultChild as ecs.CfnService;
+    cfnService.overrideLogicalId(`${info.name}service`);
+    cfnService.serviceName = `${info.name}service`;
 
     const targetGroupHttp = new elbv2.ApplicationTargetGroup(this, `target-group-${tenantId}`, {
       port: info.containerPort,

@@ -3,7 +3,6 @@ import * as cdk from 'aws-cdk-lib';
 import { TenantTemplateStack } from '../lib/tenant-template/tenant-template-stack';
 import { DestroyPolicySetter } from '../lib/utilities/destroy-policy-setter';
 import { CoreAppPlaneStack } from '../lib/bootstrap-template/core-appplane-stack';
-import { TenantUpdatePipeline } from '../lib/tenant-template/tenant-update-stack';
 import { getEnv } from '../lib/utilities/helper-functions';
 import { ControlPlaneStack } from '../lib/bootstrap-template/control-plane-stack';
 import { SharedInfraStack } from '../lib/shared-infra/shared-infra-stack';
@@ -24,7 +23,6 @@ const basicId = 'basic';
 // required input parameters
 const systemAdminEmail = process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL;
 const tenantId = process.env.CDK_PARAM_TENANT_ID || basicId;
-const codeCommitRepositoryName = getEnv('CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME');
 
 const commitId = getEnv('CDK_PARAM_COMMIT_ID');
 const tier = getEnv('CDK_PARAM_TIER');
