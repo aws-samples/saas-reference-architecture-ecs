@@ -144,13 +144,3 @@ tenantTemplateStack.addDependency(sharedInfraStack);
 cdk.Tags.of(tenantTemplateStack).add('TenantId', tenantId);
 cdk.Tags.of(tenantTemplateStack).add('IsPooledDeploy', String(isPooledDeploy));
 cdk.Aspects.of(tenantTemplateStack).add(new DestroyPolicySetter());
-
-// const ecsSaaSPipeline = new TenantUpdatePipeline(app, 'tenant-update-stack', {
-//   tenantMappingTable: coreAppPlaneStack.tenantMappingTable,
-//   codeCommitRepositoryName: codeCommitRepositoryName,
-//   env: {
-//     account: process.env.CDK_DEFAULT_ACCOUNT,
-//     region: process.env.CDK_DEFAULT_REGION
-//   }
-// });
-// cdk.Aspects.of(ecsSaaSPipeline).add(new DestroyPolicySetter());
