@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import { type Construct } from 'constructs';
-import { Stack, type StackProps, type Environment, Tags, CfnOutput } from 'aws-cdk-lib';
+import { Stack, type StackProps, type Environment, Tags, Fn, CfnOutput } from 'aws-cdk-lib';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { ApiGateway } from './api-gateway';
 import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
@@ -34,10 +34,15 @@ export class SharedInfraStack extends Stack {
   constructor (scope: Construct, id: string, props: SharedInfraProps) {
     super(scope, id);
 
+    const azs = Fn.getAzs(this.region);
     this.vpc = new ec2.Vpc(this, 'sbt-ecs-vpc', {
       // maxAzs: 3,
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
-      availabilityZones: [`${props.env.region}a`, `${props.env.region}b`, `${props.env.region}c`],
+      availabilityZones: [
+        Fn.select(0, azs),
+        Fn.select(1, azs),
+        Fn.select(2, azs),
+      ],
       flowLogs: {
         'sbt-ecs-vpcFlowLog': {
           destination: ec2.FlowLogDestination.toCloudWatchLogs(),
@@ -166,6 +171,20 @@ export class SharedInfraStack extends Stack {
     new CfnOutput(this, 'EcsVpcId', {
       value: this.vpc.vpcId,
       exportName: 'EcsVpcId'
+    });
+
+
+    new CfnOutput(this, 'az1', {
+      value: this.vpc.availabilityZones[0],
+      exportName: 'az1'
+    });
+    new CfnOutput(this, 'az2', {
+      value: this.vpc.availabilityZones[1],
+      exportName: 'az2'
+    });
+    new CfnOutput(this, 'az3', {
+      value: this.vpc.availabilityZones[2],
+      exportName: 'az3'
     });
 
     new CfnOutput(this, 'PrivSubId1EcsSbt', {
