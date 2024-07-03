@@ -19,6 +19,7 @@ export interface SharedInfraProps extends StackProps {
   isPooledDeploy: boolean
   ApiKeySSMParameterNames: ApiKeySSMParameterNames
   stageName: string
+  azCount: number
   env: Environment
 }
 
@@ -35,14 +36,27 @@ export class SharedInfraStack extends Stack {
     super(scope, id);
 
     const azs = Fn.getAzs(this.region);
+    const availabilityZones = Stack.of(this).availabilityZones.slice(0, props.azCount);
+    for (let i = 0; i < availabilityZones.length; i++) {
+      availabilityZones[i] = Fn.select(i, azs);
+      new CfnOutput(this, `az${i}`, {
+        value: availabilityZones[i],
+        description: `Availability Zone ${i}`,
+        exportName: `az${i}`
+      });
+    }
+   
+
     this.vpc = new ec2.Vpc(this, 'sbt-ecs-vpc', {
-      // maxAzs: 3,
+      maxAzs: props.azCount,
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
-      availabilityZones: [
-        Fn.select(0, azs),
-        Fn.select(1, azs),
-        Fn.select(2, azs),
-      ],
+      availabilityZones: availabilityZones,
+      
+      // [
+      //   Fn.select(0, azs),
+      //   Fn.select(1, azs),
+      //   Fn.select(2, azs),
+      // ],
       flowLogs: {
         'sbt-ecs-vpcFlowLog': {
           destination: ec2.FlowLogDestination.toCloudWatchLogs(),
@@ -55,11 +69,22 @@ export class SharedInfraStack extends Stack {
     this.vpc.privateSubnets.forEach((subnet, index) => {
       const cfnSubnet = subnet.node.defaultChild as ec2.CfnSubnet;
       cfnSubnet.addPropertyOverride('CidrBlock', `10.0.${index * 64}.0/18`);
+      new CfnOutput(this, `PrivSubId${index}EcsSbt`, {
+        value: this.vpc.privateSubnets[index].subnetId,
+        exportName: `PrivSubId${index}EcsSbt`
+      });
+      new CfnOutput(this, `PrivSub${index}RouteId`, {
+        value: this.vpc.privateSubnets[0].routeTable.routeTableId,
+        exportName: `PrivSub${index}RouteId`
+      });
     });
     this.vpc.publicSubnets.forEach((subnet, index) => {
       const cfnSubnet = subnet.node.defaultChild as ec2.CfnSubnet;
       cfnSubnet.addPropertyOverride('CidrBlock', `10.0.${192 + index}.0/24`);
+      
     });
+
+    
 
     // use a security group to provide a secure connection between the ALB and the containers
     this.albSG = new ec2.SecurityGroup(this, 'alb-sg', {
@@ -174,44 +199,46 @@ export class SharedInfraStack extends Stack {
     });
 
 
-    new CfnOutput(this, 'az1', {
-      value: this.vpc.availabilityZones[0],
-      exportName: 'az1'
-    });
-    new CfnOutput(this, 'az2', {
-      value: this.vpc.availabilityZones[1],
-      exportName: 'az2'
-    });
-    new CfnOutput(this, 'az3', {
-      value: this.vpc.availabilityZones[2],
-      exportName: 'az3'
-    });
 
-    new CfnOutput(this, 'PrivSubId1EcsSbt', {
-      value: this.vpc.privateSubnets[0].subnetId,
-      exportName: 'PrivSubId1EcsSbt'
-    });
-    new CfnOutput(this, 'PrivSubId2EcsSbt', {
-      value: this.vpc.privateSubnets[1].subnetId,
-      exportName: 'PrivSubId2EcsSbt'
-    });
-    new CfnOutput(this, 'PrivSubId3EcsSbt', {
-      value: this.vpc.privateSubnets[2].subnetId,
-      exportName: 'PrivSubId3EcsSbt'
-    });
 
-    new CfnOutput(this, 'PrivSub1RouteId', {
-      value: this.vpc.privateSubnets[0].routeTable.routeTableId,
-      exportName: 'PrivSub1RouteId'
-    });
-    new CfnOutput(this, 'PrivSub2RouteId', {
-      value: this.vpc.privateSubnets[1].routeTable.routeTableId,
-      exportName: 'PrivSub2RouteId'
-    });
-    new CfnOutput(this, 'PrivSub3RouteId', {
-      value: this.vpc.privateSubnets[2].routeTable.routeTableId,
-      exportName: 'PrivSub3RouteId'
-    });
+    // new CfnOutput(this, 'az1', {
+    //   value: this.vpc.availabilityZones[0],
+    //   exportName: 'az1'
+    // });
+    // new CfnOutput(this, 'az2', {
+    //   value: this.vpc.availabilityZones[1],
+    //   exportName: 'az2'
+    // });
+    // new CfnOutput(this, 'az3', {
+    //   value: this.vpc.availabilityZones[2],
+    //   exportName: 'az3'
+    // });
+
+    // new CfnOutput(this, 'PrivSubId1EcsSbt', {
+    //   value: this.vpc.privateSubnets[0].subnetId,
+    //   exportName: 'PrivSubId1EcsSbt'
+    // });
+    // new CfnOutput(this, 'PrivSubId2EcsSbt', {
+    //   value: this.vpc.privateSubnets[1].subnetId,
+    //   exportName: 'PrivSubId2EcsSbt'
+    // });
+    // new CfnOutput(this, 'PrivSubId3EcsSbt', {
+    //   value: this.vpc.privateSubnets[2].subnetId,
+    //   exportName: 'PrivSubId3EcsSbt'
+    // });
+
+    // new CfnOutput(this, 'PrivSub1RouteId', {
+    //   value: this.vpc.privateSubnets[0].routeTable.routeTableId,
+    //   exportName: 'PrivSub1RouteId'
+    // });
+    // new CfnOutput(this, 'PrivSub2RouteId', {
+    //   value: this.vpc.privateSubnets[1].routeTable.routeTableId,
+    //   exportName: 'PrivSub2RouteId'
+    // });
+    // new CfnOutput(this, 'PrivSub3RouteId', {
+    //   value: this.vpc.privateSubnets[2].routeTable.routeTableId,
+    //   exportName: 'PrivSub3RouteId'
+    // });
 
     new CfnOutput(this, 'ALBDnsName', {
       value: this.alb.loadBalancerDnsName,

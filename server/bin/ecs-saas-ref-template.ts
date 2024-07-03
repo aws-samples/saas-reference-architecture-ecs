@@ -114,6 +114,7 @@ const sharedInfraStack = new SharedInfraStack(app, 'shared-infra-stack', {
   isPooledDeploy: isPooledDeploy,
   ApiKeySSMParameterNames: apiKeySSMParameterNames,
   stageName: stageName,
+  azCount: 3,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION
