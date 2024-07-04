@@ -277,9 +277,10 @@ export class EcsCluster extends cdk.NestedStack {
         service = new ecs.FargateService(this, `${info.name}-service`, serviceProps);
       }
 
+      const alphaNumericTenantId = `${tenantId}`.replace(/[^a-zA-Z0-9]/g, '');
       const cfnService = service.node.defaultChild as ecs.CfnService;
-      cfnService.overrideLogicalId(`${info.name}${tenantId}`);
-      cfnService.serviceName = `${info.name}-${tenantId}`;
+      cfnService.overrideLogicalId(`${info.name}${alphaNumericTenantId}`);
+      cfnService.serviceName = `${info.name}${alphaNumericTenantId}`;
 
       if (props.isRProxy) {
         rproxyService.node.addDependency(service);
@@ -402,9 +403,10 @@ export class EcsCluster extends cdk.NestedStack {
       service = new ecs.FargateService(this, `${info.name}-nginx`, serviceProps);
     }
 
+    const alphaNumericTenantId = `${tenantId}`.replace(/[^a-zA-Z0-9]/g, '');
     const cfnService = service.node.defaultChild as ecs.CfnService;
-    cfnService.overrideLogicalId(`${info.name}${tenantId}`);
-    cfnService.serviceName = `${info.name}-${tenantId}`;
+    cfnService.overrideLogicalId(`${info.name}${alphaNumericTenantId}`);
+    cfnService.serviceName = `${info.name}${alphaNumericTenantId}`;
 
     const targetGroupHttp = new elbv2.ApplicationTargetGroup(this, `target-group-${tenantId}`, {
       port: info.containerPort,
