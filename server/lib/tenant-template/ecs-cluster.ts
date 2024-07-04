@@ -45,22 +45,24 @@ export class EcsCluster extends cdk.NestedStack {
     this.isEc2Tier = props.isEc2Tier;
   
     this.vpc = ec2.Vpc.fromVpcAttributes(this, 'Vpc', {
+      vpcId: cdk.Fn.importValue('EcsVpcId'),
       availabilityZones: [
         cdk.Fn.importValue('az1'),
         cdk.Fn.importValue('az2'),
         cdk.Fn.importValue('az3')
       ],
+      // privateSubnetIds : cdk.Fn.split(',', cdk.Fn.importValue('PrivateSubnetIds')).map(subnetId => cdk.Fn.select(1, cdk.Fn.split('/', subnetId)))
       privateSubnetIds: [
         cdk.Fn.importValue('PrivSubId1EcsSbt'),
         cdk.Fn.importValue('PrivSubId2EcsSbt'),
         cdk.Fn.importValue('PrivSubId3EcsSbt')
       ],
-      privateSubnetRouteTableIds: [
-        cdk.Fn.importValue('PrivSub1RouteId'),
-        cdk.Fn.importValue('PrivSub2RouteId'),
-        cdk.Fn.importValue('PrivSub3RouteId')
-      ],
-      vpcId: cdk.Fn.importValue('EcsVpcId')
+      // privateSubnetRouteTableIds: [
+      //   cdk.Fn.importValue('PrivSub1RouteId'),
+      //   cdk.Fn.importValue('PrivSub2RouteId'),
+      //   cdk.Fn.importValue('PrivSub3RouteId')
+      // ],
+      
     });
 
     // alb Security Group ID

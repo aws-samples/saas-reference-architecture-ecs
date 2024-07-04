@@ -36,27 +36,35 @@ export class SharedInfraStack extends Stack {
     super(scope, id);
 
     const azs = Fn.getAzs(this.region);
-    const availabilityZones = Stack.of(this).availabilityZones.slice(0, props.azCount);
-    for (let i = 0; i < availabilityZones.length; i++) {
-      availabilityZones[i] = Fn.select(i, azs);
-      new CfnOutput(this, `az${i}`, {
-        value: availabilityZones[i],
-        description: `Availability Zone ${i}`,
-        exportName: `az${i}`
+    // const availabilityZones = Stack.of(this).availabilityZones.slice(0, props.azCount);
+    // 스택의 리전에 있는 모든 가용 영역 목록 가져오기
+
+    const availabilityZones = Stack.of(this).availabilityZones;
+
+    // const selectedAzs = availabilityZones.slice(0, 3);
+
+    const selectedAzs = Array(props.azCount).fill('').map(() => '');
+
+    for (let i = 0; i < props.azCount; i++) {
+      selectedAzs[i] = Fn.select(i, azs);
+      new CfnOutput(this, `az${i+1}`, {
+        value: Fn.select(i, azs),
+        description: `Availability Zone ${i+1}`,
+        exportName: `az${i+1}`
       });
     }
    
 
     this.vpc = new ec2.Vpc(this, 'sbt-ecs-vpc', {
-      maxAzs: props.azCount,
+      // maxAzs: props.azCount,
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
-      availabilityZones: availabilityZones,
-      
+      availabilityZones: selectedAzs,
       // [
       //   Fn.select(0, azs),
       //   Fn.select(1, azs),
       //   Fn.select(2, azs),
       // ],
+
       flowLogs: {
         'sbt-ecs-vpcFlowLog': {
           destination: ec2.FlowLogDestination.toCloudWatchLogs(),
@@ -69,14 +77,14 @@ export class SharedInfraStack extends Stack {
     this.vpc.privateSubnets.forEach((subnet, index) => {
       const cfnSubnet = subnet.node.defaultChild as ec2.CfnSubnet;
       cfnSubnet.addPropertyOverride('CidrBlock', `10.0.${index * 64}.0/18`);
-      new CfnOutput(this, `PrivSubId${index}EcsSbt`, {
+      new CfnOutput(this, `PrivSubId${index+1}EcsSbt`, {
         value: this.vpc.privateSubnets[index].subnetId,
-        exportName: `PrivSubId${index}EcsSbt`
+        exportName: `PrivSubId${index+1}EcsSbt`
       });
-      new CfnOutput(this, `PrivSub${index}RouteId`, {
-        value: this.vpc.privateSubnets[0].routeTable.routeTableId,
-        exportName: `PrivSub${index}RouteId`
-      });
+      // new CfnOutput(this, `PrivSub${index+1}RouteId`, {
+      //   value: this.vpc.privateSubnets[index].routeTable.routeTableId,
+      //   exportName: `PrivSub${index+1}RouteId`
+      // });
     });
     this.vpc.publicSubnets.forEach((subnet, index) => {
       const cfnSubnet = subnet.node.defaultChild as ec2.CfnSubnet;
@@ -84,7 +92,9 @@ export class SharedInfraStack extends Stack {
       
     });
 
-    
+    // new CfnOutput(this, 'PrivateSubnetIds', { value: this.vpc.privateSubnets.map(subnet => subnet.subnetId).join(',') });
+
+    // new CfnOutput(this, 'VpcPublicSubnetIds', { value: this.vpc.publicSubnets.map(routeTable => routeTable.).join(',') });
 
     // use a security group to provide a secure connection between the ALB and the containers
     this.albSG = new ec2.SecurityGroup(this, 'alb-sg', {
