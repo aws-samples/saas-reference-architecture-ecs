@@ -46,17 +46,18 @@ export class EcsCluster extends cdk.NestedStack {
   
     this.vpc = ec2.Vpc.fromVpcAttributes(this, 'Vpc', {
       vpcId: cdk.Fn.importValue('EcsVpcId'),
-      availabilityZones: [
-        cdk.Fn.importValue('az1'),
-        cdk.Fn.importValue('az2'),
-        cdk.Fn.importValue('az3')
-      ],
-      // privateSubnetIds : cdk.Fn.split(',', cdk.Fn.importValue('PrivateSubnetIds')).map(subnetId => cdk.Fn.select(1, cdk.Fn.split('/', subnetId)))
-      privateSubnetIds: [
-        cdk.Fn.importValue('PrivSubId1EcsSbt'),
-        cdk.Fn.importValue('PrivSubId2EcsSbt'),
-        cdk.Fn.importValue('PrivSubId3EcsSbt')
-      ],
+      availabilityZones: cdk.Fn.split(',', cdk.Fn.importValue('AvailabilityZones')),
+      // [
+      //   cdk.Fn.importValue('az1'),
+      //   cdk.Fn.importValue('az2'),
+      //   cdk.Fn.importValue('az3')
+      // ],
+      privateSubnetIds : cdk.Fn.split(',', cdk.Fn.importValue('PrivateSubnetIds'))
+      // privateSubnetIds: [
+      //   cdk.Fn.importValue('PrivSubId1EcsSbt'),
+      //   cdk.Fn.importValue('PrivSubId2EcsSbt'),
+      //   cdk.Fn.importValue('PrivSubId3EcsSbt')
+      // ],
       // privateSubnetRouteTableIds: [
       //   cdk.Fn.importValue('PrivSub1RouteId'),
       //   cdk.Fn.importValue('PrivSub2RouteId'),

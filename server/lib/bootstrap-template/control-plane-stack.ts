@@ -1,22 +1,20 @@
-import { Stack, type StackProps, CfnOutput } from 'aws-cdk-lib';
-import { type Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
-import * as control_plane from '@cdklabs/sbt-aws';
-import { CognitoAuth } from '@cdklabs/sbt-aws';
+import { type Construct } from 'constructs';
 import { StaticSiteDistro } from './static-site-distro';
 import path = require('path');
 import { StaticSite } from './static-site';
 import { ControlPlaneNag } from '../cdknag/control-plane-nag';
+import * as sbt from '@cdklabs/sbt-aws';
 
-interface ControlPlaneStackProps extends StackProps {
+interface ControlPlaneStackProps extends cdk.StackProps {
   systemAdminRoleName: string
   systemAdminEmail: string
 }
 
-export class ControlPlaneStack extends Stack {
+export class ControlPlaneStack extends cdk.Stack {
   public readonly regApiGatewayUrl: string;
   public readonly eventBusArn: string;
-  public readonly auth: CognitoAuth;
+  public readonly auth: sbt.CognitoAuth;
   public readonly adminSiteUrl: string;
   public readonly StaticSite: StaticSite;
 
@@ -37,13 +35,13 @@ export class ControlPlaneStack extends Stack {
 
     this.adminSiteUrl = `https://${distro.cloudfrontDistribution.domainName}`;
 
-    const cognitoAuth = new CognitoAuth(this, 'CognitoAuth', {
+    const cognitoAuth = new sbt.CognitoAuth(this, 'CognitoAuth', {
       systemAdminRoleName: props.systemAdminRoleName,
       systemAdminEmail: props.systemAdminEmail,
       controlPlaneCallbackURL: this.adminSiteUrl
     });
 
-    const controlPlane = new control_plane.ControlPlane(this, 'controlplane-sbt', {
+    const controlPlane = new sbt.ControlPlane(this, 'controlplane-sbt', {
       auth: cognitoAuth
     });
 
@@ -64,7 +62,7 @@ export class ControlPlaneStack extends Stack {
       accessLogsBucket
     });
 
-    new CfnOutput(this, 'adminSiteUrl', {
+    new cdk.CfnOutput(this, 'adminSiteUrl', {
       value: this.adminSiteUrl
     });
 

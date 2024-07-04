@@ -1,17 +1,16 @@
-import { Stack, type StackProps, CfnOutput } from 'aws-cdk-lib';
+import * as cdk from 'aws-cdk-lib';
 import { type Construct } from 'constructs';
-import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
-import { TenantApiKey } from './tenant-api-key';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyDocument } from 'aws-cdk-lib/aws-iam';
 import { EventBus } from 'aws-cdk-lib/aws-events';
+import * as fs from 'fs';
+import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
+import { TenantApiKey } from './tenant-api-key';
 import { UserInterface } from './user-interface';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
-import * as fs from 'fs';
-import * as core_app_plane from '@cdklabs/sbt-aws';
-import { type CoreApplicationPlaneJobRunnerProps, DetailType, EventManager } from '@cdklabs/sbt-aws';
+import * as sbt from '@cdklabs/sbt-aws';
 
-interface CoreAppPlaneStackProps extends StackProps {
+interface CoreAppPlaneStackProps extends cdk.StackProps {
   ApiKeySSMParameterNames: ApiKeySSMParameterNames
   apiKeyPlatinumTierParameter: string
   apiKeyPremiumTierParameter: string
@@ -22,7 +21,7 @@ interface CoreAppPlaneStackProps extends StackProps {
   regApiGatewayUrl: string
 }
 
-export class CoreAppPlaneStack extends Stack {
+export class CoreAppPlaneStack extends cdk.Stack {
   public readonly userInterface: UserInterface;
   public readonly tenantMappingTable: Table;
   constructor (scope: Construct, id: string, props: CoreAppPlaneStackProps) {
@@ -34,7 +33,7 @@ export class CoreAppPlaneStack extends Stack {
       partitionKey: { name: 'tenantId', type: AttributeType.STRING }
     });
 
-    const provisioningJobRunnerProps: CoreApplicationPlaneJobRunnerProps = {
+    const provisioningJobRunnerProps: sbt.CoreApplicationPlaneJobRunnerProps = {
       name: 'provisioning',
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
@@ -53,8 +52,8 @@ export class CoreAppPlaneStack extends Stack {
 `)
       ),
       script: fs.readFileSync('../scripts/provision-tenant.sh', 'utf8'),
-      outgoingEvent: DetailType.PROVISION_SUCCESS,
-      incomingEvent: DetailType.ONBOARDING_REQUEST,
+      outgoingEvent: sbt.DetailType.PROVISION_SUCCESS,
+      incomingEvent: sbt.DetailType.ONBOARDING_REQUEST,
 
       postScript: '',
       environmentStringVariablesFromIncomingEvent: [
@@ -73,7 +72,7 @@ export class CoreAppPlaneStack extends Stack {
       }
     };
 
-    const deprovisioningJobRunnerProps: CoreApplicationPlaneJobRunnerProps = {
+    const deprovisioningJobRunnerProps: sbt.CoreApplicationPlaneJobRunnerProps = {
       name: 'deprovisioning',
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
@@ -94,8 +93,8 @@ export class CoreAppPlaneStack extends Stack {
       script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
       environmentVariablesToOutgoingEvent: ['tenantStatus'],
-      outgoingEvent: DetailType.DEPROVISION_SUCCESS,
-      incomingEvent: DetailType.OFFBOARDING_REQUEST,
+      outgoingEvent: sbt.DetailType.DEPROVISION_SUCCESS,
+      incomingEvent: sbt.DetailType.OFFBOARDING_REQUEST,
 
       scriptEnvironmentVariables: {
         TENANT_STACK_MAPPING_TABLE: this.tenantMappingTable.tableName,
@@ -104,11 +103,11 @@ export class CoreAppPlaneStack extends Stack {
     };
 
     const eventBus = EventBus.fromEventBusArn(this, 'EventBus', props.eventBusArn);
-    const eventManager = new EventManager(this, 'EventManager', {
+    const eventManager = new sbt.EventManager(this, 'EventManager', {
       eventBus: eventBus,
     });
 
-    new core_app_plane.CoreApplicationPlane(this, 'coreappplane-sbt', {
+    new sbt.CoreApplicationPlane(this, 'coreappplane-sbt', {
       eventManager: eventManager,
       jobRunnerPropsList: [provisioningJobRunnerProps, deprovisioningJobRunnerProps]
     });
@@ -141,7 +140,7 @@ export class CoreAppPlaneStack extends Stack {
       regApiGatewayUrl: props.regApiGatewayUrl
     });
 
-    new CfnOutput(this, 'appSiteUrl', {
+    new cdk.CfnOutput(this, 'appSiteUrl', {
       value: this.userInterface.appSiteUrl
     });
 

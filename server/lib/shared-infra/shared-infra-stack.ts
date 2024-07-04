@@ -47,11 +47,11 @@ export class SharedInfraStack extends Stack {
 
     for (let i = 0; i < props.azCount; i++) {
       selectedAzs[i] = Fn.select(i, azs);
-      new CfnOutput(this, `az${i+1}`, {
-        value: Fn.select(i, azs),
-        description: `Availability Zone ${i+1}`,
-        exportName: `az${i+1}`
-      });
+      // new CfnOutput(this, `az${i+1}`, {
+      //   value: selectedAzs[i],
+      //   description: `Availability Zone ${i+1}`,
+      //   exportName: `az${i+1}`
+      // });
     }
    
 
@@ -77,10 +77,10 @@ export class SharedInfraStack extends Stack {
     this.vpc.privateSubnets.forEach((subnet, index) => {
       const cfnSubnet = subnet.node.defaultChild as ec2.CfnSubnet;
       cfnSubnet.addPropertyOverride('CidrBlock', `10.0.${index * 64}.0/18`);
-      new CfnOutput(this, `PrivSubId${index+1}EcsSbt`, {
-        value: this.vpc.privateSubnets[index].subnetId,
-        exportName: `PrivSubId${index+1}EcsSbt`
-      });
+      // new CfnOutput(this, `PrivSubId${index+1}EcsSbt`, {
+      //   value: this.vpc.privateSubnets[index].subnetId,
+      //   exportName: `PrivSubId${index+1}EcsSbt`
+      // });
       // new CfnOutput(this, `PrivSub${index+1}RouteId`, {
       //   value: this.vpc.privateSubnets[index].routeTable.routeTableId,
       //   exportName: `PrivSub${index+1}RouteId`
@@ -92,7 +92,8 @@ export class SharedInfraStack extends Stack {
       
     });
 
-    // new CfnOutput(this, 'PrivateSubnetIds', { value: this.vpc.privateSubnets.map(subnet => subnet.subnetId).join(',') });
+    new CfnOutput(this, 'PrivateSubnetIds', { value: this.vpc.privateSubnets.map(subnet => subnet.subnetId).join(','), exportName: 'PrivateSubnetIds' });
+    new CfnOutput(this, 'AvailabilityZones', { value: selectedAzs.join(','), exportName:'AvailabilityZones' });
 
     // new CfnOutput(this, 'VpcPublicSubnetIds', { value: this.vpc.publicSubnets.map(routeTable => routeTable.).join(',') });
 
