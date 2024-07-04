@@ -1,8 +1,8 @@
-import { Stack, type StackProps, CfnOutput } from 'aws-cdk-lib';
+import * as cdk from 'aws-cdk-lib';
 import { type Construct } from 'constructs';
+import { type Table } from 'aws-cdk-lib/aws-dynamodb';
 import { IdentityProvider } from './identity-provider';
 import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
-import { type Table } from 'aws-cdk-lib/aws-dynamodb';
 import {
   AwsCustomResource,
   AwsCustomResourcePolicy,
@@ -11,7 +11,7 @@ import {
 import { EcsCluster } from './ecs-cluster';
 import { TenantInfraNag } from '../cdknag/tenant-infra-nag';
 
-interface TenantTemplateStackProps extends StackProps {
+interface TenantTemplateStackProps extends cdk.StackProps {
   stageName: string
   lambdaReserveConcurrency: number
   lambdaCanaryDeploymentPreference: string
@@ -26,7 +26,7 @@ interface TenantTemplateStackProps extends StackProps {
   appSiteUrl: string
 }
 
-export class TenantTemplateStack extends Stack {
+export class TenantTemplateStack extends cdk.Stack {
   productServiceUri: string;
   orderServiceUri: string;
 
@@ -70,7 +70,7 @@ export class TenantTemplateStack extends Stack {
           TableName: props.tenantMappingTable.tableName,
           Item: {
             tenantId: { S: props.tenantId },
-            stackName: { S: Stack.of(this).stackName },
+            stackName: { S: cdk.Stack.of(this).stackName },
             codeCommitId: { S: props.commitId },
             waveNumber: { S: waveNumber }
           }
@@ -106,11 +106,11 @@ export class TenantTemplateStack extends Stack {
       })
     });
 
-    new CfnOutput(this, 'TenantUserpoolId', {
+    new cdk.CfnOutput(this, 'TenantUserpoolId', {
       value: identityProvider.tenantUserPool.userPoolId
     });
 
-    new CfnOutput(this, 'UserPoolClientId', {
+    new cdk.CfnOutput(this, 'UserPoolClientId', {
       value: identityProvider.tenantUserPoolClient.userPoolClientId
     });
 

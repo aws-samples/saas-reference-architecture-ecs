@@ -1,29 +1,29 @@
+import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as path from 'path';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
-import { type Construct } from 'constructs';
-import { Stack, type StackProps, type Environment, Tags, Fn, CfnOutput } from 'aws-cdk-lib';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
-import { ApiGateway } from './api-gateway';
-import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
-import { Runtime } from 'aws-cdk-lib/aws-lambda';
-import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as fs from 'fs';
+import * as path from 'path';
+import { type Construct } from 'constructs';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { ApiMethods } from './api-methods';
 import { type ContainerInfo } from '../interfaces/container-info';
 import { SharedInfraNag } from '../cdknag/shared-infra-nag';
+import { ApiGateway } from './api-gateway';
+import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
 
-export interface SharedInfraProps extends StackProps {
+export interface SharedInfraProps extends cdk.StackProps {
   isPooledDeploy: boolean
   ApiKeySSMParameterNames: ApiKeySSMParameterNames
   stageName: string
   azCount: number
-  env: Environment
+  env: cdk.Environment
 }
 
-export class SharedInfraStack extends Stack {
+export class SharedInfraStack extends cdk.Stack {
   vpc: ec2.IVpc;
   alb: elbv2.ApplicationLoadBalancer;
   albSG: ec2.ISecurityGroup;
@@ -35,35 +35,19 @@ export class SharedInfraStack extends Stack {
   constructor (scope: Construct, id: string, props: SharedInfraProps) {
     super(scope, id);
 
-    const azs = Fn.getAzs(this.region);
-    // const availabilityZones = Stack.of(this).availabilityZones.slice(0, props.azCount);
+    const azs = cdk.Fn.getAzs(this.region);
     // 스택의 리전에 있는 모든 가용 영역 목록 가져오기
-
-    const availabilityZones = Stack.of(this).availabilityZones;
-
-    // const selectedAzs = availabilityZones.slice(0, 3);
 
     const selectedAzs = Array(props.azCount).fill('').map(() => '');
 
     for (let i = 0; i < props.azCount; i++) {
-      selectedAzs[i] = Fn.select(i, azs);
-      // new CfnOutput(this, `az${i+1}`, {
-      //   value: selectedAzs[i],
-      //   description: `Availability Zone ${i+1}`,
-      //   exportName: `az${i+1}`
-      // });
+      selectedAzs[i] = cdk.Fn.select(i, azs);
     }
-   
 
     this.vpc = new ec2.Vpc(this, 'sbt-ecs-vpc', {
       // maxAzs: props.azCount,
       ipAddresses: ec2.IpAddresses.cidr('10.0.0.0/16'),
       availabilityZones: selectedAzs,
-      // [
-      //   Fn.select(0, azs),
-      //   Fn.select(1, azs),
-      //   Fn.select(2, azs),
-      // ],
 
       flowLogs: {
         'sbt-ecs-vpcFlowLog': {
@@ -72,30 +56,19 @@ export class SharedInfraStack extends Stack {
         }
       }
     });
-    Tags.of(this.vpc).add('sbt-ecs-vpc', 'true');
+    cdk.Tags.of(this.vpc).add('sbt-ecs-vpc', 'true');
 
     this.vpc.privateSubnets.forEach((subnet, index) => {
       const cfnSubnet = subnet.node.defaultChild as ec2.CfnSubnet;
       cfnSubnet.addPropertyOverride('CidrBlock', `10.0.${index * 64}.0/18`);
-      // new CfnOutput(this, `PrivSubId${index+1}EcsSbt`, {
-      //   value: this.vpc.privateSubnets[index].subnetId,
-      //   exportName: `PrivSubId${index+1}EcsSbt`
-      // });
-      // new CfnOutput(this, `PrivSub${index+1}RouteId`, {
-      //   value: this.vpc.privateSubnets[index].routeTable.routeTableId,
-      //   exportName: `PrivSub${index+1}RouteId`
-      // });
     });
     this.vpc.publicSubnets.forEach((subnet, index) => {
       const cfnSubnet = subnet.node.defaultChild as ec2.CfnSubnet;
       cfnSubnet.addPropertyOverride('CidrBlock', `10.0.${192 + index}.0/24`);
-      
     });
 
-    new CfnOutput(this, 'PrivateSubnetIds', { value: this.vpc.privateSubnets.map(subnet => subnet.subnetId).join(','), exportName: 'PrivateSubnetIds' });
-    new CfnOutput(this, 'AvailabilityZones', { value: selectedAzs.join(','), exportName:'AvailabilityZones' });
-
-    // new CfnOutput(this, 'VpcPublicSubnetIds', { value: this.vpc.publicSubnets.map(routeTable => routeTable.).join(',') });
+    new cdk.CfnOutput(this, 'PrivateSubnetIds', { value: this.vpc.privateSubnets.map(subnet => subnet.subnetId).join(','), exportName: 'PrivateSubnetIds' });
+    new cdk.CfnOutput(this, 'AvailabilityZones', { value: selectedAzs.join(','), exportName:'AvailabilityZones' });
 
     // use a security group to provide a secure connection between the ALB and the containers
     this.albSG = new ec2.SecurityGroup(this, 'alb-sg', {
@@ -204,73 +177,39 @@ export class SharedInfraStack extends Stack {
       });
     });
 
-    new CfnOutput(this, 'EcsVpcId', {
+    new cdk.CfnOutput(this, 'EcsVpcId', {
       value: this.vpc.vpcId,
       exportName: 'EcsVpcId'
     });
 
+    this.vpc.privateSubnets.forEach((subnet, index) => {
+      new cdk.CfnOutput(this, `PrivSub${index+1}RouteId`, {
+        value: subnet.routeTable.routeTableId,
+        exportName: `PrivSub${index+1}RouteId`,
+        description: `Private Subnet ${index+1} Router ID`,
+      });
+    });
 
-
-
-    // new CfnOutput(this, 'az1', {
-    //   value: this.vpc.availabilityZones[0],
-    //   exportName: 'az1'
-    // });
-    // new CfnOutput(this, 'az2', {
-    //   value: this.vpc.availabilityZones[1],
-    //   exportName: 'az2'
-    // });
-    // new CfnOutput(this, 'az3', {
-    //   value: this.vpc.availabilityZones[2],
-    //   exportName: 'az3'
-    // });
-
-    // new CfnOutput(this, 'PrivSubId1EcsSbt', {
-    //   value: this.vpc.privateSubnets[0].subnetId,
-    //   exportName: 'PrivSubId1EcsSbt'
-    // });
-    // new CfnOutput(this, 'PrivSubId2EcsSbt', {
-    //   value: this.vpc.privateSubnets[1].subnetId,
-    //   exportName: 'PrivSubId2EcsSbt'
-    // });
-    // new CfnOutput(this, 'PrivSubId3EcsSbt', {
-    //   value: this.vpc.privateSubnets[2].subnetId,
-    //   exportName: 'PrivSubId3EcsSbt'
-    // });
-
-    // new CfnOutput(this, 'PrivSub1RouteId', {
-    //   value: this.vpc.privateSubnets[0].routeTable.routeTableId,
-    //   exportName: 'PrivSub1RouteId'
-    // });
-    // new CfnOutput(this, 'PrivSub2RouteId', {
-    //   value: this.vpc.privateSubnets[1].routeTable.routeTableId,
-    //   exportName: 'PrivSub2RouteId'
-    // });
-    // new CfnOutput(this, 'PrivSub3RouteId', {
-    //   value: this.vpc.privateSubnets[2].routeTable.routeTableId,
-    //   exportName: 'PrivSub3RouteId'
-    // });
-
-    new CfnOutput(this, 'ALBDnsName', {
+    new cdk.CfnOutput(this, 'ALBDnsName', {
       value: this.alb.loadBalancerDnsName,
       exportName: 'ALBDnsName'
     });
-    new CfnOutput(this, 'ALBArn', {
+    new cdk.CfnOutput(this, 'ALBArn', {
       value: this.alb.loadBalancerArn,
       exportName: 'ALBArn'
     });
 
-    new CfnOutput(this, 'AlbSgId', {
+    new cdk.CfnOutput(this, 'AlbSgId', {
       value: this.albSG.securityGroupId,
       exportName: 'AlbSgId'
     });
 
-    new CfnOutput(this, 'ListenerArn', {
+    new cdk.CfnOutput(this, 'ListenerArn', {
       value: this.listener.listenerArn,
       exportName: 'ListenerArn'
     });
 
-    new CfnOutput(this, 'ApiGatewayUrl', {
+    new cdk.CfnOutput(this, 'ApiGatewayUrl', {
       value: this.apiGateway.restApi.url
     });
 
