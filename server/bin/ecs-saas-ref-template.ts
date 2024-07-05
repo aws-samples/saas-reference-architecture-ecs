@@ -19,7 +19,7 @@ if (!process.env.CDK_PARAM_TENANT_ID) {
   console.log('Tenant ID is empty, a default tenant id "basic" will be assigned');
 }
 const basicId = 'basic';
-const AzCount = 2;
+const AzCount = 3;
 
 if(AzCount < 2) {
   throw new Error('Please Available Zones count must be at least 2');
