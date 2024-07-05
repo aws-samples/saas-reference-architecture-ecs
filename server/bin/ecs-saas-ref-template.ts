@@ -21,8 +21,8 @@ if (!process.env.CDK_PARAM_TENANT_ID) {
 const basicId = 'basic';
 const AzCount = 3;
 
-if(AzCount < 2) {
-  throw new Error('Please Available Zones count must be at least 2');
+if(AzCount < 2 || AzCount > 3) {
+  throw new Error('Please Availability Zones count must be 2 or 3');
 }
 // required input parameters
 const systemAdminEmail = process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL;
