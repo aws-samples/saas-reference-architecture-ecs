@@ -19,7 +19,11 @@ if (!process.env.CDK_PARAM_TENANT_ID) {
   console.log('Tenant ID is empty, a default tenant id "basic" will be assigned');
 }
 const basicId = 'basic';
+const AzCount = 2;
 
+if(AzCount < 2) {
+  throw new Error('Please Available Zones count must be at least 2');
+}
 // required input parameters
 const systemAdminEmail = process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL;
 const tenantId = process.env.CDK_PARAM_TENANT_ID || basicId;
@@ -85,6 +89,21 @@ const apiKeySSMParameterNames = {
   }
 };
 
+const sharedInfraStack = new SharedInfraStack(app, 'shared-infra-stack', {
+  isPooledDeploy: isPooledDeploy,
+  ApiKeySSMParameterNames: apiKeySSMParameterNames,
+  apiKeyPlatinumTierParameter: apiKeyPlatinumTierParameter,
+  apiKeyPremiumTierParameter: apiKeyPremiumTierParameter,
+  apiKeyAdvancedTierParameter: apiKeyAdvancedTierParameter,
+  apiKeyBasicTierParameter: apiKeyBasicTierParameter,
+  stageName: stageName,
+  azCount: AzCount,
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION
+  }
+});
+
 const controlPlaneStack = new ControlPlaneStack(app, 'controlplane-stack', {
   systemAdminEmail: systemAdminEmail,
   systemAdminRoleName: systemAdminRoleName,
@@ -98,29 +117,12 @@ const coreAppPlaneStack = new CoreAppPlaneStack(app, 'core-appplane-stack', {
   systemAdminEmail: systemAdminEmail,
   regApiGatewayUrl: controlPlaneStack.regApiGatewayUrl,
   eventBusArn: controlPlaneStack.eventBusArn,
-  apiKeyPlatinumTierParameter: apiKeyPlatinumTierParameter,
-  apiKeyPremiumTierParameter: apiKeyPremiumTierParameter,
-  apiKeyAdvancedTierParameter: apiKeyAdvancedTierParameter,
-  apiKeyBasicTierParameter: apiKeyBasicTierParameter,
-  ApiKeySSMParameterNames: apiKeySSMParameterNames,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION
   }
 });
 cdk.Aspects.of(coreAppPlaneStack).add(new DestroyPolicySetter());
-
-const sharedInfraStack = new SharedInfraStack(app, 'shared-infra-stack', {
-  isPooledDeploy: isPooledDeploy,
-  ApiKeySSMParameterNames: apiKeySSMParameterNames,
-  stageName: stageName,
-  azCount: 2,
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION
-  }
-});
-sharedInfraStack.addDependency(coreAppPlaneStack);
 
 const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-${tenantId}`, {
   tenantId: tenantId,

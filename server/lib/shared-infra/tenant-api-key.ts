@@ -9,20 +9,23 @@ interface TenantApiKeyProps {
 }
 
 export class TenantApiKey extends Construct {
+  apiKey: ApiKey;
+  apiKeyValue: string;
   constructor (scope: Construct, id: string, props: TenantApiKeyProps) {
     super(scope, id);
+    this.apiKeyValue = props.apiKeyValue;
 
-    const apiKey = new ApiKey(this, 'apiKey', {
+    this.apiKey = new ApiKey(this, 'apiKey', {
       value: props.apiKeyValue
     });
     new StringParameter(this, 'apiKeyId', {
       parameterName: props.ssmParameterApiKeyIdName,
-      stringValue: apiKey.keyId
+      stringValue: this.apiKey.keyId
     });
 
     new StringParameter(this, 'apiKeyValue', {
       parameterName: props.ssmParameterApiValueName,
-      stringValue: props.apiKeyValue
+      stringValue: this.apiKeyValue
     });
   }
 }

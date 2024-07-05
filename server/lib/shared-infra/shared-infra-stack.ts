@@ -14,10 +14,15 @@ import { type ContainerInfo } from '../interfaces/container-info';
 import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 import { ApiGateway } from './api-gateway';
 import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
+import { TenantApiKey } from './tenant-api-key';
 
 export interface SharedInfraProps extends cdk.StackProps {
   isPooledDeploy: boolean
   ApiKeySSMParameterNames: ApiKeySSMParameterNames
+  apiKeyPlatinumTierParameter: string
+  apiKeyPremiumTierParameter: string
+  apiKeyAdvancedTierParameter: string
+  apiKeyBasicTierParameter: string
   stageName: string
   azCount: number
   env: cdk.Environment
@@ -136,26 +141,50 @@ export class SharedInfraStack extends cdk.Stack {
       compatibleRuntimes: [Runtime.PYTHON_3_10]
     });
 
+    const basicKey = new TenantApiKey(this, 'BasicTierApiKey', {
+      apiKeyValue: props.apiKeyBasicTierParameter,
+      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.basic.keyId,
+      ssmParameterApiValueName: props.ApiKeySSMParameterNames.basic.value
+    });
+
+    const advanceKey = new TenantApiKey(this, 'AdvancedTierApiKey', {
+      apiKeyValue: props.apiKeyAdvancedTierParameter,
+      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.advanced.keyId,
+      ssmParameterApiValueName: props.ApiKeySSMParameterNames.advanced.value
+    });
+
+    const premiumKey = new TenantApiKey(this, 'PremiumTierApiKey', {
+      apiKeyValue: props.apiKeyPremiumTierParameter,
+      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.premium.keyId,
+      ssmParameterApiValueName: props.ApiKeySSMParameterNames.premium.value
+    });
+
+    const platinumKey = new TenantApiKey(this, 'PlatinumTierApiKey', {
+      apiKeyValue: props.apiKeyPlatinumTierParameter,
+      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.platinum.keyId,
+      ssmParameterApiValueName: props.ApiKeySSMParameterNames.platinum.value
+    });
+
     this.apiGateway = new ApiGateway(this, 'ApiGateway', {
       tenantId: 'ecs-sbt',
       isPooledDeploy: props.isPooledDeploy,
       lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
       nlb: nlb,
       apiKeyBasicTier: {
-        apiKeyId: this.ssmLookup(props.ApiKeySSMParameterNames.basic.keyId),
-        value: this.ssmLookup(props.ApiKeySSMParameterNames.basic.value)
+        apiKeyId: basicKey.apiKey.keyId,
+        value: basicKey.apiKeyValue
       },
       apiKeyAdvancedTier: {
-        apiKeyId: this.ssmLookup(props.ApiKeySSMParameterNames.advanced.keyId),
-        value: this.ssmLookup(props.ApiKeySSMParameterNames.advanced.value)
+        apiKeyId: advanceKey.apiKey.keyId,
+        value: advanceKey.apiKeyValue
       },
       apiKeyPremiumTier: {
-        apiKeyId: this.ssmLookup(props.ApiKeySSMParameterNames.premium.keyId),
-        value: this.ssmLookup(props.ApiKeySSMParameterNames.premium.value)
+        apiKeyId: premiumKey.apiKey.keyId,
+        value: premiumKey.apiKeyValue
       },
       apiKeyPlatinumTier: {
-        apiKeyId: this.ssmLookup(props.ApiKeySSMParameterNames.platinum.keyId),
-        value: this.ssmLookup(props.ApiKeySSMParameterNames.platinum.value)
+        apiKeyId: platinumKey.apiKey.keyId,
+        value: platinumKey.apiKeyValue
       },
       stageName: props.stageName
     });

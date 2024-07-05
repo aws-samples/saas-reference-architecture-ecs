@@ -4,18 +4,11 @@ import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyDocument } from 'aws-cdk-lib/aws-iam';
 import { EventBus } from 'aws-cdk-lib/aws-events';
 import * as fs from 'fs';
-import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
-import { TenantApiKey } from './tenant-api-key';
 import { UserInterface } from './user-interface';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
 import * as sbt from '@cdklabs/sbt-aws';
 
 interface CoreAppPlaneStackProps extends cdk.StackProps {
-  ApiKeySSMParameterNames: ApiKeySSMParameterNames
-  apiKeyPlatinumTierParameter: string
-  apiKeyPremiumTierParameter: string
-  apiKeyAdvancedTierParameter: string
-  apiKeyBasicTierParameter: string
   eventBusArn: string
   systemAdminEmail: string
   regApiGatewayUrl: string
@@ -110,30 +103,6 @@ export class CoreAppPlaneStack extends cdk.Stack {
     new sbt.CoreApplicationPlane(this, 'coreappplane-sbt', {
       eventManager: eventManager,
       jobRunnerPropsList: [provisioningJobRunnerProps, deprovisioningJobRunnerProps]
-    });
-
-    new TenantApiKey(this, 'BasicTierApiKey', {
-      apiKeyValue: props.apiKeyBasicTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.basic.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.basic.value
-    });
-
-    new TenantApiKey(this, 'AdvancedTierApiKey', {
-      apiKeyValue: props.apiKeyAdvancedTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.advanced.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.advanced.value
-    });
-
-    new TenantApiKey(this, 'PremiumTierApiKey', {
-      apiKeyValue: props.apiKeyPremiumTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.premium.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.premium.value
-    });
-
-    new TenantApiKey(this, 'PlatinumTierApiKey', {
-      apiKeyValue: props.apiKeyPlatinumTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.platinum.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.platinum.value
     });
 
     this.userInterface = new UserInterface(this, 'saas-application-ui', {

@@ -131,11 +131,9 @@ export class EcsCluster extends cdk.NestedStack {
       }
     }  
 
-
     this.namespace = new HttpNamespace(this, 'CloudMapNamespace', {
       name: `ecs-sbt.local-${tenantId}`,
     });
-
 
     // Read JSON file with container info
     const containerInfoJSON = fs.readFileSync(path.resolve(__dirname, '../service-info.json'));
@@ -442,7 +440,6 @@ export class EcsCluster extends cdk.NestedStack {
     return service;
   }
 
-
   private getCluster (
     tier: string,
     stageName: string
@@ -455,7 +452,6 @@ export class EcsCluster extends cdk.NestedStack {
         vpc: this.vpc,
         securityGroups: [],
       });
-
     }
   
     return this.cluster;
