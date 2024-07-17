@@ -9,7 +9,7 @@ import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
 import * as sbt from '@cdklabs/sbt-aws';
 
 interface CoreAppPlaneStackProps extends cdk.StackProps {
-  eventBusArn: string
+  eventManager: sbt.IEventManager
   systemAdminEmail: string
   regApiGatewayUrl: string
 }
@@ -26,8 +26,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
       partitionKey: { name: 'tenantId', type: AttributeType.STRING }
     });
 
-    const provisioningJobRunnerProps: sbt.CoreApplicationPlaneJobRunnerProps = {
-      name: 'provisioning',
+    const provisioningJobRunnerProps = {
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
 {
@@ -45,28 +44,26 @@ export class CoreAppPlaneStack extends cdk.Stack {
 `)
       ),
       script: fs.readFileSync('../scripts/provision-tenant.sh', 'utf8'),
-      outgoingEvent: sbt.DetailType.PROVISION_SUCCESS,
-      incomingEvent: sbt.DetailType.ONBOARDING_REQUEST,
-
-      postScript: '',
-      environmentStringVariablesFromIncomingEvent: [
-        'tenantId',
-        'tier',
-        'tenantName',
-        'email',
-        'tenantStatus'
+      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email'],
+      environmentVariablesToOutgoingEvent: [
+        'tenantConfig',
+        'tenantStatus',
+        'prices', // added so we don't lose it for targets beyond provisioning (ex. billing)
+        'tenantName', // added so we don't lose it for targets beyond provisioning (ex. billing)
+        'email', // added so we don't lose it for targets beyond provisioning (ex. billing)
       ],
-      environmentVariablesToOutgoingEvent: ['tenantConfig', 'tenantStatus'],
       scriptEnvironmentVariables: {
-        // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required - as part of deploying the bootstrap-template
+        // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
         // the control plane is also deployed. To ensure the operation does not error out, this value
         // is provided as an env parameter.
-        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail
-      }
+        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail,
+      },
+      outgoingEvent: sbt.DetailType.PROVISION_SUCCESS,
+      incomingEvent: sbt.DetailType.ONBOARDING_REQUEST,
+      eventManager: props.eventManager
     };
 
-    const deprovisioningJobRunnerProps: sbt.CoreApplicationPlaneJobRunnerProps = {
-      name: 'deprovisioning',
+    const deprovisioningJobRunnerProps = {
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
 {
@@ -84,25 +81,31 @@ export class CoreAppPlaneStack extends cdk.Stack {
 `)
       ),
       script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
-      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
+      environmentStringVariablesFromIncomingEvent: ['tenantId'],
       environmentVariablesToOutgoingEvent: ['tenantStatus'],
       outgoingEvent: sbt.DetailType.DEPROVISION_SUCCESS,
       incomingEvent: sbt.DetailType.OFFBOARDING_REQUEST,
-
       scriptEnvironmentVariables: {
         TENANT_STACK_MAPPING_TABLE: this.tenantMappingTable.tableName,
-        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail
-      }
+        // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
+        // the control plane is also deployed. To ensure the operation does not error out, this value
+        // is provided as an env parameter.
+        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail,
+      },
+      eventManager: props.eventManager
     };
 
-    const eventBus = EventBus.fromEventBusArn(this, 'EventBus', props.eventBusArn);
-    const eventManager = new sbt.EventManager(this, 'EventManager', {
-      eventBus: eventBus,
-    });
+    const provisioningJobRunner: sbt.BashJobRunner = new sbt.BashJobRunner(this,
+      'provisioningJobRunner', provisioningJobRunnerProps
+    );
+
+    const deprovisioningJobRunner: sbt.BashJobRunner = new sbt.BashJobRunner(this,
+      'deprovisioningJobRunner', deprovisioningJobRunnerProps
+    );
 
     new sbt.CoreApplicationPlane(this, 'coreappplane-sbt', {
-      eventManager: eventManager,
-      jobRunnerPropsList: [provisioningJobRunnerProps, deprovisioningJobRunnerProps]
+      eventManager: props.eventManager,
+      jobRunnersList: [provisioningJobRunner, deprovisioningJobRunner]
     });
 
     this.userInterface = new UserInterface(this, 'saas-application-ui', {

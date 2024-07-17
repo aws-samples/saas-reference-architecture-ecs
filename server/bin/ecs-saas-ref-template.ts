@@ -116,7 +116,7 @@ const controlPlaneStack = new ControlPlaneStack(app, 'controlplane-stack', {
 const coreAppPlaneStack = new CoreAppPlaneStack(app, 'core-appplane-stack', {
   systemAdminEmail: systemAdminEmail,
   regApiGatewayUrl: controlPlaneStack.regApiGatewayUrl,
-  eventBusArn: controlPlaneStack.eventBusArn,
+  eventManager: controlPlaneStack.eventManager,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION

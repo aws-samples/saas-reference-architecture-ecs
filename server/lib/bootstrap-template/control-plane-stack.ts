@@ -13,7 +13,7 @@ interface ControlPlaneStackProps extends cdk.StackProps {
 
 export class ControlPlaneStack extends cdk.Stack {
   public readonly regApiGatewayUrl: string;
-  public readonly eventBusArn: string;
+  public readonly eventManager: sbt.IEventManager;
   public readonly auth: sbt.CognitoAuth;
   public readonly adminSiteUrl: string;
   public readonly StaticSite: StaticSite;
@@ -36,32 +36,40 @@ export class ControlPlaneStack extends cdk.Stack {
     this.adminSiteUrl = `https://${distro.cloudfrontDistribution.domainName}`;
 
     const cognitoAuth = new sbt.CognitoAuth(this, 'CognitoAuth', {
-      systemAdminRoleName: props.systemAdminRoleName,
-      systemAdminEmail: props.systemAdminEmail,
+      // Avoid checking scopes for API endpoints. Done only for testing purposes.
+      // setAPIGWScopes: false,
       controlPlaneCallbackURL: this.adminSiteUrl
     });
 
     const controlPlane = new sbt.ControlPlane(this, 'controlplane-sbt', {
-      auth: cognitoAuth
+      systemAdminEmail: props.systemAdminEmail,
+      auth: cognitoAuth,
+      apiCorsConfig: {
+        allowOrigins: ['https://*'],
+        allowCredentials: true,
+        allowHeaders: ['*'],
+        allowMethods: [cdk.aws_apigatewayv2.CorsHttpMethod.ANY],
+        maxAge: cdk.Duration.seconds(300),
+      },
     });
 
+    this.eventManager = controlPlane.eventManager;
     this.regApiGatewayUrl = controlPlane.controlPlaneAPIGatewayUrl;
-    this.eventBusArn = controlPlane.eventManager.busArn;
     this.auth = cognitoAuth;
 
     this.StaticSite = new StaticSite(this, 'AdminWebUi', {
       name: 'AdminSite',
       assetDirectory: path.join(__dirname, '../../../client/AdminWeb/'),
       production: true,
-      clientId: this.auth.clientId,
-      issuer: this.auth.authorizationServer,
+      clientId: this.auth.userClientId,  //.clientId,
+      issuer: this.auth.tokenEndpoint,
       apiUrl: this.regApiGatewayUrl,
       wellKnownEndpointUrl: this.auth.wellKnownEndpointUrl,
       distribution: distro.cloudfrontDistribution,
       appBucket: distro.siteBucket,
       accessLogsBucket
     });
-
+    
     new cdk.CfnOutput(this, 'adminSiteUrl', {
       value: this.adminSiteUrl
     });

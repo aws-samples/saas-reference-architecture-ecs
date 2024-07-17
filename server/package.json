@@ -16,12 +16,9 @@
     "typescript": "~5.1.3"
   },
   "dependencies": {
-    "@aws-cdk/aws-lambda-python-alpha": "2.133.0-alpha.0",
-    "@cdklabs/sbt-aws": "^0.1.12",
-    "aws-cdk": "^2.127.0",
-    "aws-cdk-lib": "^2.114.0",
-    "cdk": "^2.118.0",
-    "constructs": "^10.0.0",
-    "package-lock-only": "^0.0.4"
+    "@aws-cdk/aws-lambda-python-alpha": "^2.140.0-alpha.0",
+    "@cdklabs/sbt-aws": "0.3.6",
+    "aws-cdk-lib": "^2.140.0",
+    "constructs": "^10.0.0"
   }
 }

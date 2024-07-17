@@ -33,9 +33,8 @@ export class ControlPlaneNag extends Construct {
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
       [
-        `${sbtPath}/controlplane-api-stack/controlPlaneAPI/EventsRole/DefaultPolicy/Resource`,
-        `${sbtPath}/services-stack/tenantManagementExecRole/DefaultPolicy/Resource`,
-        `${sbtPath}/auth-info-service-stack/TenantConfigServiceLambda/ServiceRole/DefaultPolicy/Resource`
+        `${sbtPath}/tenantManagementServicves/tenantManagementLambda/tenantManagementExecRole/DefaultPolicy/Resource`,
+        `${sbtPath}/tenantConfigService/tenantConfigLambda/TenantConfigServiceLambda/ServiceRole/DefaultPolicy/Resource`,
       ],
       [
         policy,
@@ -47,7 +46,7 @@ export class ControlPlaneNag extends Construct {
               regex: '/^Resource::arn:aws:execute-api:(.*):(.*)\\*$/g'
             },
             {
-              regex: '/^Resource::<controlplanesbttablesstackTenant(.*).Arn(.*)\\*$/g'
+              regex: '/^Resource::<controlplanesbttenantManagementServicves(.*).Arn(.*)\\*$/g'
             }
           ]
         }
