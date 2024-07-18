@@ -3,7 +3,6 @@ import * as cdk from 'aws-cdk-lib';
 import { TenantTemplateStack } from '../lib/tenant-template/tenant-template-stack';
 import { DestroyPolicySetter } from '../lib/utilities/destroy-policy-setter';
 import { CoreAppPlaneStack } from '../lib/bootstrap-template/core-appplane-stack';
-import { TenantUpdatePipeline } from '../lib/tenant-template/tenant-update-stack';
 import { getEnv } from '../lib/utilities/helper-functions';
 import { ControlPlaneStack } from '../lib/bootstrap-template/control-plane-stack';
 import { SharedInfraStack } from '../lib/shared-infra/shared-infra-stack';
@@ -20,11 +19,14 @@ if (!process.env.CDK_PARAM_TENANT_ID) {
   console.log('Tenant ID is empty, a default tenant id "basic" will be assigned');
 }
 const basicId = 'basic';
+const AzCount = 3;
 
+if(AzCount < 2 || AzCount > 3) {
+  throw new Error('Please Availability Zones count must be 2 or 3');
+}
 // required input parameters
 const systemAdminEmail = process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL;
 const tenantId = process.env.CDK_PARAM_TENANT_ID || basicId;
-const codeCommitRepositoryName = getEnv('CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME');
 
 const commitId = getEnv('CDK_PARAM_COMMIT_ID');
 const tier = getEnv('CDK_PARAM_TIER');
@@ -87,6 +89,21 @@ const apiKeySSMParameterNames = {
   }
 };
 
+const sharedInfraStack = new SharedInfraStack(app, 'shared-infra-stack', {
+  isPooledDeploy: isPooledDeploy,
+  ApiKeySSMParameterNames: apiKeySSMParameterNames,
+  apiKeyPlatinumTierParameter: apiKeyPlatinumTierParameter,
+  apiKeyPremiumTierParameter: apiKeyPremiumTierParameter,
+  apiKeyAdvancedTierParameter: apiKeyAdvancedTierParameter,
+  apiKeyBasicTierParameter: apiKeyBasicTierParameter,
+  stageName: stageName,
+  azCount: AzCount,
+  env: {
+    account: process.env.CDK_DEFAULT_ACCOUNT,
+    region: process.env.CDK_DEFAULT_REGION
+  }
+});
+
 const controlPlaneStack = new ControlPlaneStack(app, 'controlplane-stack', {
   systemAdminEmail: systemAdminEmail,
   systemAdminRoleName: systemAdminRoleName,
@@ -99,29 +116,13 @@ const controlPlaneStack = new ControlPlaneStack(app, 'controlplane-stack', {
 const coreAppPlaneStack = new CoreAppPlaneStack(app, 'core-appplane-stack', {
   systemAdminEmail: systemAdminEmail,
   regApiGatewayUrl: controlPlaneStack.regApiGatewayUrl,
-  eventBusArn: controlPlaneStack.eventBusArn,
-  apiKeyPlatinumTierParameter: apiKeyPlatinumTierParameter,
-  apiKeyPremiumTierParameter: apiKeyPremiumTierParameter,
-  apiKeyAdvancedTierParameter: apiKeyAdvancedTierParameter,
-  apiKeyBasicTierParameter: apiKeyBasicTierParameter,
-  ApiKeySSMParameterNames: apiKeySSMParameterNames,
+  eventManager: controlPlaneStack.eventManager,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION
   }
 });
 cdk.Aspects.of(coreAppPlaneStack).add(new DestroyPolicySetter());
-
-const sharedInfraStack = new SharedInfraStack(app, 'shared-infra-stack', {
-  isPooledDeploy: isPooledDeploy,
-  ApiKeySSMParameterNames: apiKeySSMParameterNames,
-  stageName: stageName,
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION
-  }
-});
-sharedInfraStack.addDependency(coreAppPlaneStack);
 
 const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-${tenantId}`, {
   tenantId: tenantId,

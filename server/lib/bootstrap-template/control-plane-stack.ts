@@ -1,22 +1,20 @@
-import { Stack, type StackProps, CfnOutput } from 'aws-cdk-lib';
-import { type Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
-import * as control_plane from '@cdklabs/sbt-aws';
-import { CognitoAuth } from '@cdklabs/sbt-aws';
+import { type Construct } from 'constructs';
 import { StaticSiteDistro } from './static-site-distro';
 import path = require('path');
 import { StaticSite } from './static-site';
 import { ControlPlaneNag } from '../cdknag/control-plane-nag';
+import * as sbt from '@cdklabs/sbt-aws';
 
-interface ControlPlaneStackProps extends StackProps {
+interface ControlPlaneStackProps extends cdk.StackProps {
   systemAdminRoleName: string
   systemAdminEmail: string
 }
 
-export class ControlPlaneStack extends Stack {
+export class ControlPlaneStack extends cdk.Stack {
   public readonly regApiGatewayUrl: string;
-  public readonly eventBusArn: string;
-  public readonly auth: CognitoAuth;
+  public readonly eventManager: sbt.IEventManager;
+  public readonly auth: sbt.CognitoAuth;
   public readonly adminSiteUrl: string;
   public readonly StaticSite: StaticSite;
 
@@ -37,34 +35,42 @@ export class ControlPlaneStack extends Stack {
 
     this.adminSiteUrl = `https://${distro.cloudfrontDistribution.domainName}`;
 
-    const cognitoAuth = new CognitoAuth(this, 'CognitoAuth', {
-      systemAdminRoleName: props.systemAdminRoleName,
-      systemAdminEmail: props.systemAdminEmail,
+    const cognitoAuth = new sbt.CognitoAuth(this, 'CognitoAuth', {
+      // Avoid checking scopes for API endpoints. Done only for testing purposes.
+      // setAPIGWScopes: false,
       controlPlaneCallbackURL: this.adminSiteUrl
     });
 
-    const controlPlane = new control_plane.ControlPlane(this, 'controlplane-sbt', {
-      auth: cognitoAuth
+    const controlPlane = new sbt.ControlPlane(this, 'controlplane-sbt', {
+      systemAdminEmail: props.systemAdminEmail,
+      auth: cognitoAuth,
+      apiCorsConfig: {
+        allowOrigins: ['https://*'],
+        allowCredentials: true,
+        allowHeaders: ['*'],
+        allowMethods: [cdk.aws_apigatewayv2.CorsHttpMethod.ANY],
+        maxAge: cdk.Duration.seconds(300),
+      },
     });
 
+    this.eventManager = controlPlane.eventManager;
     this.regApiGatewayUrl = controlPlane.controlPlaneAPIGatewayUrl;
-    this.eventBusArn = controlPlane.eventManager.busArn;
     this.auth = cognitoAuth;
 
     this.StaticSite = new StaticSite(this, 'AdminWebUi', {
       name: 'AdminSite',
       assetDirectory: path.join(__dirname, '../../../client/AdminWeb/'),
       production: true,
-      clientId: this.auth.clientId,
-      issuer: this.auth.authorizationServer,
+      clientId: this.auth.userClientId,  //.clientId,
+      issuer: this.auth.tokenEndpoint,
       apiUrl: this.regApiGatewayUrl,
       wellKnownEndpointUrl: this.auth.wellKnownEndpointUrl,
       distribution: distro.cloudfrontDistribution,
       appBucket: distro.siteBucket,
       accessLogsBucket
     });
-
-    new CfnOutput(this, 'adminSiteUrl', {
+    
+    new cdk.CfnOutput(this, 'adminSiteUrl', {
       value: this.adminSiteUrl
     });
 

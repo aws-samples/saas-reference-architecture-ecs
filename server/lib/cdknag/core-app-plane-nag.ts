@@ -21,15 +21,14 @@ export class CoreAppPlaneNag extends Construct {
       ]
     };
 
-    const sbtNagPath = '/core-appplane-stack/coreappplane-sbt';
     const nagWebPath = '/core-appplane-stack/saas-application-ui/TenantWebUI';
     const nagStaticPath = '/core-appplane-stack/saas-application-ui/StaticSiteDistro';
 
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
       [
-        `${sbtNagPath}/provisioning-codeBuildProvisionProjectRole/Resource`,
-        `${sbtNagPath}/deprovisioning-codeBuildProvisionProjectRole/Resource`
+        'core-appplane-stack/provisioningJobRunner/codeBuildProvisionProjectRole/Resource',
+        'core-appplane-stack/deprovisioningJobRunner/codeBuildProvisionProjectRole/Resource'
       ],
       [
         {

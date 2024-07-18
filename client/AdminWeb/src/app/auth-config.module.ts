@@ -13,7 +13,7 @@ import { environment } from 'src/environments/environment';
         postLogoutRedirectUri: window.location.origin,
         redirectUrl: window.location.origin,
         responseType: 'code',
-        scope: 'openid profile email',
+        scope: 'openid profile email tenant/tenant_read tenant/tenant_write user/user_read user/user_write',
       },
     }),
   ],

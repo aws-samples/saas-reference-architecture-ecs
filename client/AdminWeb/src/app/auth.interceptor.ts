@@ -29,7 +29,7 @@ export class AuthInterceptor implements HttpInterceptor {
       return next.handle(req);
     }
 
-    return this.service.getIdToken().pipe(
+    return this.service.getAccessToken().pipe(
       switchMap((tok) => {
         req = req.clone({
           headers: req.headers.set('Authorization', 'Bearer ' + tok),

@@ -6,13 +6,13 @@ import * as fs from 'fs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { HttpNamespace } from 'aws-cdk-lib/aws-servicediscovery';
+import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
+import { type Construct } from 'constructs';
 import { type IdentityDetails } from '../interfaces/identity-details';
 import getTimeString, { getHashCode } from '../utilities/helper-functions';
 import { type ContainerInfo } from '../interfaces/container-info';
 import { type RproxyInfo } from '../interfaces/rproxy-info';
-import { HttpNamespace } from 'aws-cdk-lib/aws-servicediscovery';
-import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
-import { type Construct } from 'constructs';
 import { CustomEniTrunking } from './eni-trunking';
 
 export interface EcsClusterProps extends cdk.NestedStackProps {
@@ -45,22 +45,10 @@ export class EcsCluster extends cdk.NestedStack {
     this.isEc2Tier = props.isEc2Tier;
   
     this.vpc = ec2.Vpc.fromVpcAttributes(this, 'Vpc', {
-      availabilityZones: [
-        cdk.Fn.importValue('az1'),
-        cdk.Fn.importValue('az2'),
-        cdk.Fn.importValue('az3')
-      ],
-      privateSubnetIds: [
-        cdk.Fn.importValue('PrivSubId1EcsSbt'),
-        cdk.Fn.importValue('PrivSubId2EcsSbt'),
-        cdk.Fn.importValue('PrivSubId3EcsSbt')
-      ],
-      privateSubnetRouteTableIds: [
-        cdk.Fn.importValue('PrivSub1RouteId'),
-        cdk.Fn.importValue('PrivSub2RouteId'),
-        cdk.Fn.importValue('PrivSub3RouteId')
-      ],
-      vpcId: cdk.Fn.importValue('EcsVpcId')
+      vpcId: cdk.Fn.importValue('EcsVpcId'),
+      availabilityZones: cdk.Fn.split(',', cdk.Fn.importValue('AvailabilityZones')),
+      privateSubnetIds : cdk.Fn.split(',', cdk.Fn.importValue('PrivateSubnetIds'))
+      
     });
 
     // alb Security Group ID
@@ -143,11 +131,9 @@ export class EcsCluster extends cdk.NestedStack {
       }
     }  
 
-
     this.namespace = new HttpNamespace(this, 'CloudMapNamespace', {
       name: `ecs-sbt.local-${tenantId}`,
     });
-
 
     // Read JSON file with container info
     const containerInfoJSON = fs.readFileSync(path.resolve(__dirname, '../service-info.json'));
@@ -289,6 +275,11 @@ export class EcsCluster extends cdk.NestedStack {
         service = new ecs.FargateService(this, `${info.name}-service`, serviceProps);
       }
 
+      const alphaNumericTenantId = `${tenantId}`.replace(/[^a-zA-Z0-9]/g, '');
+      const cfnService = service.node.defaultChild as ecs.CfnService;
+      cfnService.overrideLogicalId(`${info.name}${alphaNumericTenantId}`);
+      cfnService.serviceName = `${info.name}${alphaNumericTenantId}`;
+
       if (props.isRProxy) {
         rproxyService.node.addDependency(service);
       } else {
@@ -410,6 +401,11 @@ export class EcsCluster extends cdk.NestedStack {
       service = new ecs.FargateService(this, `${info.name}-nginx`, serviceProps);
     }
 
+    const alphaNumericTenantId = `${tenantId}`.replace(/[^a-zA-Z0-9]/g, '');
+    const cfnService = service.node.defaultChild as ecs.CfnService;
+    cfnService.overrideLogicalId(`${info.name}${alphaNumericTenantId}`);
+    cfnService.serviceName = `${info.name}${alphaNumericTenantId}`;
+
     const targetGroupHttp = new elbv2.ApplicationTargetGroup(this, `target-group-${tenantId}`, {
       port: info.containerPort,
       vpc: this.vpc,
@@ -444,7 +440,6 @@ export class EcsCluster extends cdk.NestedStack {
     return service;
   }
 
-
   private getCluster (
     tier: string,
     stageName: string
@@ -457,7 +452,6 @@ export class EcsCluster extends cdk.NestedStack {
         vpc: this.vpc,
         securityGroups: [],
       });
-
     }
   
     return this.cluster;

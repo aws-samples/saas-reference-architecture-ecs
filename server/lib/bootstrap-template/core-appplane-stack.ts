@@ -1,28 +1,20 @@
-import { Stack, type StackProps, CfnOutput } from 'aws-cdk-lib';
+import * as cdk from 'aws-cdk-lib';
 import { type Construct } from 'constructs';
-import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
-import { TenantApiKey } from './tenant-api-key';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyDocument } from 'aws-cdk-lib/aws-iam';
 import { EventBus } from 'aws-cdk-lib/aws-events';
+import * as fs from 'fs';
 import { UserInterface } from './user-interface';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
-import * as fs from 'fs';
-import * as core_app_plane from '@cdklabs/sbt-aws';
-import { type CoreApplicationPlaneJobRunnerProps, DetailType, EventManager } from '@cdklabs/sbt-aws';
+import * as sbt from '@cdklabs/sbt-aws';
 
-interface CoreAppPlaneStackProps extends StackProps {
-  ApiKeySSMParameterNames: ApiKeySSMParameterNames
-  apiKeyPlatinumTierParameter: string
-  apiKeyPremiumTierParameter: string
-  apiKeyAdvancedTierParameter: string
-  apiKeyBasicTierParameter: string
-  eventBusArn: string
+interface CoreAppPlaneStackProps extends cdk.StackProps {
+  eventManager: sbt.IEventManager
   systemAdminEmail: string
   regApiGatewayUrl: string
 }
 
-export class CoreAppPlaneStack extends Stack {
+export class CoreAppPlaneStack extends cdk.Stack {
   public readonly userInterface: UserInterface;
   public readonly tenantMappingTable: Table;
   constructor (scope: Construct, id: string, props: CoreAppPlaneStackProps) {
@@ -34,8 +26,7 @@ export class CoreAppPlaneStack extends Stack {
       partitionKey: { name: 'tenantId', type: AttributeType.STRING }
     });
 
-    const provisioningJobRunnerProps: CoreApplicationPlaneJobRunnerProps = {
-      name: 'provisioning',
+    const provisioningJobRunnerProps = {
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
 {
@@ -53,28 +44,26 @@ export class CoreAppPlaneStack extends Stack {
 `)
       ),
       script: fs.readFileSync('../scripts/provision-tenant.sh', 'utf8'),
-      outgoingEvent: DetailType.PROVISION_SUCCESS,
-      incomingEvent: DetailType.ONBOARDING_REQUEST,
-
-      postScript: '',
-      environmentStringVariablesFromIncomingEvent: [
-        'tenantId',
-        'tier',
-        'tenantName',
-        'email',
-        'tenantStatus'
+      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email'],
+      environmentVariablesToOutgoingEvent: [
+        'tenantConfig',
+        'tenantStatus',
+        'prices', // added so we don't lose it for targets beyond provisioning (ex. billing)
+        'tenantName', // added so we don't lose it for targets beyond provisioning (ex. billing)
+        'email', // added so we don't lose it for targets beyond provisioning (ex. billing)
       ],
-      environmentVariablesToOutgoingEvent: ['tenantConfig', 'tenantStatus'],
       scriptEnvironmentVariables: {
-        // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required - as part of deploying the bootstrap-template
+        // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
         // the control plane is also deployed. To ensure the operation does not error out, this value
         // is provided as an env parameter.
-        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail
-      }
+        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail,
+      },
+      outgoingEvent: sbt.DetailType.PROVISION_SUCCESS,
+      incomingEvent: sbt.DetailType.ONBOARDING_REQUEST,
+      eventManager: props.eventManager
     };
 
-    const deprovisioningJobRunnerProps: CoreApplicationPlaneJobRunnerProps = {
-      name: 'deprovisioning',
+    const deprovisioningJobRunnerProps = {
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
 {
@@ -92,56 +81,38 @@ export class CoreAppPlaneStack extends Stack {
 `)
       ),
       script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
-      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
+      environmentStringVariablesFromIncomingEvent: ['tenantId'],
       environmentVariablesToOutgoingEvent: ['tenantStatus'],
-      outgoingEvent: DetailType.DEPROVISION_SUCCESS,
-      incomingEvent: DetailType.OFFBOARDING_REQUEST,
-
+      outgoingEvent: sbt.DetailType.DEPROVISION_SUCCESS,
+      incomingEvent: sbt.DetailType.OFFBOARDING_REQUEST,
       scriptEnvironmentVariables: {
         TENANT_STACK_MAPPING_TABLE: this.tenantMappingTable.tableName,
-        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail
-      }
+        // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
+        // the control plane is also deployed. To ensure the operation does not error out, this value
+        // is provided as an env parameter.
+        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail,
+      },
+      eventManager: props.eventManager
     };
 
-    const eventBus = EventBus.fromEventBusArn(this, 'EventBus', props.eventBusArn);
-    const eventManager = new EventManager(this, 'EventManager', {
-      eventBus: eventBus,
-    });
+    const provisioningJobRunner: sbt.BashJobRunner = new sbt.BashJobRunner(this,
+      'provisioningJobRunner', provisioningJobRunnerProps
+    );
 
-    new core_app_plane.CoreApplicationPlane(this, 'coreappplane-sbt', {
-      eventManager: eventManager,
-      jobRunnerPropsList: [provisioningJobRunnerProps, deprovisioningJobRunnerProps]
-    });
+    const deprovisioningJobRunner: sbt.BashJobRunner = new sbt.BashJobRunner(this,
+      'deprovisioningJobRunner', deprovisioningJobRunnerProps
+    );
 
-    new TenantApiKey(this, 'BasicTierApiKey', {
-      apiKeyValue: props.apiKeyBasicTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.basic.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.basic.value
-    });
-
-    new TenantApiKey(this, 'AdvancedTierApiKey', {
-      apiKeyValue: props.apiKeyAdvancedTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.advanced.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.advanced.value
-    });
-
-    new TenantApiKey(this, 'PremiumTierApiKey', {
-      apiKeyValue: props.apiKeyPremiumTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.premium.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.premium.value
-    });
-
-    new TenantApiKey(this, 'PlatinumTierApiKey', {
-      apiKeyValue: props.apiKeyPlatinumTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.platinum.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.platinum.value
+    new sbt.CoreApplicationPlane(this, 'coreappplane-sbt', {
+      eventManager: props.eventManager,
+      jobRunnersList: [provisioningJobRunner, deprovisioningJobRunner]
     });
 
     this.userInterface = new UserInterface(this, 'saas-application-ui', {
       regApiGatewayUrl: props.regApiGatewayUrl
     });
 
-    new CfnOutput(this, 'appSiteUrl', {
+    new cdk.CfnOutput(this, 'appSiteUrl', {
       value: this.userInterface.appSiteUrl
     });
 
