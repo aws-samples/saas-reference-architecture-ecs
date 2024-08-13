@@ -8,6 +8,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 import { RemovalPolicy } from 'aws-cdk-lib';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 export interface StaticSiteProps {
   readonly name: string
@@ -28,7 +29,7 @@ export class StaticSite extends Construct {
 
   constructor (scope: Construct, id: string, props: StaticSiteProps) {
     super(scope, id);
-
+    addTemplateTag(this, 'StaticSite');
     const defaultBranchName = props.defaultBranchName ?? 'main';
     const repository = new codecommit.Repository(this, `${id}Repository`, {
       repositoryName: props.name,

@@ -10,6 +10,7 @@ import {
 } from 'aws-cdk-lib/custom-resources';
 import { EcsCluster } from './ecs-cluster';
 import { TenantInfraNag } from '../cdknag/tenant-infra-nag';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 interface TenantTemplateStackProps extends cdk.StackProps {
   stageName: string
@@ -33,6 +34,7 @@ export class TenantTemplateStack extends cdk.Stack {
   constructor (scope: Construct, id: string, props: TenantTemplateStackProps) {
     super(scope, id, props);
     const waveNumber = props.waveNumber || '1';
+    addTemplateTag(this, 'TenantTemplateStack');
 
     const identityProvider = new IdentityProvider(this, 'IdentityProvider', {
       tenantId: props.tenantId,

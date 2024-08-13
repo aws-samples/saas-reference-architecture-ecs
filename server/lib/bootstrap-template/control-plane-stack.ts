@@ -5,6 +5,7 @@ import path = require('path');
 import { StaticSite } from './static-site';
 import { ControlPlaneNag } from '../cdknag/control-plane-nag';
 import * as sbt from '@cdklabs/sbt-aws';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 interface ControlPlaneStackProps extends cdk.StackProps {
   systemAdminRoleName: string
@@ -20,7 +21,7 @@ export class ControlPlaneStack extends cdk.Stack {
 
   constructor (scope: Construct, id: string, props: ControlPlaneStackProps) {
     super(scope, id, props);
-
+    addTemplateTag(this, 'ControlPlaneStack');
     const accessLogsBucket = new cdk.aws_s3.Bucket(this, 'AccessLogsBucket', {
       enforceSSL: true,
       autoDeleteObjects: true,

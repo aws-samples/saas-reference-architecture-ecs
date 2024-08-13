@@ -9,6 +9,7 @@ import { type Table } from 'aws-cdk-lib/aws-dynamodb';
 import { ECSSaaSPipelineNag } from '../cdknag/ecs-saas-pipeline-nag';
 import { type Construct } from 'constructs';
 import { RemovalPolicy } from 'aws-cdk-lib';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 export interface TenantUpdatePipelineProps extends cdk.StackProps {
   tenantMappingTable: Table
@@ -18,6 +19,7 @@ export interface TenantUpdatePipelineProps extends cdk.StackProps {
 export class TenantUpdatePipeline extends cdk.Stack {
   constructor (scope: Construct, id: string, props: TenantUpdatePipelineProps) {
     super(scope, id, props);
+    addTemplateTag(this, 'TenantUpdatePipeline');
 
     const accessLogsBucket = new cdk.aws_s3.Bucket(this, 'AccessLogsBucket', {
       enforceSSL: true,

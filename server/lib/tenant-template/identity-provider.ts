@@ -1,6 +1,7 @@
 import { aws_cognito, type StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { type IdentityDetails } from '../interfaces/identity-details';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 interface IdentityProviderStackProps extends StackProps {
   tenantId: string
@@ -13,7 +14,7 @@ export class IdentityProvider extends Construct {
   public readonly identityDetails: IdentityDetails;
   constructor (scope: Construct, id: string, props: IdentityProviderStackProps) {
     super(scope, id);
-
+    addTemplateTag(this, 'IdentityProvider');
     this.tenantUserPool = new aws_cognito.UserPool(this, 'TenantUserPool', {
       autoVerify: { email: true },
       selfSignUpEnabled: true,

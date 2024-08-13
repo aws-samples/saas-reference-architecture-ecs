@@ -4,6 +4,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { RemovalPolicy } from 'aws-cdk-lib';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 export interface StaticSiteDistroProps {
   readonly allowedMethods: string[]
@@ -16,6 +17,7 @@ export class StaticSiteDistro extends Construct {
 
   constructor (scope: Construct, id: string, props: StaticSiteDistroProps) {
     super(scope, id);
+    addTemplateTag(this, 'StaticSiteDistro');
     const { distribution, appBucket } = this.createStaticSite(
       id,
       props.allowedMethods,

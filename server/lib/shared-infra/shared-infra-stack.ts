@@ -15,6 +15,7 @@ import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 import { ApiGateway } from './api-gateway';
 import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
 import { TenantApiKey } from './tenant-api-key';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 export interface SharedInfraProps extends cdk.StackProps {
   isPooledDeploy: boolean
@@ -39,7 +40,7 @@ export class SharedInfraStack extends cdk.Stack {
 
   constructor (scope: Construct, id: string, props: SharedInfraProps) {
     super(scope, id);
-
+    addTemplateTag(this, 'SharedInfraStack');
     const azs = cdk.Fn.getAzs(this.region);
     // 스택의 리전에 있는 모든 가용 영역 목록 가져오기
 
