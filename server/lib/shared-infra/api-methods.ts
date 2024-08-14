@@ -2,6 +2,7 @@ import type * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { type ApiGateway } from './api-gateway';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 export interface ApiMethodsProps {
   serviceName: string
@@ -13,7 +14,7 @@ export interface ApiMethodsProps {
 export class ApiMethods extends Construct {
   constructor (scope: Construct, id: string, props: ApiMethodsProps) {
     super(scope, id);
-
+    addTemplateTag(this, 'ApiMethods');
     const integration = new apigateway.Integration({
       type: apigateway.IntegrationType.HTTP_PROXY,
       uri: `http://${props.nlb.loadBalancerDnsName}/${props.serviceName}`,

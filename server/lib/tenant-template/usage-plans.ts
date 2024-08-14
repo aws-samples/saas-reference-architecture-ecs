@@ -1,5 +1,6 @@
 import { Construct } from 'constructs';
 import { ApiKey, Period, type RestApi, type UsagePlan } from 'aws-cdk-lib/aws-apigateway';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 interface UsagePlansProps {
   apiGateway: RestApi
@@ -18,7 +19,7 @@ export class UsagePlans extends Construct {
   public readonly usagePlanSystemAdmin: UsagePlan;
   constructor (scope: Construct, id: string, props: UsagePlansProps) {
     super(scope, id);
-
+    addTemplateTag(this, 'UsagePlans');
     this.usagePlanBasicTier = props.apiGateway.addUsagePlan('UsagePlanBasicTier', {
       quota: {
         limit: 1000,

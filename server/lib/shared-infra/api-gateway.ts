@@ -9,6 +9,7 @@ import { type CustomApiKey } from '../interfaces/custom-api-key';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import { Duration } from 'aws-cdk-lib';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 interface ApiGatewayProps {
   lambdaEcsSaaSLayers: lambda.LayerVersion
@@ -28,7 +29,7 @@ export class ApiGateway extends Construct {
   public readonly requestValidator: apigateway.RequestValidator;
   constructor (scope: Construct, id: string, props: ApiGatewayProps) {
     super(scope, id);
-
+    addTemplateTag(this, 'ApiGateway');
     // 👇Create ACM Permission Policy
     const basicAuthorizerExecutionRole = new cdk.aws_iam.PolicyDocument({
       statements: [

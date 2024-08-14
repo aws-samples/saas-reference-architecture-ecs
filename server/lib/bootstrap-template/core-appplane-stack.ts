@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import { UserInterface } from './user-interface';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
 import * as sbt from '@cdklabs/sbt-aws';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 interface CoreAppPlaneStackProps extends cdk.StackProps {
   eventManager: sbt.IEventManager
@@ -19,6 +20,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
   public readonly tenantMappingTable: Table;
   constructor (scope: Construct, id: string, props: CoreAppPlaneStackProps) {
     super(scope, id, props);
+    addTemplateTag(this, 'CoreAppPlaneStack');
 
     const systemAdminEmail = props.systemAdminEmail;
 

@@ -1,6 +1,7 @@
 import { Construct } from 'constructs';
 import { ApiKey } from 'aws-cdk-lib/aws-apigateway';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 interface TenantApiKeyProps {
   apiKeyValue: string
@@ -13,6 +14,7 @@ export class TenantApiKey extends Construct {
   apiKeyValue: string;
   constructor (scope: Construct, id: string, props: TenantApiKeyProps) {
     super(scope, id);
+    addTemplateTag(this, 'TenantApiKey');
     this.apiKeyValue = props.apiKeyValue;
 
     this.apiKey = new ApiKey(this, 'apiKey', {

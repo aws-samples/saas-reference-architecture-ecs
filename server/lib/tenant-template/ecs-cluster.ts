@@ -14,6 +14,7 @@ import getTimeString, { getHashCode } from '../utilities/helper-functions';
 import { type ContainerInfo } from '../interfaces/container-info';
 import { type RproxyInfo } from '../interfaces/rproxy-info';
 import { CustomEniTrunking } from './eni-trunking';
+import { addTemplateTag } from '../utilities/helper-functions';
 
 export interface EcsClusterProps extends cdk.NestedStackProps {
   stageName: string
@@ -39,7 +40,7 @@ export class EcsCluster extends cdk.NestedStack {
 
   constructor (scope: Construct, id: string, props: EcsClusterProps) {
     super(scope, id, props);
-
+    addTemplateTag(this, 'EcsClusterStack');
     const tenantId = props.tenantId;
     const timeStr = getTimeString();
     this.isEc2Tier = props.isEc2Tier;
