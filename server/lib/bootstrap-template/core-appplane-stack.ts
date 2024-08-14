@@ -81,7 +81,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
 `)
       ),
       script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
-      environmentStringVariablesFromIncomingEvent: ['tenantId'],
+      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
       environmentVariablesToOutgoingEvent: ['tenantStatus'],
       outgoingEvent: sbt.DetailType.DEPROVISION_SUCCESS,
       incomingEvent: sbt.DetailType.OFFBOARDING_REQUEST,
