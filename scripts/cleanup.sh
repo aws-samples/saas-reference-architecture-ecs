@@ -51,6 +51,7 @@ export CDK_PARAM_OFFBOARDING_DETAIL_TYPE="NA"
 export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE="NA"
 export CDK_PARAM_TIER='basic'
 
+TEMP_FILE=$(mktemp)
 # Deleting object version..." 
 echo "Deleting Provision sourcecode Object Versions..."
 versions=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
@@ -58,8 +59,8 @@ versions=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --o
 
 if [ "$versions" -gt 0 ]; then 
 	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
-		| jq '{"Objects": [.Versions[] | {Key: .Key, VersionId: .VersionId}]}' \
-		| aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://- 
+		| jq '{"Objects": [.Versions[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE
+	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE
 fi 
 
 # Deleting object markers 
@@ -69,8 +70,8 @@ delete_markers=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NA
 
 if [ "$delete_markers" -gt 0 ]; then 
 	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
-	| jq '{"Objects": [.DeleteMarkers[] | {Key: .Key, VersionId: .VersionId}]}' \
-	| aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://-
+	    | jq '{"Objects": [.DeleteMarkers[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE
+	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE
 fi
 
 
