@@ -99,7 +99,6 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   npm install
 
   export CDK_PARAM_SYSTEM_ADMIN_EMAIL="NA"
-  # export CDK_PARAM_COMMIT_ID="NA"
   export CDK_PARAM_REG_API_GATEWAY_URL="NA"
   export CDK_PARAM_EVENT_BUS_ARN=arn:aws:service:::resource
   export CDK_PARAM_CONTROL_PLANE_SOURCE="NA"
