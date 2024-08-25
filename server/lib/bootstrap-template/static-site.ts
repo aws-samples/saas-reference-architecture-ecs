@@ -136,7 +136,7 @@ export class StaticSite extends Construct {
 
     pipeline.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['codebuild:StartBuild', "s3:*"],
+        actions: ['codebuild:StartBuild'],
         resources: [buildProject.projectArn], // invalidateBuildProject.projectArn],
         effect: iam.Effect.ALLOW
       })
