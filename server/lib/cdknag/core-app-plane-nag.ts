@@ -42,7 +42,6 @@ export class CoreAppPlaneNag extends Construct {
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
       [
-        //  `${nagWebPath}/TenantWebUICodePipeline/Source/TenantWebUI/CodePipelineActionRole/DefaultPolicy/Resource`,
         `${nagWebPath}NpmBuildProject/Role/DefaultPolicy/Resource`,
         `${nagWebPath}CodePipeline/Role/DefaultPolicy/Resource`,
         `${nagWebPath}CodePipeline/Source/TenantWebUI/CodePipelineActionRole/DefaultPolicy/Resource`,

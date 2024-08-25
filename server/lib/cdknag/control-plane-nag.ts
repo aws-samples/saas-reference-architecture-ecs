@@ -82,8 +82,6 @@ export class ControlPlaneNag extends Construct {
               regex: '/^Resource::arn:aws:codebuild:(.*):(.*)\\*$/g'
             },
             'Action::s3:*'
-           
-
           ]
         },
         policy
