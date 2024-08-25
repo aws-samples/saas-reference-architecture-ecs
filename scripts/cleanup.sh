@@ -1,7 +1,29 @@
 #!/bin/bash -e
 
+confirm() {
+    echo ""
+    echo "=============================================="
+    echo " ** WARNING! This ACTION IS IRREVERSIBLE! **"
+    echo "=============================================="
+    echo ""
+    echo "You are about to delete all SaaS ECS reference Architecture resources."
+    echo "Do you want to continue?" 
+    read -rp "[y/N] " response
+    case "$response" in
+        [yY][eE][sS]|[yY]) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+if ! confirm; then
+    echo "Cleanup cancelled"
+    exit 1
+fi
+
+export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
+
 echo "$(date) emptying out buckets..."
-for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^coreappplane-*"); do
+for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*"); do
     echo "$(date) emptying out s3 bucket with name s3://${i}..."
     aws s3 rm --recursive "s3://${i}"
 
@@ -16,7 +38,7 @@ cd ../server
 npm install
 
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="NA"
-export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="saas-reference-architecture-ecs"
+export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$REGION"
 export CDK_PARAM_COMMIT_ID="NA"
 export CDK_PARAM_REG_API_GATEWAY_URL="NA"
 export CDK_PARAM_EVENT_BUS_ARN=arn:aws:service:::resource
@@ -28,6 +50,29 @@ export CDK_PARAM_APPLICATION_NAME_PLANE_SOURCE="NA"
 export CDK_PARAM_OFFBOARDING_DETAIL_TYPE="NA"
 export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE="NA"
 export CDK_PARAM_TIER='basic'
+
+# Deleting object version..." 
+echo "Deleting Provision sourcecode Object Versions..."
+versions=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
+      | jq -r '.Versions | length')
+
+if [ "$versions" -gt 0 ]; then 
+	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
+		| jq '{"Objects": [.Versions[] | {Key: .Key, VersionId: .VersionId}]}' \
+		| aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://- 
+fi 
+
+# Deleting object markers 
+echo "Deleting Provision sourcecode Object Markers..." 
+delete_markers=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
+	| jq -r '.DeleteMarkers | length') 
+
+if [ "$delete_markers" -gt 0 ]; then 
+	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
+	| jq '{"Objects": [.DeleteMarkers[] | {Key: .Key, VersionId: .VersionId}]}' \
+	| aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://-
+fi
+
 
 echo "$(date) cleaning up tenants..."
 next_token=""
@@ -65,11 +110,6 @@ done
 
 npx cdk destroy --all --force
 
-if aws codecommit get-repository --repository-name $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME; then
-  DELETE_REPO=$(aws codecommit delete-repository --repository-name $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME)
-  echo "$DELETE_REPO"
-fi
-
 echo "$(date) cleaning up user pools..."
 next_token=""
 while true; do
@@ -104,7 +144,7 @@ done
 
 
 echo "$(date) removing buckets..."
-for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^coreappplane-*"); do
+for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*"); do
     echo "$(date) removing s3 bucket with name s3://${i}..."
     aws s3 rm --recursive "s3://${i}"
     aws s3 rb --force "s3://${i}" #delete in stack

@@ -2,8 +2,9 @@
 
 # build and push application services into ECR
 
-service_repos=("user" "product" "order" "rproxy")
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
+service_repos=("user" "product" "order" "rproxy")
 
 deploy_service () {
 

@@ -116,6 +116,10 @@ export class TenantTemplateStack extends cdk.Stack {
       value: identityProvider.tenantUserPoolClient.userPoolClientId
     });
 
+    new cdk.CfnOutput(this, 'S3SourceVersion', {
+      value: props.commitId
+    });
+
     new TenantInfraNag(this, 'TenantInfraNag', {
       tenantId: props.tenantId,
       isEc2Tier,

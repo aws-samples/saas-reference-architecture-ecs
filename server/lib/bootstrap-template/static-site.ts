@@ -1,14 +1,14 @@
 import type * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
-import * as codecommit from 'aws-cdk-lib/aws-codecommit';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
-import * as actions from 'aws-cdk-lib/aws-codepipeline-actions';
+import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
+import * as s3deployment from 'aws-cdk-lib/aws-s3-deployment';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as kms from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
-import { RemovalPolicy } from 'aws-cdk-lib';
+import { Fn, RemovalPolicy, StringConcat } from 'aws-cdk-lib';
 import { addTemplateTag } from '../utilities/helper-functions';
+
 
 export interface StaticSiteProps {
   readonly name: string
@@ -30,78 +30,31 @@ export class StaticSite extends Construct {
   constructor (scope: Construct, id: string, props: StaticSiteProps) {
     super(scope, id);
     addTemplateTag(this, 'StaticSite');
-    const defaultBranchName = props.defaultBranchName ?? 'main';
-    const repository = new codecommit.Repository(this, `${id}Repository`, {
-      repositoryName: props.name,
-      description: `Repository with code for ${props.name}`,
-      code: codecommit.Code.fromDirectory(props.assetDirectory, defaultBranchName)
-    });
-    repository.applyRemovalPolicy(RemovalPolicy.DESTROY);
-    this.repositoryUrl = repository.repositoryCloneUrlHttp;
 
-    this.createCICD(
-      id,
-      repository,
-      defaultBranchName,
-      props.production,
-      props.apiUrl,
-      props.appBucket,
-      props.accessLogsBucket,
-      props.clientId,
-      props.issuer,
-      props.wellKnownEndpointUrl
-    );
-  }
-
-  private createCICD (
-    id: string,
-    repo: codecommit.Repository,
-    branchName: string,
-    production: boolean,
-    apiUrl: string,
-    appBucket: s3.Bucket,
-    accessLogsBucket: s3.Bucket,
-    clientId?: string,
-    issuer?: string,
-    wellKnownEndpointUrl?: string
-  ) {
-    const artifactBucket = new s3.Bucket(this, `${id}CodePipelineBucket`, {
-      enforceSSL: true,
+    // S3 bucket to hold updated code
+    const sourceCodeBucket = new s3.Bucket(this, `${props.name}SourceCodeBucket`, {
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
-      serverAccessLogsBucket: accessLogsBucket,
-      encryptionKey: new kms.Key(this, 'npm-ecs', {
-        enableKeyRotation: true
-      })
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      versioned: true,
     });
 
-    const pipeline = new codepipeline.Pipeline(this, `${id}CodePipeline`, {
-      crossAccountKeys: false,
-      artifactBucket,
-      pipelineType: codepipeline.PipelineType.V2
+    const bucketDeployment = new s3deployment.BucketDeployment(this, props.name, {
+      sources: [s3deployment.Source.asset(props.assetDirectory)],
+      destinationBucket: sourceCodeBucket,
+      destinationKeyPrefix: props.name, //'source-code',
+      extract: false,
+      prune: false,
     });
 
-    const sourceArtifact = new codepipeline.Artifact();
     const siteConfig = {
-      production: production,
-      clientId: clientId,
-      issuer: issuer,
-      apiUrl: apiUrl,
-      wellKnownEndpointUrl: wellKnownEndpointUrl
+      production: props.production,
+      clientId: props.clientId,
+      issuer: props.issuer,
+      apiUrl: props.apiUrl,
+      wellKnownEndpointUrl: props.wellKnownEndpointUrl
     };
-
-    pipeline.addStage({
-      stageName: 'Source',
-      actions: [
-        new actions.CodeCommitSourceAction({
-          actionName: 'Checkout',
-          repository: repo,
-          output: sourceArtifact,
-          branch: branchName
-        })
-      ]
-    });
-
     const buildProject = new codebuild.PipelineProject(this, `${id}NpmBuildProject`, {
       environment: {
         buildImage: codebuild.LinuxBuildImage.STANDARD_7_0
@@ -132,12 +85,34 @@ export class StaticSite extends Construct {
       environmentVariables: {}
     });
 
-    const buildOutput = new codepipeline.Artifact();
+    const pipeline = new codepipeline.Pipeline(this, `${id}CodePipeline`, {
+      crossAccountKeys: false,
+      restartExecutionOnUpdate: true,
+      pipelineType: codepipeline.PipelineType.V2
 
+    });
+
+    //Source Stage
+    const sourceArtifact = new codepipeline.Artifact();
+    const hash: string = Fn.select(0, bucketDeployment.objectKeys);
+    pipeline.addStage({
+      stageName: 'Source',
+      actions: [
+        new codepipeline_actions.S3SourceAction({
+          actionName: `${id}`,
+          bucket: sourceCodeBucket,
+          bucketKey: `${props.name}/${hash}`,
+          output: sourceArtifact,
+        }),
+      ]
+    });
+
+    //Build Stage
+    const buildOutput = new codepipeline.Artifact();
     pipeline.addStage({
       stageName: 'Build',
       actions: [
-        new actions.CodeBuildAction({
+        new codepipeline_actions.CodeBuildAction({
           actionName: 'CompileNgSite',
           input: sourceArtifact,
           project: buildProject,
@@ -149,11 +124,11 @@ export class StaticSite extends Construct {
     pipeline.addStage({
       stageName: 'Deploy',
       actions: [
-        new actions.S3DeployAction({
+        new codepipeline_actions.S3DeployAction({
           actionName: 'CopyToS3',
-          bucket: appBucket,
+          bucket: props.appBucket,
           input: buildOutput,
-          cacheControl: [actions.CacheControl.fromString('no-store')],
+          cacheControl: [codepipeline_actions.CacheControl.fromString('no-store')],
           runOrder: 1
         })
       ]
@@ -161,10 +136,11 @@ export class StaticSite extends Construct {
 
     pipeline.addToRolePolicy(
       new iam.PolicyStatement({
-        actions: ['codebuild:StartBuild'],
+        actions: ['codebuild:StartBuild', "s3:*"],
         resources: [buildProject.projectArn], // invalidateBuildProject.projectArn],
         effect: iam.Effect.ALLOW
       })
     );
   }
+
 }

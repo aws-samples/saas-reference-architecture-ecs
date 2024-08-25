@@ -2,12 +2,14 @@ import * as cdk from 'aws-cdk-lib';
 import { type Construct } from 'constructs';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyDocument } from 'aws-cdk-lib/aws-iam';
-import { EventBus } from 'aws-cdk-lib/aws-events';
 import * as fs from 'fs';
-import { UserInterface } from './user-interface';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
 import * as sbt from '@cdklabs/sbt-aws';
 import { addTemplateTag } from '../utilities/helper-functions';
+
+import { StaticSiteDistro } from './static-site-distro';
+import path = require('path');
+import { StaticSite } from './static-site';
 
 interface CoreAppPlaneStackProps extends cdk.StackProps {
   eventManager: sbt.IEventManager
@@ -16,11 +18,27 @@ interface CoreAppPlaneStackProps extends cdk.StackProps {
 }
 
 export class CoreAppPlaneStack extends cdk.Stack {
-  public readonly userInterface: UserInterface;
   public readonly tenantMappingTable: Table;
+  public readonly appBucket: cdk.aws_s3.Bucket;
+  public readonly appSiteUrl: string;
+
   constructor (scope: Construct, id: string, props: CoreAppPlaneStackProps) {
     super(scope, id, props);
     addTemplateTag(this, 'CoreAppPlaneStack');
+
+    const accessLogsBucket = new cdk.aws_s3.Bucket(this, 'AccessLogsBucket', {
+      enforceSSL: true,
+      autoDeleteObjects: true,
+      accessControl: cdk.aws_s3.BucketAccessControl.LOG_DELIVERY_WRITE,
+      removalPolicy: cdk.RemovalPolicy.DESTROY
+    });
+
+    const distro = new StaticSiteDistro(this, 'StaticSiteDistro', {
+      allowedMethods: ['GET', 'HEAD', 'OPTIONS'],
+      accessLogsBucket
+    });
+
+    this.appSiteUrl = `https://${distro.cloudfrontDistribution.domainName}`;
 
     const systemAdminEmail = props.systemAdminEmail;
 
@@ -110,12 +128,18 @@ export class CoreAppPlaneStack extends cdk.Stack {
       jobRunnersList: [provisioningJobRunner, deprovisioningJobRunner]
     });
 
-    this.userInterface = new UserInterface(this, 'saas-application-ui', {
-      regApiGatewayUrl: props.regApiGatewayUrl
+    const staticSite = new StaticSite(this, 'TenantWebUI', {
+      name: 'AppSite',
+      assetDirectory: path.join(__dirname, '../../../client/Application'),
+      production: true,
+      apiUrl: props.regApiGatewayUrl,
+      distribution: distro.cloudfrontDistribution,
+      appBucket: distro.siteBucket,
+      accessLogsBucket
     });
 
     new cdk.CfnOutput(this, 'appSiteUrl', {
-      value: this.userInterface.appSiteUrl
+      value: this.appSiteUrl
     });
 
     new CoreAppPlaneNag(this, 'CoreAppPlaneNag');
