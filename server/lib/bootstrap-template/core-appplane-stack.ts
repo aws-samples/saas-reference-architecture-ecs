@@ -4,12 +4,11 @@ import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
 import { PolicyDocument } from 'aws-cdk-lib/aws-iam';
 import * as fs from 'fs';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
-import * as sbt from '@cdklabs/sbt-aws';
 import { addTemplateTag } from '../utilities/helper-functions';
-
 import { StaticSiteDistro } from './static-site-distro';
 import path = require('path');
 import { StaticSite } from './static-site';
+import * as sbt from '@cdklabs/sbt-aws';
 
 interface CoreAppPlaneStackProps extends cdk.StackProps {
   eventManager: sbt.IEventManager

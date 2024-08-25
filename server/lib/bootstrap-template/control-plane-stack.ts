@@ -4,8 +4,8 @@ import { StaticSiteDistro } from './static-site-distro';
 import path = require('path');
 import { StaticSite } from './static-site';
 import { ControlPlaneNag } from '../cdknag/control-plane-nag';
-import * as sbt from '@cdklabs/sbt-aws';
 import { addTemplateTag } from '../utilities/helper-functions';
+import * as sbt from '@cdklabs/sbt-aws';
 
 interface ControlPlaneStackProps extends cdk.StackProps {
   systemAdminRoleName: string
