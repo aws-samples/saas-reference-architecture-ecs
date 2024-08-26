@@ -27,8 +27,8 @@ export class CoreAppPlaneNag extends Construct {
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
       [
-        'core-appplane-stack/provisioningJobRunner/codeBuildProvisionProjectRole/Resource',
-        'core-appplane-stack/deprovisioningJobRunner/codeBuildProvisionProjectRole/Resource',
+        'core-appplane-stack/provisioningScriptJob/codeBuildProvisionProjectRole/Resource',
+        'core-appplane-stack/deprovisioningScriptJob/codeBuildProvisionProjectRole/Resource',
       ],
       [
         {
