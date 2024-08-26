@@ -83,7 +83,7 @@ export class CoreAppPlaneNag extends Construct {
       [
         {
           id: 'AwsSolutions-IAM4',
-          reason: 'CDKBucket substitute codecommit',
+          reason: 'CDK S3 Bucket for Ref',
           appliesTo: [
             'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
           ]
@@ -99,7 +99,7 @@ export class CoreAppPlaneNag extends Construct {
       [
         {
           id: 'AwsSolutions-S1',
-          reason: 'CDKBucket substitute codecommit',
+          reason: 'CDK S3 Bucket for Ref',
         }
       ]
     );
@@ -110,7 +110,7 @@ export class CoreAppPlaneNag extends Construct {
       [
         {
           id: 'AwsSolutions-CB4',
-          reason: 'CDKBucket substitute codecommit',
+          reason: 'CDK S3 Bucket for Ref',
         }
       ]
     );
@@ -120,7 +120,7 @@ export class CoreAppPlaneNag extends Construct {
       [
         {
           id: 'AwsSolutions-L1',
-          reason: 'CDKBucket substitute codecommit',
+          reason: 'CDK S3 Bucket for Ref',
         }
       ]
     );
