@@ -21,14 +21,14 @@ export class CoreAppPlaneNag extends Construct {
       ]
     };
 
-    const nagWebPath = '/core-appplane-stack/saas-application-ui/TenantWebUI';
-    const nagStaticPath = '/core-appplane-stack/saas-application-ui/StaticSiteDistro';
+    const nagWebPath = '/core-appplane-stack/TenantWebUI/TenantWebUI';
+    const nagCustomPath = '/core-appplane-stack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C';
 
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
       [
         'core-appplane-stack/provisioningJobRunner/codeBuildProvisionProjectRole/Resource',
-        'core-appplane-stack/deprovisioningJobRunner/codeBuildProvisionProjectRole/Resource'
+        'core-appplane-stack/deprovisioningJobRunner/codeBuildProvisionProjectRole/Resource',
       ],
       [
         {
@@ -42,52 +42,94 @@ export class CoreAppPlaneNag extends Construct {
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
       [
-        `${nagWebPath}/TenantWebUICodePipeline/Source/Checkout/CodePipelineActionRole/DefaultPolicy/Resource`,
-        `${nagWebPath}/TenantWebUICodePipeline/Deploy/CopyToS3/CodePipelineActionRole/DefaultPolicy/Resource`
+        `${nagWebPath}NpmBuildProject/Role/DefaultPolicy/Resource`,
+        `${nagWebPath}CodePipeline/Role/DefaultPolicy/Resource`,
+        `${nagWebPath}CodePipeline/Source/TenantWebUI/CodePipelineActionRole/DefaultPolicy/Resource`,
+        `${nagWebPath}CodePipeline/Deploy/CopyToS3/CodePipelineActionRole/DefaultPolicy/Resource`,
+        `${nagCustomPath}/ServiceRole/DefaultPolicy/Resource`
       ],
       [
-        policy,
         {
           id: 'AwsSolutions-IAM5',
           reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
           appliesTo: [
+            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
             {
-              regex: '/^Resource::<saasapplicationui(.*).Arn(.*)\\*$/g'
-            }
-          ]
-        }
-      ]
-    );
-
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [
-        `${nagWebPath}/TenantWebUICodePipeline/Role/DefaultPolicy/Resource`,
-        `${nagWebPath}/TenantWebUINpmBuildProject/Role/DefaultPolicy/Resource`
-      ],
-      [
-        policy,
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
-          appliesTo: [
-            {
-              regex: '/^Resource::<saasapplicationui(.*).Arn(.*)\\*$/g'
+              regex: '/^Resource::arn:aws:codebuild:(.*):(.*)\\*$/g'
             },
             {
               regex: '/^Resource::arn:aws:logs:(.*):(.*)\\*$/g'
             },
             {
-              regex: '/^Resource::arn:aws:codebuild:(.*):(.*)\\*$/g'
-            }
+              regex: '/^Resource::arn:aws:s3:(.*):(.*)\\*$/g'
+            },
+            {
+              regex: '/^Resource::<saasapplicationuiTenantWebUI(.*)Bucket(.*).Arn(.*)\\*$/g'
+            },
+            {
+              regex: '/^Resource::<TenantWebUI(.*).Arn(.*)\\*$/g'
+            },
+            {
+              regex: '/^Resource::<StaticSiteDistroStaticSiteDistroBucket(.*).Arn(.*)\\*$/g'
+            },
+          ]
+        },
+        policy
+      ]
+    );
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      `${nagCustomPath}/ServiceRole/Resource`,
+      [
+        {
+          id: 'AwsSolutions-IAM4',
+          reason: 'CDKBucket substitute codecommit',
+          appliesTo: [
+            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
           ]
         }
       ]
     );
-
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
-      `${nagStaticPath}/StaticSiteDistroDistribution/Resource`,
+      [
+        `/core-appplane-stack/TenantWebUI/AppSiteSourceCodeBucket/Resource`,
+        `${nagWebPath}CodePipeline/ArtifactsBucket/Resource`
+      ],
+      [
+        {
+          id: 'AwsSolutions-S1',
+          reason: 'CDKBucket substitute codecommit',
+        }
+      ]
+    );
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      [`${nagWebPath}NpmBuildProject/Resource`
+      ],
+      [
+        {
+          id: 'AwsSolutions-CB4',
+          reason: 'CDKBucket substitute codecommit',
+        }
+      ]
+    );
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      `${nagCustomPath}/Resource`,
+      [
+        {
+          id: 'AwsSolutions-L1',
+          reason: 'CDKBucket substitute codecommit',
+        }
+      ]
+    );
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      [
+        `/core-appplane-stack/StaticSiteDistro/StaticSiteDistroDistribution/Resource`,
+        `${nagWebPath}NpmBuildProject/Resource`
+      ],
       [
         {
           id: 'AwsSolutions-CFR4',

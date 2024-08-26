@@ -8,23 +8,27 @@ sudo yum install -y python3-pip
 sudo yum install -y npm
 sudo npm install -g aws-cdk
 sudo python3 -m pip install --upgrade setuptools
-sudo python3 -m pip install git-remote-codecommit
 
 # Enable nocasematch option
 shopt -s nocasematch
 
-# Clone the ecs reference solution repository
-export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="saas-reference-architecture-ecs"
-git clone codecommit://$CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME --quiet
-cd $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME/server
-
-export ECR_REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
+export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]' 2>&1)
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-sed "s/<REGION>/$ECR_REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+
+# Download from the ecs reference solution Bucket
+export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$REGION"
+export CDK_SOURCE_NAME="source.zip"
+
+VERSIONS=$(aws s3api list-object-versions --bucket "$CDK_PARAM_S3_BUCKET_NAME" --prefix "$CDK_SOURCE_NAME" --query 'Versions[?IsLatest==`true`].{VersionId:VersionId}' --output text 2>&1)
+CDK_PARAM_COMMIT_ID=$(echo "$VERSIONS" | awk 'NR==1{print $1}')
+
+aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAME" --version-id "$CDK_PARAM_COMMIT_ID" "$CDK_SOURCE_NAME" 2>&1 
+unzip $CDK_SOURCE_NAME
+cd ./server
+
+sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
 
 npm install
-
-export CDK_PARAM_COMMIT_ID=$(git log --format="%H" -n 1)
 
 # Parse tenant details from the input message from step function
 export CDK_PARAM_TENANT_ID=$tenantId

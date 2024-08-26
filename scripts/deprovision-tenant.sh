@@ -8,7 +8,6 @@ sudo npm install -g aws-cdk
 sudo yum install -y jq
 sudo yum install -y python3-pip
 sudo python3 -m pip install --upgrade setuptools
-sudo python3 -m pip install git-remote-codecommit
 
 # Enable nocasematch option
 shopt -s nocasematch
@@ -19,6 +18,8 @@ export CDK_PARAM_TENANT_ID=$tenantId
 export TIER=$tier
 export CDK_PARAM_TIER=$TIER
 
+export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
+export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # Define variables
 STACK_NAME="tenant-template-stack-basic"
@@ -82,21 +83,22 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   --table-name $TENANT_STACK_MAPPING_TABLE  \
   --key "{\"tenantId\": {\"S\": \"$CDK_PARAM_TENANT_ID\"}}" \
   --query 'Item.stackName.S')
-  
+  STACK_NAME=$(sed -e 's/^"//' -e 's/"$//' <<<$STACK_NAME)
   echo "Stack name from $TENANT_STACK_MAPPING_TABLE is  $STACK_NAME"
-  # Clone the ecs reference solution repository
-  export CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME="saas-reference-architecture-ecs"
-  git clone codecommit://$CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME
-  cd $CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME/server
+  # Copy to S3 Bucket
+  export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$REGION"
+  export CDK_SOURCE_NAME="source.zip"
+  CDK_PARAM_COMMIT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='S3SourceVersion'].OutputValue" --output text)
 
-  export ECR_REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
-  export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-  sed "s/<REGION>/$ECR_REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+  aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAME" --version-id "$CDK_PARAM_COMMIT_ID" "$CDK_SOURCE_NAME" 2>&1 
+  unzip $CDK_SOURCE_NAME
+  cd ./server
+
+  sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
 
   npm install
 
   export CDK_PARAM_SYSTEM_ADMIN_EMAIL="NA"
-  export CDK_PARAM_COMMIT_ID="NA"
   export CDK_PARAM_REG_API_GATEWAY_URL="NA"
   export CDK_PARAM_EVENT_BUS_ARN=arn:aws:service:::resource
   export CDK_PARAM_CONTROL_PLANE_SOURCE="NA"
@@ -114,7 +116,6 @@ else
   # Read tenant details from the cloudformation stack output parameters
   SAAS_APP_USERPOOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='$USER_POOL_OUTPUT_PARAM_NAME'].OutputValue" --output text)
   
-
   NESTED_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME | jq -rc '.StackResources | .[] | select(.ResourceType=="AWS::CloudFormation::Stack") | .PhysicalResourceId | split("/")[1]')
 
   PRODUCT_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name $NESTED_NAME --query "Stacks[0].Outputs[?OutputKey=='$PRODUCT_TABLE_OUTPUT_PARAM_NAME'].OutputValue" --output text)
@@ -139,7 +140,6 @@ else
   delete_items_if_exists $ORDER_TABLE_NAME $CDK_PARAM_TENANT_ID  
 
 fi
-
 
 # Create JSON response of output parameters
 export tenantStatus="Deleted"

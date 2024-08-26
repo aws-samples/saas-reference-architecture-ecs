@@ -10,6 +10,7 @@ import { AwsSolutionsChecks } from 'cdk-nag';
 
 const app = new cdk.App();
 cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+// cdk.Aspects.of(app);
 // required input parameters
 if (!process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL) {
   throw new Error('Please provide system admin email');
@@ -34,7 +35,6 @@ const tier = getEnv('CDK_PARAM_TIER');
 if (!process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME) {
   process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME = 'SystemAdmin';
 }
-
 // default values for optional input parameters
 const defaultStageName = 'prod';
 const defaultLambdaReserveConcurrency = '1';
@@ -135,7 +135,7 @@ const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-
   commitId: commitId,
   tier: tier,
   advancedCluster: advancedCluster,
-  appSiteUrl: coreAppPlaneStack.userInterface.appSiteUrl,
+  appSiteUrl: coreAppPlaneStack.appSiteUrl,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION

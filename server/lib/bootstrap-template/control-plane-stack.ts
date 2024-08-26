@@ -4,8 +4,8 @@ import { StaticSiteDistro } from './static-site-distro';
 import path = require('path');
 import { StaticSite } from './static-site';
 import { ControlPlaneNag } from '../cdknag/control-plane-nag';
-import * as sbt from '@cdklabs/sbt-aws';
 import { addTemplateTag } from '../utilities/helper-functions';
+import * as sbt from '@cdklabs/sbt-aws';
 
 interface ControlPlaneStackProps extends cdk.StackProps {
   systemAdminRoleName: string
@@ -17,11 +17,12 @@ export class ControlPlaneStack extends cdk.Stack {
   public readonly eventManager: sbt.IEventManager;
   public readonly auth: sbt.CognitoAuth;
   public readonly adminSiteUrl: string;
-  public readonly StaticSite: StaticSite;
+  public readonly staticSite: StaticSite;
 
   constructor (scope: Construct, id: string, props: ControlPlaneStackProps) {
     super(scope, id, props);
     addTemplateTag(this, 'ControlPlaneStack');
+    
     const accessLogsBucket = new cdk.aws_s3.Bucket(this, 'AccessLogsBucket', {
       enforceSSL: true,
       autoDeleteObjects: true,
@@ -58,9 +59,9 @@ export class ControlPlaneStack extends cdk.Stack {
     this.regApiGatewayUrl = controlPlane.controlPlaneAPIGatewayUrl;
     this.auth = cognitoAuth;
 
-    this.StaticSite = new StaticSite(this, 'AdminWebUi', {
+    const staticSite = new StaticSite(this, 'AdminWebUi', {
       name: 'AdminSite',
-      assetDirectory: path.join(__dirname, '../../../client/AdminWeb/'),
+      assetDirectory: path.join(__dirname, '../../../client/AdminWeb'),
       production: true,
       clientId: this.auth.userClientId,  //.clientId,
       issuer: this.auth.tokenEndpoint,

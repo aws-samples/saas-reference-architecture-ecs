@@ -1,10 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as codecommit from 'aws-cdk-lib/aws-codecommit';
 import * as codepipeline from 'aws-cdk-lib/aws-codepipeline';
 import * as codepipeline_actions from 'aws-cdk-lib/aws-codepipeline-actions';
 import * as codebuild from 'aws-cdk-lib/aws-codebuild';
 import * as fs from 'fs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { type Table } from 'aws-cdk-lib/aws-dynamodb';
 import { ECSSaaSPipelineNag } from '../cdknag/ecs-saas-pipeline-nag';
 import { type Construct } from 'constructs';
@@ -13,7 +13,7 @@ import { addTemplateTag } from '../utilities/helper-functions';
 
 export interface TenantUpdatePipelineProps extends cdk.StackProps {
   tenantMappingTable: Table
-  codeCommitRepositoryName: string
+  bucketName: string
 }
 
 export class TenantUpdatePipeline extends cdk.Stack {
@@ -21,14 +21,14 @@ export class TenantUpdatePipeline extends cdk.Stack {
     super(scope, id, props);
     addTemplateTag(this, 'TenantUpdatePipeline');
 
-    const accessLogsBucket = new cdk.aws_s3.Bucket(this, 'AccessLogsBucket', {
+    const accessLogsBucket = new s3.Bucket(this, 'AccessLogsBucket', {
       enforceSSL: true,
       autoDeleteObjects: true,
       accessControl: cdk.aws_s3.BucketAccessControl.LOG_DELIVERY_WRITE,
       removalPolicy: RemovalPolicy.DESTROY
     });
 
-    const artifactBucket = new cdk.aws_s3.Bucket(this, 'ArtifactsBucket', {
+    const artifactBucket = new s3.Bucket(this, 'ArtifactsBucket', {
       enforceSSL: true,
       serverAccessLogsBucket: accessLogsBucket,
       encryptionKey: new cdk.aws_kms.Key(this, 'saas-ecs', {
@@ -76,25 +76,29 @@ export class TenantUpdatePipeline extends cdk.Stack {
       role: deployerRole
     });
 
-    const codeRepo = codecommit.Repository.fromRepositoryName(
-      this,
-      'AppRepository',
-      props.codeCommitRepositoryName
-    );
-
+    
     const sourceOutput = new codepipeline.Artifact();
+    const sourceArtifact = new codepipeline.Artifact();
+
+    const sourceCodeBucket = new s3.Bucket(this, 'SourceCodeBucket', {
+      autoDeleteObjects: true,
+      removalPolicy: RemovalPolicy.DESTROY,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
+      versioned: true,
+    });
 
     pipeline.addStage({
       stageName: 'Source',
       actions: [
-        new codepipeline_actions.CodeCommitSourceAction({
-          actionName: 'CodeCommit_Source',
-          repository: codeRepo,
-          branch: 'main',
-          output: sourceOutput,
-          variablesNamespace: 'SourceVariables',
-          role: deployerRole
+        new codepipeline_actions.S3SourceAction({
+          actionName: 'S3Source',
+          bucket: sourceCodeBucket,
+          bucketKey: 'source-code/somehash',//new StringConcat().join('source-code/', hash),
+          output: sourceArtifact,
+          trigger: codepipeline_actions.S3Trigger.NONE
         })
+
       ]
     });
 
@@ -107,7 +111,7 @@ export class TenantUpdatePipeline extends cdk.Stack {
           shell: 'bash',
           variables: {
             tenantMappingTableName: props.tenantMappingTable.tableName,
-            CDK_PARAM_CODE_COMMIT_REPOSITORY_NAME: props.codeCommitRepositoryName
+            CDK_PARAM_S3_BUCKET_NAME: props.bucketName
           }
         },
         phases: {

@@ -57,7 +57,7 @@ export class ControlPlaneNag extends Construct {
       cdk.Stack.of(this),
       [
         `${nagPath}CodePipeline/Role/DefaultPolicy/Resource`,
-        `${nagPath}CodePipeline/Source/Checkout/CodePipelineActionRole/DefaultPolicy/Resource`,
+        `${nagPath}CodePipeline/Source/AdminWebUi/CodePipelineActionRole/DefaultPolicy/Resource`,
         `${nagPath}CodePipeline/Deploy/CopyToS3/CodePipelineActionRole/DefaultPolicy/Resource`
       ],
       [policy],
@@ -66,7 +66,10 @@ export class ControlPlaneNag extends Construct {
 
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
-      `${nagPath}NpmBuildProject/Role/DefaultPolicy/Resource`,
+      [
+        `${nagPath}NpmBuildProject/Role/DefaultPolicy/Resource`,
+        `${nagPath}CodePipeline/Role/DefaultPolicy/Resource`,
+      ],
       [
         {
           id: 'AwsSolutions-IAM5',
@@ -77,10 +80,87 @@ export class ControlPlaneNag extends Construct {
             },
             {
               regex: '/^Resource::arn:aws:codebuild:(.*):(.*)\\*$/g'
+            },
+            'Action::s3:*'
+          ]
+        },
+        policy
+      ]
+    );
+
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      `/controlplane-stack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/DefaultPolicy/Resource`,
+      [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
+          appliesTo: [
+            {
+              regex: '/^Resource::arn:aws:logs:(.*):(.*)\\*$/g'
+            },
+            {
+              regex: '/^Resource::arn:aws:codebuild:(.*):(.*)\\*$/g'
+            },
+            {
+              regex: '/^Resource::arn:aws:s3:(.*):(.*)\\*$/g'
+            },
+            {
+              regex: '/^Resource::<AdminWebUiSourceCodeBucket(.*).Arn(.*)\\*$/g'
             }
           ]
         },
         policy
+      ]
+    );
+
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      `/controlplane-stack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/ServiceRole/Resource`,
+      [
+        {
+          id: 'AwsSolutions-IAM4',
+          reason: 'CDKBucket substitute codecommit',
+          appliesTo: [
+            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+          ]
+        }
+      ]
+    );
+    
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      `/controlplane-stack/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C/Resource`,
+      [
+        {
+          id: 'AwsSolutions-L1',
+          reason: 'CDKBucket substitute codecommit',
+        }
+      ]
+    );
+
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      [`/controlplane-stack/AdminWebUi/AdminSiteSourceCodeBucket/Resource`,
+      `${nagPath}CodePipeline/ArtifactsBucket/Resource`
+      ],
+      [
+        {
+          id: 'AwsSolutions-S1',
+          reason: 'CDKBucket substitute codecommit',
+        }
+      ]
+    );
+
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      [`${nagPath}NpmBuildProject/Resource`
+      ],
+      [
+        {
+          id: 'AwsSolutions-CB4',
+          reason: 'CDKBucket substitute codecommit',
+        }
       ]
     );
 
