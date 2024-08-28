@@ -43,7 +43,7 @@ else
     fi
 fi
 
-echo "Bucket exists2: $CDK_PARAM_S3_BUCKET_NAME"
+echo "Bucket exists: $CDK_PARAM_S3_BUCKET_NAME"
 
 cd ../
 zip -r source.zip . -x ".git/*" -x "**/node_modules/*" -x "**/cdk.out/*" -x "**/.aws-sam/*"
@@ -61,18 +61,32 @@ cd ./server
 export ECR_REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 sed "s/<REGION>/$ECR_REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
-
-npm install
-
 # npx cdk bootstrap
 export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'
 export CDK_PARAM_PROVISIONING_DETAIL_TYPE=$CDK_PARAM_ONBOARDING_DETAIL_TYPE
 export CDK_PARAM_OFFBOARDING_DETAIL_TYPE='Offboarding'
 export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
 export CDK_PARAM_TIER='basic'
+export CDK_PARAM_STAGE='prod'
+
+export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
+SERVICES=$(aws ecs list-services --cluster $CDK_BASIC_CLUSTER --query 'serviceArns[*]' --output text)
+for SERVICE in $SERVICES; do
+    SERVICE_NAME=$(echo $SERVICE | rev | cut -d '/' -f 1 | rev)
+
+    aws ecs update-service \
+        --cluster $CDK_BASIC_CLUSTER \
+        --service $SERVICE_NAME \
+        --service-connect-configuration 'enabled=false' \
+        --no-cli-pager
+    
+    echo "Service Connect disabled for service: $SERVICE_NAME"
+done
+
+npm install
 
 npx cdk bootstrap
-npx cdk deploy --all --require-approval never #--concurrency 10 --asset-parallelism true 
+npx cdk deploy --all --require-approval never 
 
 # Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name controlplane-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)

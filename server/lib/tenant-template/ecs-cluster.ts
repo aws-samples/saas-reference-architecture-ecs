@@ -89,7 +89,7 @@ export class EcsCluster extends cdk.NestedStack {
       props.stageName,
     );
 
-    let clusterName = `${props.stageName}-${tenantId}-${timeStr}`;
+    let clusterName = `${props.stageName}-${tenantId}`; //-${timeStr}`;
     if('advanced' === props.tier.toLocaleLowerCase() ) {
       clusterName = `${props.stageName}-advanced-${cdk.Stack.of(this).account}`
     }
@@ -133,7 +133,7 @@ export class EcsCluster extends cdk.NestedStack {
     }  
 
     this.namespace = new HttpNamespace(this, 'CloudMapNamespace', {
-      name: `ecs-sbt.local-${tenantId}`,
+      name: `ecs-sbt.local-${tenantId}-${timeStr}`,
     });
 
     // Read JSON file with container info
