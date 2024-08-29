@@ -21,6 +21,7 @@ if ! confirm; then
 fi
 
 export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
+export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 echo "$(date) emptying out buckets..."
 for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*"); do
@@ -38,7 +39,7 @@ cd ../server
 npm install
 
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="NA"
-export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$REGION"
+export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$ACCOUNT_ID-$REGION"
 export CDK_PARAM_COMMIT_ID="NA"
 export CDK_PARAM_REG_API_GATEWAY_URL="NA"
 export CDK_PARAM_EVENT_BUS_ARN=arn:aws:service:::resource
@@ -60,7 +61,7 @@ versions=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --o
 if [ "$versions" -gt 0 ]; then 
 	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
 		| jq '{"Objects": [.Versions[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE
-	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE
+	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE --no-cli-pager
 fi 
 
 # Deleting object markers 
@@ -71,7 +72,7 @@ delete_markers=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NA
 if [ "$delete_markers" -gt 0 ]; then 
 	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
 	    | jq '{"Objects": [.DeleteMarkers[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE
-	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE
+	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE --no-cli-pager
 fi
 
 

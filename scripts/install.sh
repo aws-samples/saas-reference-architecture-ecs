@@ -8,14 +8,16 @@ if [[ -z "$CDK_PARAM_SYSTEM_ADMIN_EMAIL" ]]; then
 fi
 
 REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')  # Region setting
-export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$REGION"
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$ACCOUNT_ID-$REGION"
 
 # Create S3 Bucket for provision source.
 
 if aws s3api head-bucket --bucket $CDK_PARAM_S3_BUCKET_NAME 2>/dev/null; then
     echo "Bucket $CDK_PARAM_S3_BUCKET_NAME already exists."
 else
-    echo "Bucket $CDK_PARAM_S3_BUCKET_NAME does not exist. Creating a new bucket in $REGION region"
+    echo "Bucket $CDK_PARAM_S3_BUCKET_NAME does not exist. Creating a new bucket in $REGION region in $ACCOUNT_ID"
 
     if [ "$REGION" == "us-east-1" ]; then
       aws s3api create-bucket --bucket $CDK_PARAM_S3_BUCKET_NAME
@@ -46,7 +48,7 @@ fi
 echo "Bucket exists: $CDK_PARAM_S3_BUCKET_NAME"
 
 cd ../
-zip -r source.zip . -x ".git/*" -x "**/node_modules/*" -x "**/cdk.out/*" -x "**/.aws-sam/*"
+zip -rq source.zip . -x ".git/*" -x "**/node_modules/*" -x "**/cdk.out/*" -x "**/.aws-sam/*" 
 export CDK_PARAM_COMMIT_ID=$(aws s3api put-object --bucket "${CDK_PARAM_S3_BUCKET_NAME}" --key "source.zip" --body "./source.zip"  --output text)
 
 rm source.zip
@@ -74,19 +76,19 @@ SERVICES=$(aws ecs list-services --cluster $CDK_BASIC_CLUSTER --query 'serviceAr
 for SERVICE in $SERVICES; do
     SERVICE_NAME=$(echo $SERVICE | rev | cut -d '/' -f 1 | rev)
 
+    echo -n "==== Service Connect Disable: "
     aws ecs update-service \
         --cluster $CDK_BASIC_CLUSTER \
         --service $SERVICE_NAME \
         --service-connect-configuration 'enabled=false' \
-        --no-cli-pager
+        --no-cli-pager --query 'service.serviceArn' --output text
     
-    echo "Service Connect disabled for service: $SERVICE_NAME"
 done
 
 npm install
 
 npx cdk bootstrap
-npx cdk deploy --all --require-approval never 
+npx cdk deploy --all --require-approval=never
 
 # Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name controlplane-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)

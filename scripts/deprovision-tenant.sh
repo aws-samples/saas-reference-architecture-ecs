@@ -86,7 +86,7 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   STACK_NAME=$(sed -e 's/^"//' -e 's/"$//' <<<$STACK_NAME)
   echo "Stack name from $TENANT_STACK_MAPPING_TABLE is  $STACK_NAME"
   # Copy to S3 Bucket
-  export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$REGION"
+  export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$ACCOUNT_ID-$REGION"
   export CDK_SOURCE_NAME="source.zip"
   CDK_PARAM_COMMIT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='S3SourceVersion'].OutputValue" --output text)
 
