@@ -16,7 +16,7 @@ export REGION=$(aws ec2 describe-availability-zones --output text --query 'Avail
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # Download from the ecs reference solution Bucket
-export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$REGION"
+export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$ACCOUNT_ID-$REGION"
 export CDK_SOURCE_NAME="source.zip"
 
 VERSIONS=$(aws s3api list-object-versions --bucket "$CDK_PARAM_S3_BUCKET_NAME" --prefix "$CDK_SOURCE_NAME" --query 'Versions[?IsLatest==`true`].{VersionId:VersionId}' --output text 2>&1)

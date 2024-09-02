@@ -48,7 +48,7 @@ const defaultSystemAdminRoleName = 'SystemAdmin';
 // optional input parameters
 const systemAdminRoleName =
   process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME || defaultSystemAdminRoleName;
-const stageName = process.env.CDK_PARAM_STAGE_NAME || defaultStageName;
+const stageName = process.env.CDK_PARAM_STAGE || defaultStageName;
 const lambdaReserveConcurrency = Number(
   process.env.CDK_PARAM_LAMBDA_RESERVE_CONCURRENCY || defaultLambdaReserveConcurrency
 );

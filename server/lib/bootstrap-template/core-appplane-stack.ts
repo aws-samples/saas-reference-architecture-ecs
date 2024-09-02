@@ -45,7 +45,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
       partitionKey: { name: 'tenantId', type: AttributeType.STRING }
     });
 
-    const provisioningJobRunnerProps = {
+    const provisioningScriptJobProps = {
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
 {
@@ -82,7 +82,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
       eventManager: props.eventManager
     };
 
-    const deprovisioningJobRunnerProps = {
+    const deprovisioningScriptJobProps = {
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
 {
@@ -114,17 +114,17 @@ export class CoreAppPlaneStack extends cdk.Stack {
       eventManager: props.eventManager
     };
 
-    const provisioningJobRunner: sbt.BashJobRunner = new sbt.BashJobRunner(this,
-      'provisioningJobRunner', provisioningJobRunnerProps
+    const provisioningScriptJob: sbt.ProvisioningScriptJob = new sbt.ProvisioningScriptJob(this,
+      'provisioningScriptJob', provisioningScriptJobProps
     );
 
-    const deprovisioningJobRunner: sbt.BashJobRunner = new sbt.BashJobRunner(this,
-      'deprovisioningJobRunner', deprovisioningJobRunnerProps
+    const deprovisioningScriptJob: sbt.ProvisioningScriptJob = new sbt.DeprovisioningScriptJob(this,
+      'deprovisioningScriptJob', deprovisioningScriptJobProps
     );
 
     new sbt.CoreApplicationPlane(this, 'coreappplane-sbt', {
       eventManager: props.eventManager,
-      jobRunnersList: [provisioningJobRunner, deprovisioningJobRunner]
+      scriptJobs: [provisioningScriptJob, deprovisioningScriptJob]
     });
 
     const staticSite = new StaticSite(this, 'TenantWebUI', {

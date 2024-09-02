@@ -6,7 +6,7 @@ import * as s3deployment from 'aws-cdk-lib/aws-s3-deployment';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
-import { Fn, RemovalPolicy, StringConcat } from 'aws-cdk-lib';
+import { Fn, RemovalPolicy } from 'aws-cdk-lib';
 import { addTemplateTag } from '../utilities/helper-functions';
 
 

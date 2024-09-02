@@ -34,7 +34,6 @@ If you are using Cloud9, make sure to use `Amazon Linux 2023` AMI for the EC2 wi
 - Make sure you have [AWS CLI 2.14](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html) or above installed.
 - Make sure you have [Docker Engine](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-docker.html) installed.
 - Make sure you have the latest version of [AWS CDK CLI](https://docs.aws.amazon.com/cdk/latest/guide/cli.html) installed. Not having the release version of CDK can cause deployment issues.
-- Make sure you have the latest version of [git-remote-codecommit](https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-git-remote-codecommit.html) installed.
 - Make sure that you have Node 18 or above.
 - Make sure that you have Git installed.
 
@@ -55,7 +54,7 @@ Note that, ```build-application.sh``` builds docker images of sample SaaS applic
 
 And, ```install.sh``` deploys the following:
 
-- Creates an AWS CodeCommit repo in your AWS account and pushes this reference solution code to the repo
+- Creates an AWS S3 bucket in your AWS account and pushes this reference solution code to the bucket
 - Cdk stack `controlplane-stack` which provisions
   - SaaS Builder Toolkit(SBT) control plane components which allows infrastructure to provision/de-provision a tenant.
 - Cdk stack `coreappplane-stack` which provisions
@@ -64,8 +63,6 @@ And, ```install.sh``` deploys the following:
   - Shared application infrastructure like Amazon VPC, Amazon API Gateway, and Load balancers.
 - Cdk stack `tenant-template-stack`, which provisions
   - ECS Cluster and ECS services order, product & user microservices.
-- Cdk stack `tenant-update-stack` which provisions
-  - AWS Code Pipeline to update tenant deployments on any changes to source in CodeCommit repo.
 
 ## Steps to Clean-up
 
