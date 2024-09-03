@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="$1"
 
@@ -72,25 +72,34 @@ export CDK_PARAM_TIER='basic'
 export CDK_PARAM_STAGE='prod'
 
 export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
-SERVICES=$(aws ecs list-services --cluster $CDK_BASIC_CLUSTER --query 'serviceArns[*]' --output text)
-for SERVICE in $SERVICES; do
-    SERVICE_NAME=$(echo $SERVICE | rev | cut -d '/' -f 1 | rev)
-
-    echo -n "==== Service Connect Disable: "
-    aws ecs update-service \
-        --cluster $CDK_BASIC_CLUSTER \
-        --service $SERVICE_NAME \
-        --service-connect-configuration 'enabled=false' \
-        --no-cli-pager --query 'service.serviceArn' --output text
-    
-done
 
 npm install
-
 npx cdk bootstrap
+
+npx cdk diff tenant-template-stack-basic > ./diff_output.txt 2>&1
+if grep -q "There were no differences" ./diff_output.txt; then
+    echo "No changes detected in tenant-template-stack-basic."
+else
+    echo "Changes detected in tenant-template-stack-basic."
+
+    SERVICES=$(aws ecs list-services --cluster $CDK_BASIC_CLUSTER --query 'serviceArns[*]' --output text || true)
+    for SERVICE in $SERVICES; do
+        SERVICE_NAME=$(echo $SERVICE | rev | cut -d '/' -f 1 | rev)
+
+        echo -n "==== Service Connect Disable: "
+        aws ecs update-service \
+            --cluster $CDK_BASIC_CLUSTER \
+            --service $SERVICE_NAME \
+            --service-connect-configuration 'enabled=false' \
+            --no-cli-pager --query 'service.serviceArn' --output text
+    done
+fi
+rm diff_output.txt
+
 npx cdk deploy --all --require-approval=never
 
-# Get SaaS application url
+
+## Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name controlplane-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)
 APP_SITE_URL=$(aws cloudformation describe-stacks --stack-name core-appplane-stack --query "Stacks[0].Outputs[?OutputKey=='appSiteUrl'].OutputValue" --output text)
 echo "Admin site url: $ADMIN_SITE_URL"
