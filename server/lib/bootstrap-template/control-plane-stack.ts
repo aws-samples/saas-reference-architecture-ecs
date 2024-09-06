@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { type Construct } from 'constructs';
 import { StaticSiteDistro } from './static-site-distro';
-import path = require('path');
+import * as path from 'path';
 import { StaticSite } from './static-site';
 import { ControlPlaneNag } from '../cdknag/control-plane-nag';
 import { addTemplateTag } from '../utilities/helper-functions';

@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from './static-site-distro';
-import path = require('path');
+import * as path from 'path';
 import { StaticSite } from './static-site';
 import * as sbt from '@cdklabs/sbt-aws';
 
