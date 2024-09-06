@@ -22,7 +22,7 @@ export class ControlPlaneStack extends cdk.Stack {
   constructor (scope: Construct, id: string, props: ControlPlaneStackProps) {
     super(scope, id, props);
     addTemplateTag(this, 'ControlPlaneStack');
-    
+
     const accessLogsBucket = new cdk.aws_s3.Bucket(this, 'AccessLogsBucket', {
       enforceSSL: true,
       autoDeleteObjects: true,
@@ -71,7 +71,7 @@ export class ControlPlaneStack extends cdk.Stack {
       appBucket: distro.siteBucket,
       accessLogsBucket
     });
-    
+
     new cdk.CfnOutput(this, 'adminSiteUrl', {
       value: this.adminSiteUrl
     });

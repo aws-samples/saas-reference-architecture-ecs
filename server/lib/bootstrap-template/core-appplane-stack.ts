@@ -85,19 +85,19 @@ export class CoreAppPlaneStack extends cdk.Stack {
     const deprovisioningScriptJobProps = {
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
-{
-  "Version":"2012-10-17",
-  "Statement":[
-      {
-        "Action":[
-            "*"
-        ],
-        "Resource":"*",
-        "Effect":"Allow"
-      }
-  ]
-}
-`)
+        {
+          "Version":"2012-10-17",
+          "Statement":[
+              {
+                "Action":[
+                    "*"
+                ],
+                "Resource":"*",
+                "Effect":"Allow"
+              }
+          ]
+        }
+        `)
       ),
       script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
