@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from './static-site-distro';
-import path = require('path');
+import * as path from 'path';
 import { StaticSite } from './static-site';
 import * as sbt from '@cdklabs/sbt-aws';
 
@@ -85,19 +85,19 @@ export class CoreAppPlaneStack extends cdk.Stack {
     const deprovisioningScriptJobProps = {
       permissions: PolicyDocument.fromJson(
         JSON.parse(`
-{
-  "Version":"2012-10-17",
-  "Statement":[
-      {
-        "Action":[
-            "*"
-        ],
-        "Resource":"*",
-        "Effect":"Allow"
-      }
-  ]
-}
-`)
+        {
+          "Version":"2012-10-17",
+          "Statement":[
+              {
+                "Action":[
+                    "*"
+                ],
+                "Resource":"*",
+                "Effect":"Allow"
+              }
+          ]
+        }
+        `)
       ),
       script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],

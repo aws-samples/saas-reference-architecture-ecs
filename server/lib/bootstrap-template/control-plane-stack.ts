@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { type Construct } from 'constructs';
 import { StaticSiteDistro } from './static-site-distro';
-import path = require('path');
+import * as path from 'path';
 import { StaticSite } from './static-site';
 import { ControlPlaneNag } from '../cdknag/control-plane-nag';
 import { addTemplateTag } from '../utilities/helper-functions';
@@ -22,7 +22,7 @@ export class ControlPlaneStack extends cdk.Stack {
   constructor (scope: Construct, id: string, props: ControlPlaneStackProps) {
     super(scope, id, props);
     addTemplateTag(this, 'ControlPlaneStack');
-    
+
     const accessLogsBucket = new cdk.aws_s3.Bucket(this, 'AccessLogsBucket', {
       enforceSSL: true,
       autoDeleteObjects: true,
@@ -59,7 +59,7 @@ export class ControlPlaneStack extends cdk.Stack {
     this.regApiGatewayUrl = controlPlane.controlPlaneAPIGatewayUrl;
     this.auth = cognitoAuth;
 
-    const staticSite = new StaticSite(this, 'AdminWebUi', {
+    this.staticSite = new StaticSite(this, 'AdminWebUi', {
       name: 'AdminSite',
       assetDirectory: path.join(__dirname, '../../../client/AdminWeb'),
       production: true,
@@ -71,7 +71,7 @@ export class ControlPlaneStack extends cdk.Stack {
       appBucket: distro.siteBucket,
       accessLogsBucket
     });
-    
+
     new cdk.CfnOutput(this, 'adminSiteUrl', {
       value: this.adminSiteUrl
     });
