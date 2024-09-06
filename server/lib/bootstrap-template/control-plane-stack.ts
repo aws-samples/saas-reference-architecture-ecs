@@ -59,7 +59,7 @@ export class ControlPlaneStack extends cdk.Stack {
     this.regApiGatewayUrl = controlPlane.controlPlaneAPIGatewayUrl;
     this.auth = cognitoAuth;
 
-    const staticSite = new StaticSite(this, 'AdminWebUi', {
+    this.staticSite = new StaticSite(this, 'AdminWebUi', {
       name: 'AdminSite',
       assetDirectory: path.join(__dirname, '../../../client/AdminWeb'),
       production: true,
