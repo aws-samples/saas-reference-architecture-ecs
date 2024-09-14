@@ -10,10 +10,11 @@ export interface TenantInfraNagProps {
   isRProxy: boolean
 }
 
-export class TenantInfraNag extends Construct {
+export class TenantTemplateNag extends Construct {
   constructor (scope: Construct, id: string, props: TenantInfraNagProps) {
     super(scope, id);
 
+    const nagEcsPath = `/tenant-template-stack-${props.tenantId}/EcsCluster`;
     const nagPath = `/tenant-template-stack-${props.tenantId}/EcsCluster`;
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
@@ -36,49 +37,6 @@ export class TenantInfraNag extends Construct {
 
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
-      `${nagPath}/ecsTaskExecutionRole-${props.tenantId}/Resource`,
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
-          appliesTo: [
-            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
-          ]
-        }
-      ]
-    );
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [`${nagPath}/ecsTaskExecutionRole-${props.tenantId}/DefaultPolicy/Resource`],
-      [
-        {
-          id: 'AwsSolutions-IAM5',
-          reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
-          appliesTo: ['Resource::*']
-        }
-      ]
-    );
-
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [
-        `${nagPath}/orders-ecsTaskRole/Resource`,
-        `${nagPath}/products-ecsTaskRole/Resource`,
-        `${nagPath}/users-ecsTaskRole/Resource`
-      ],
-      [
-        {
-          id: 'AwsSolutions-IAM4',
-          reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
-          appliesTo: [
-            'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
-          ]
-        }
-      ]
-    );
-
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
       [
         `/tenant-template-stack-${props.tenantId}/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource`
       ],
@@ -95,21 +53,6 @@ export class TenantInfraNag extends Construct {
 
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
-      [
-        `${nagPath}/orders-TaskDef/Resource`,
-        `${nagPath}/products-TaskDef/Resource`,
-        `${nagPath}/users-TaskDef/Resource`
-      ],
-      [
-        {
-          id: 'AwsSolutions-ECS2',
-          reason: 'Reference for SBT-ECS SaaS'
-        }
-      ]
-    );
-
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
       [`/tenant-template-stack-${props.tenantId}/AWS679f53fac002430cb0da5b7982bd2287/Resource`],
       [
         {
@@ -119,50 +62,13 @@ export class TenantInfraNag extends Construct {
       ]
     );
 
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [`${nagPath}/ORDER_TABLE_NAME/Resource`, `${nagPath}/PRODUCT_TABLE_NAME/Resource`],
-      [
-        {
-          id: 'AwsSolutions-DDB3',
-          reason: 'Reference for SBT-ECS SaaS: Point-in-time Recovery not need to be Enabled'
-        }
-      ]
-    );
-
-    if (props.isRProxy) {
-      NagSuppressions.addResourceSuppressionsByPath(
-        cdk.Stack.of(this),
-        [`${nagPath}/rproxy-TaskDef/Resource`],
-        [
-          {
-            id: 'AwsSolutions-ECS2',
-            reason: 'Reference for SBT-ECS SaaS'
-          }
-        ]
-      );
-      NagSuppressions.addResourceSuppressionsByPath(
-        cdk.Stack.of(this),
-        `${nagPath}/rproxy-TaskDef/TaskRole/Resource`,
-        [
-          {
-            id: 'AwsSolutions-IAM4',
-            reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
-            appliesTo: [
-              'Policy::arn:<AWS::Partition>:iam::aws:policy/CloudWatchAgentServerPolicy',
-              'Policy::arn:<AWS::Partition>:iam::aws:policy/CloudWatchFullAccess'
-            ]
-          }
-        ]
-      );
-    }
-
-    if('advanced' !== props.tier.toLocaleLowerCase() || 'ACTIVE' !== props.advancedCluster ) {
+    if('advanced' !== props.tier.toLocaleLowerCase() || 'INACTIVE' === props.advancedCluster )
     if (props.isEc2Tier) {
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
-        [`${nagPath}/EniTrunking/CustomEniTrunkingRole/Resource`,
-        `${nagPath}/EniTrunking/EC2Role/Resource`,
+        [
+          `${nagEcsPath}/EniTrunking/CustomEniTrunkingRole/Resource`,
+          `${nagEcsPath}/EniTrunking/EC2Role/Resource`,
         ],
         [
           {
@@ -176,8 +82,41 @@ export class TenantInfraNag extends Construct {
       );
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
-        [`${nagPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/ServiceRole/Resource`,
-        `${nagPath}/EniTrunking/CustomEniTrunkingRole/Resource`,
+        [
+          `${nagEcsPath}/EniTrunking/CustomEniTrunkingRole/Resource`,
+        ],
+        [
+          {
+            id: 'AwsSolutions-IAM4',
+            reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
+            appliesTo: [
+              'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+            ]
+          }
+        ]
+      );
+     
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [`${nagEcsPath}/EniTrunking/EC2Role/DefaultPolicy/Resource`],
+        [
+          {
+            id: 'AwsSolutions-IAM5',
+            reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
+            appliesTo: ['Action::ecs:Submit*', 'Resource::*']
+          }
+        ]
+      );
+
+
+
+
+
+
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [
+          `${nagPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/ServiceRole/Resource`,
         ],
         [
           {
@@ -199,17 +138,7 @@ export class TenantInfraNag extends Construct {
           }
         ]
       );
-      NagSuppressions.addResourceSuppressionsByPath(
-        cdk.Stack.of(this),
-        [`${nagPath}/EniTrunking/EC2Role/DefaultPolicy/Resource`],
-        [
-          {
-            id: 'AwsSolutions-IAM5',
-            reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
-            appliesTo: ['Action::ecs:Submit*', 'Resource::*']
-          }
-        ]
-      );
+      
 
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
@@ -244,7 +173,7 @@ export class TenantInfraNag extends Construct {
             reason: 'Reference for SBT-ECS SaaS',
             appliesTo: [
               {
-                regex: '/^Resource::arn:aws:autoscaling:(.*):(.*)*$/g'
+                regex: '/^Resource::arn:(.*):autoscaling:(.*):(.*)*$/g'
               },
               'Resource::*'
             ]
@@ -265,7 +194,7 @@ export class TenantInfraNag extends Construct {
           }
         ]
       );
+
     }
-  }
   }
 }

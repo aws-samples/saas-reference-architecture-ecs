@@ -21,13 +21,14 @@ if (!process.env.CDK_PARAM_TENANT_ID) {
 }
 const basicId = 'basic';
 const AzCount = 3;
-
+const basicName = 'basic';
 if(AzCount < 2 || AzCount > 3) {
   throw new Error('Please Availability Zones count must be 2 or 3');
 }
 // required input parameters
 const systemAdminEmail = process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL;
 const tenantId = process.env.CDK_PARAM_TENANT_ID || basicId;
+const tenantName = process.env.CDK_PARAM_TENANT_NAME || basicName;
 
 const commitId = getEnv('CDK_PARAM_COMMIT_ID');
 const tier = getEnv('CDK_PARAM_TIER');
@@ -37,8 +38,6 @@ if (!process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME) {
 }
 // default values for optional input parameters
 const defaultStageName = 'prod';
-const defaultLambdaReserveConcurrency = '1';
-const defaultLambdaCanaryDeploymentPreference = 'True';
 const defaultApiKeyPlatinumTierParameter = '34135b26-7704-4ebc-adcc-9e0c604d4f04-sbt';
 const defaultApiKeyPremiumTierParameter = '508d335c-a768-4cfb-aaff-45a89129853c-sbt';
 const defaultApiKeyAdvancedTierParameter = '49cbd97a-7499-4939-bc3d-b116ca479dda-sbt';
@@ -49,12 +48,7 @@ const defaultSystemAdminRoleName = 'SystemAdmin';
 const systemAdminRoleName =
   process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME || defaultSystemAdminRoleName;
 const stageName = process.env.CDK_PARAM_STAGE || defaultStageName;
-const lambdaReserveConcurrency = Number(
-  process.env.CDK_PARAM_LAMBDA_RESERVE_CONCURRENCY || defaultLambdaReserveConcurrency
-);
-const lambdaCanaryDeploymentPreference =
-  process.env.CDK_PARAM_LAMBDA_CANARY_DEPLOYMENT_PREFERENCE ||
-  defaultLambdaCanaryDeploymentPreference;
+
 const apiKeyPlatinumTierParameter =
   process.env.CDK_PARAM_API_KEY_PLATINUM_TIER_PARAMETER || defaultApiKeyPlatinumTierParameter;
 const apiKeyPremiumTierParameter =
@@ -89,6 +83,11 @@ const apiKeySSMParameterNames = {
   }
 };
 
+const env = {
+  account: app.account,
+  region: app.region
+}
+
 const sharedInfraStack = new SharedInfraStack(app, 'shared-infra-stack', {
   isPooledDeploy: isPooledDeploy,
   ApiKeySSMParameterNames: apiKeySSMParameterNames,
@@ -98,50 +97,60 @@ const sharedInfraStack = new SharedInfraStack(app, 'shared-infra-stack', {
   apiKeyBasicTierParameter: apiKeyBasicTierParameter,
   stageName: stageName,
   azCount: AzCount,
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION
-  }
+  env
 });
 
 const controlPlaneStack = new ControlPlaneStack(app, 'controlplane-stack', {
   systemAdminEmail: systemAdminEmail,
   systemAdminRoleName: systemAdminRoleName,
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION
-  }
+  accessLogsBucket: sharedInfraStack.accessLogsBucket,
+  distro: sharedInfraStack.adminSiteDistro,
+  adminSiteUrl: sharedInfraStack.adminSiteUrl,
+  env
 });
 
 const coreAppPlaneStack = new CoreAppPlaneStack(app, 'core-appplane-stack', {
   systemAdminEmail: systemAdminEmail,
   regApiGatewayUrl: controlPlaneStack.regApiGatewayUrl,
   eventManager: controlPlaneStack.eventManager,
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION
-  }
+  accessLogsBucket: sharedInfraStack.accessLogsBucket,
+  distro: sharedInfraStack.appSiteDistro,
+  appSiteUrl: sharedInfraStack.appSiteUrl,
+  tenantMappingTable: sharedInfraStack.tenantMappingTable,
+  env,
 });
 cdk.Aspects.of(coreAppPlaneStack).add(new DestroyPolicySetter());
 
 const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-${tenantId}`, {
   tenantId: tenantId,
+  tenantName: tenantName,
   stageName: stageName,
-  lambdaReserveConcurrency: lambdaReserveConcurrency,
-  lambdaCanaryDeploymentPreference: lambdaCanaryDeploymentPreference,
   isPooledDeploy: isPooledDeploy,
   ApiKeySSMParameterNames: apiKeySSMParameterNames,
-  tenantMappingTable: coreAppPlaneStack.tenantMappingTable,
+  tenantMappingTable: sharedInfraStack.tenantMappingTable,
   commitId: commitId,
   tier: tier,
   advancedCluster: advancedCluster,
-  appSiteUrl: coreAppPlaneStack.appSiteUrl,
-  env: {
-    account: process.env.CDK_DEFAULT_ACCOUNT,
-    region: process.env.CDK_DEFAULT_REGION
-  }
+  appSiteUrl: sharedInfraStack.appSiteUrl,
+  env
+});
+
+const advancedTierTempStack = new TenantTemplateStack(app, `tenant-template-stack-advanced`, {
+  tenantId: 'advanced',
+  tenantName: tenantName,
+  stageName: stageName,
+  isPooledDeploy: false,
+  ApiKeySSMParameterNames: apiKeySSMParameterNames,
+  tenantMappingTable: sharedInfraStack.tenantMappingTable,
+  commitId: commitId,
+  tier: 'advanced',
+  advancedCluster: 'INACTIVE',
+  appSiteUrl: sharedInfraStack.appSiteUrl,
+  env
 });
 tenantTemplateStack.addDependency(sharedInfraStack);
+advancedTierTempStack.addDependency(sharedInfraStack);
+
 cdk.Tags.of(tenantTemplateStack).add('TenantId', tenantId);
 cdk.Tags.of(tenantTemplateStack).add('IsPooledDeploy', String(isPooledDeploy));
 cdk.Aspects.of(tenantTemplateStack).add(new DestroyPolicySetter());

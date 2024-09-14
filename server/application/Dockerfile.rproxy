@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 public.ecr.aws/nginx/nginx:mainline AS build
+FROM public.ecr.aws/nginx/nginx:mainline AS build
 
 ADD ./reverseproxy/index.html /etc/nginx/html/index.html
 ADD ./reverseproxy/nginx.conf /etc/nginx/nginx.conf

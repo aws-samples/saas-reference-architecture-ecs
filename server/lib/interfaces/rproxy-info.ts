@@ -4,4 +4,5 @@ export interface RproxyInfo {
   memoryLimitMiB: number
   cpu: number
   containerPort: number
+  policy: string
 }

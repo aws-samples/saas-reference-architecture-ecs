@@ -1,3 +1,4 @@
+import * as cdk from 'aws-cdk-lib';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -5,10 +6,12 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { addTemplateTag } from '../utilities/helper-functions';
+import { Environment } from 'aws-cdk-lib/aws-appconfig';
 
 export interface StaticSiteDistroProps {
   readonly allowedMethods: string[]
   accessLogsBucket: s3.Bucket
+  env: cdk.Environment
 }
 
 export class StaticSiteDistro extends Construct {
@@ -21,13 +24,14 @@ export class StaticSiteDistro extends Construct {
     const { distribution, appBucket } = this.createStaticSite(
       id,
       props.allowedMethods,
-      props.accessLogsBucket
+      props.accessLogsBucket,
+      props.env
     );
     this.cloudfrontDistribution = distribution;
     this.siteBucket = appBucket;
   }
 
-  private createStaticSite (id: string, allowedMethods: string[], accessLogsBucket: s3.Bucket) {
+  private createStaticSite (id: string, allowedMethods: string[], accessLogsBucket: s3.Bucket, env: cdk.Environment) {
     const oai = new cloudfront.OriginAccessIdentity(this, `${id}OriginAccessIdentity`, {
       comment: 'Special CloudFront user to fetch S3 contents'
     });
@@ -35,6 +39,7 @@ export class StaticSiteDistro extends Construct {
     const domainNamesToUse: string[] = [];
 
     const appBucket = new s3.Bucket(this, `${id}Bucket`, {
+      bucketName: `${id}bucket-${env.account}-${env.region}`,
       enforceSSL: true,
       serverAccessLogsBucket: accessLogsBucket,
       autoDeleteObjects: true,

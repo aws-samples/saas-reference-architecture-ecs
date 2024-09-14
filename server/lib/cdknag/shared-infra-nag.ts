@@ -108,5 +108,34 @@ export class SharedInfraNag extends Construct {
         ]
       );
     }
+
+
+
+    NagSuppressions.addResourceSuppressionsByPath(
+      cdk.Stack.of(this),
+      [
+        `/shared-infra-stack/adminsite/adminsiteDistribution/Resource`,
+        `/shared-infra-stack/appsite/appsiteDistribution/Resource`
+      ],
+      [
+        {
+          id: 'AwsSolutions-CFR4',
+          reason: 'ECS Reference Arch uses the default CloudFront viewer certificate.'
+        },
+        {
+          id: 'AwsSolutions-CFR1',
+          reason: 'Warning: ECS Reference Arch:Geo Restriction'
+        },
+        {
+          id: 'AwsSolutions-CFR2',
+          reason: 'Warning: ECS Reference Arch:WAF'
+        },
+        {
+          id: 'AwsSolutions-CFR3',
+          reason: 'Warning: ECS The CloudFront does not have access logging enabled'
+        }
+      ]
+    );
+
   }
 }

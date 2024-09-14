@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
+import { FormControl, FormGroup, Validators, ValidatorFn, ValidationErrors, AbstractControl } from '@angular/forms';
 import { Router } from '@angular/router';
 import { TenantsService } from '../tenants.service';
 import { v4 as guid } from 'uuid';
@@ -12,8 +12,8 @@ import { v4 as guid } from 'uuid';
 export class CreateComponent implements OnInit {
   submitting = false;
   tenantForm = new FormGroup({
-    tenantName: new FormControl('', [Validators.required]),
-    email: new FormControl('', [Validators.required]),
+    tenantName: new FormControl('', [Validators.required, this.lowercaseAndNumberValidator() ]),
+    email: new FormControl('', [Validators.email, Validators.required]),
     tier: new FormControl('', [Validators.required]),
   });
   constructor(
@@ -41,6 +41,16 @@ export class CreateComponent implements OnInit {
         this.submitting = false;
       },
     });
+  }
+
+  lowercaseAndNumberValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (value && !/^[a-z][a-z0-9-]*$/.test(value)) {
+        return { lowercaseAndNumbers: 'Must start with a lowercase, and only lowercase, numbers, and hyphen' };
+      }
+      return null;
+    }
   }
 
   public get tenantName() {

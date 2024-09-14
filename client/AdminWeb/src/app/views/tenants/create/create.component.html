@@ -12,6 +12,7 @@
             required
           />
           <mat-error *ngIf="tenantName?.invalid">Name is required</mat-error>
+          <mat-error *ngIf="tenantName?.errors?.['lowercaseAndNumbers']">Must start with a lowercase, and only lowercase, numbers, and hyphen</mat-error>
         </mat-form-field>
         <mat-form-field>
           <mat-label>Enter email</mat-label>
