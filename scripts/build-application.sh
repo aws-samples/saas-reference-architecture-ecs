@@ -46,7 +46,7 @@ for SERVICE in "${SERVICE_REPOS[@]}"; do
   echo "➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤"
   echo "Repository [$SERVICE] checking..."
   REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text)
-  echo "exist repo: $REPO_EXISTS"
+
   if [ "$REPO_EXISTS" == "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE" ]; then
     echo "Repository [$SERVICE] already exists."
   else
