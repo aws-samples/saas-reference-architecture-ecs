@@ -14,7 +14,7 @@
 
 1. Basic 티어: 모든 테넌트에서 공유되는 ECS 서비스 (Pool 모델)
 2. Advanced 티어 : 공유 ECS 클러스터, 테넌트당 전용 ECS 서비스 (Silo 모델)
-3. Premium 티어: Dedicated ECS Cluster per tenant (Silo 모델)
+3. Premium 티어: 테넌트당 전용 ECS 클러스터 (Silo 모델)
 
 <p align="center">
 <img src="images/archi-high-level.png" alt="High-level Architecture"/>
