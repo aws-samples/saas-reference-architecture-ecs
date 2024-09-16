@@ -51,16 +51,18 @@ cd saas-reference-architecture-ecs/scripts
 
 그리고 ```install.sh```는 다음을 배포합니다:
  
-- AWS 계정에서 AWS S3 버킷을 만들고 이 레퍼런스 솔루션 코드를 버킷에 푸시합니다.
+- AWS 계정에서 AWS S3 버킷을 만들고 이 레퍼런스 솔루션 코드를 버킷에 업로드합니다.
+  - 업로든 된 소스는 Advanced 티어를 위한 마이크로서비스 프로비저닝 과 Premium 티어를 위한 ECS 와 마이크로서비스 프로비저닝에 사용.
 - 프로비저닝하는 CDK 스택 `controlplane-stack`
-  - 인프라가 테넌트를 프로비저닝/프로비저닝 해제할 수 있는 SaaS Builder Toolkit(SBT) Control Plane 구성 요소.
+  - 인프라가 테넌트를 프로비저닝/프로비저닝 해제할 수 있는 SaaS Builder Toolkit(SBT) Control Plane 구성 요소 설치.
 - 프로비저닝하는 CDK 스택 `coreappplane-stack`
-  - Control Plane 메시지를 수신하면 임의의 작업을 정의하고 실행할 수 있는 선택적 유틸리티인 SaaS Builder Toolkit(SBT) Core Application Plane. 이 레퍼런스 솔루션은 이 유틸리티를 사용하여 테넌트를 온보딩 및 오프보딩하기 위한 AWS CodeBuild 프로젝트를 시작합니다.
+  - Control Plane 메시지를 수신하면 임의의 작업을 정의하고 실행할 수 있는 선택적 유틸리티인 SaaS Builder Toolkit(SBT) Core Application Plane 설치. 
+  - 이 레퍼런스 솔루션은 이 유틸리티를 사용하여 테넌트를 온보딩 및 오프보딩하기 위한 AWS CodeBuild 프로젝트를 시작.
 - 프로비저닝하는 CDK 스택 `shared-infra-stack`
   - Amazon VPC, Amazon API Gateway 및 Load Balancer와 같은 공유 애플리케이션 인프라.
 - 프로비저닝하는 CDK 스택 `tenant-template-stack`
-  - `tenant-template-basic`: Basic 티어를 위한 ECS 클러스터 및 ECS 서비스 Order, Product 및 User 마이크로서비스를 설치합니다.
-  - `tenant-template-advanced`: Advanced 티어를 위한 ECS 클러스터를 설치합니다.(마이크로 서비스들은 테넌트 온보딩시에 전용으로 설치됩니다.)
+  - `tenant-template-basic`: Basic 티어를 위한 ECS 클러스터 및 ECS 서비스 Order, Product 및 User 마이크로서비스를 설치.
+  - `tenant-template-advanced`: Advanced 티어를 위한 ECS 클러스터를 설치.(마이크로 서비스들은 테넌트 온보딩시에 전용으로 설치)
 
 ## 리소스 정리
 

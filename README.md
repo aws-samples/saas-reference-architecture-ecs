@@ -55,6 +55,7 @@ Note that, ```build-application.sh``` builds docker images of sample SaaS applic
 And, ```install.sh``` deploys the following:
 
 - Creates an AWS S3 bucket in your AWS account and pushes this reference solution code to the bucket
+  - Uploaded sources are used for microservices provisioning for the Advanced tier and each ECS and microservices provisioning for the Premium tier.
 - Cdk stack `controlplane-stack` which provisions
   - SaaS Builder Toolkit(SBT) control plane components which allows infrastructure to provision/de-provision a tenant.
 - Cdk stack `coreappplane-stack` which provisions
