@@ -7,7 +7,7 @@ sudo yum install -y jq
 sudo yum install -y python3-pip
 sudo yum install -y npm
 sudo npm install -g aws-cdk
-sudo python3 -m pip install --upgrade setuptools
+sudo python3 -m pip install --upgrade --ignore-installed setuptools
 
 # Enable nocasematch option
 shopt -s nocasematch
@@ -23,7 +23,7 @@ VERSIONS=$(aws s3api list-object-versions --bucket "$CDK_PARAM_S3_BUCKET_NAME" -
 CDK_PARAM_COMMIT_ID=$(echo "$VERSIONS" | awk 'NR==1{print $1}')
 
 aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAME" --version-id "$CDK_PARAM_COMMIT_ID" "$CDK_SOURCE_NAME" 2>&1 
-unzip $CDK_SOURCE_NAME
+unzip -q $CDK_SOURCE_NAME
 cd ./server
 
 sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
@@ -34,21 +34,24 @@ npm install
 export CDK_PARAM_TENANT_ID=$tenantId
 export TIER=$tier
 export TENANT_ADMIN_EMAIL=$email
+export TENANT_NAME=$tenantName
 
 # Define variables
-TENANT_ADMIN_USERNAME="tenant-admin-$CDK_PARAM_TENANT_ID"
+# TENANT_ADMIN_USERNAME="tenant-admin-$CDK_PARAM_TENANT_ID"
+TENANT_ADMIN_USERNAME="$TENANT_NAME-$CDK_PARAM_TENANT_ID"
 STACK_NAME="tenant-template-stack-basic"
 USER_POOL_OUTPUT_PARAM_NAME="TenantUserpoolId"
 API_GATEWAY_URL_OUTPUT_PARAM_NAME="ApiGatewayUrl"
 APP_CLIENT_ID_OUTPUT_PARAM_NAME="UserPoolClientId"
 BOOTSTRAP_STACK_NAME="shared-infra-stack"
 
-
 # Deploy the tenant template for premium && advanced tier(silo)
 if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   STACK_NAME="tenant-template-stack-$CDK_PARAM_TENANT_ID"
-  if [[ $TIER == "ADVANCED" ]]; then
-    export CDK_ADV_CLUSTER=$(aws ecs describe-clusters --cluster prod-advanced-${ACCOUNT_ID} | jq -r '.clusters[0].status')
+  if [[ $TIER == "PREMIUM" ]]; then
+    export CDK_ADV_CLUSTER='INACTIVE'
+  else
+    export CDK_ADV_CLUSTER='ACTIVE'
   fi
 
   export CDK_PARAM_CONTROL_PLANE_SOURCE='sbt-control-plane-api'
@@ -59,6 +62,7 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   export CDK_PARAM_PROVISIONING_EVENT_SOURCE="sbt-application-plane-api"
   export CDK_PARAM_APPLICATION_NAME_PLANE_SOURCE="sbt-application-plane-api"
   export CDK_PARAM_TIER=$TIER
+  export CDK_PARAM_TENANT_NAME=$TENANT_NAME  #Added for demonstration during the workshop
   cdk deploy $STACK_NAME --exclusively --require-approval never 
 fi
 
@@ -71,7 +75,7 @@ API_GATEWAY_URL=$(aws cloudformation describe-stacks --stack-name $BOOTSTRAP_STA
 aws cognito-idp admin-create-user \
   --user-pool-id "$SAAS_APP_USERPOOL_ID" \
   --username "$TENANT_ADMIN_USERNAME" \
-  --user-attributes Name=email,Value="$TENANT_ADMIN_EMAIL" Name=email_verified,Value="True" Name=phone_number,Value="+11234567890" Name="custom:userRole",Value="TenantAdmin" Name="custom:tenantId",Value="$CDK_PARAM_TENANT_ID" Name="custom:tenantTier",Value="$TIER" \
+  --user-attributes Name=email,Value="$TENANT_ADMIN_EMAIL" Name=email_verified,Value="True" Name=phone_number,Value="+11234567890" Name="custom:userRole",Value="TenantAdmin" Name="custom:tenantId",Value="$CDK_PARAM_TENANT_ID" Name="custom:tenantTier",Value="$TIER" Name="custom:tenantName",Value="$TENANT_NAME"\
   --desired-delivery-mediums EMAIL
 
 # Create tenant user group

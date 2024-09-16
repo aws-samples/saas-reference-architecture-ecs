@@ -7,11 +7,10 @@ sudo yum install -y npm
 sudo npm install -g aws-cdk
 sudo yum install -y jq
 sudo yum install -y python3-pip
-sudo python3 -m pip install --upgrade setuptools
+sudo python3 -m pip install --upgrade --ignore-installed setuptools
 
 # Enable nocasematch option
 shopt -s nocasematch
-
 
 # Parse tenant details from the input message from step function
 export CDK_PARAM_TENANT_ID=$tenantId

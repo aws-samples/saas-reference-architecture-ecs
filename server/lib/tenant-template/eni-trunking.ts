@@ -54,7 +54,6 @@ export class CustomEniTrunking extends Construct {
       };
     `);
 
-
     const customEniTrunkingPolicy = new cdk.aws_iam.PolicyDocument({
         statements: [
           new cdk.aws_iam.PolicyStatement({
@@ -80,8 +79,7 @@ export class CustomEniTrunking extends Construct {
         timeout: cdk.Duration.seconds(30),
         role: customEniTrunkingRole
       });
-
-
+      
     // Role for the EC2 instances
     this.ec2Role = new iam.Role(this, 'EC2Role', {
       assumedBy: new iam.CompositePrincipal(

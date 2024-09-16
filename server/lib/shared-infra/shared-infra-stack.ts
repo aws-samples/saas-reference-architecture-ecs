@@ -16,6 +16,8 @@ import { ApiGateway } from './api-gateway';
 import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
 import { TenantApiKey } from './tenant-api-key';
 import { addTemplateTag } from '../utilities/helper-functions';
+import { StaticSiteDistro } from './static-site-distro';
+import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
 
 export interface SharedInfraProps extends cdk.StackProps {
   isPooledDeploy: boolean
@@ -26,7 +28,6 @@ export interface SharedInfraProps extends cdk.StackProps {
   apiKeyBasicTierParameter: string
   stageName: string
   azCount: number
-  env: cdk.Environment
 }
 
 export class SharedInfraStack extends cdk.Stack {
@@ -37,6 +38,12 @@ export class SharedInfraStack extends cdk.Stack {
   listener: elbv2.ApplicationListener;
   nlbListener: elbv2.NetworkListener;
   apiGateway: ApiGateway;
+  adminSiteUrl: string;
+  appSiteUrl: string;
+  adminSiteDistro: StaticSiteDistro;
+  appSiteDistro: StaticSiteDistro;
+  accessLogsBucket: cdk.aws_s3.Bucket;
+  public readonly tenantMappingTable: Table;
 
   constructor (scope: Construct, id: string, props: SharedInfraProps) {
     super(scope, id);
@@ -219,7 +226,44 @@ export class SharedInfraStack extends cdk.Stack {
         description: `Private Subnet ${index+1} Router ID`,
       });
     });
+    
+    //**Provider Admin Cloudfront */
+    this.accessLogsBucket = new cdk.aws_s3.Bucket(this, 'AccessLogsBucket', {
+      enforceSSL: true,
+      autoDeleteObjects: true,
+      accessControl: cdk.aws_s3.BucketAccessControl.LOG_DELIVERY_WRITE,
+      removalPolicy: cdk.RemovalPolicy.DESTROY
+    });
 
+    this.adminSiteDistro = new StaticSiteDistro(this, 'adminsite', {
+      allowedMethods: ['GET', 'HEAD', 'OPTIONS'],
+      accessLogsBucket: this.accessLogsBucket,
+      env: {
+        account: this.account,
+        region: this.region
+      }
+    });
+
+    this.adminSiteUrl = `https://${this.adminSiteDistro.cloudfrontDistribution.domainName}`;
+
+    //**Tenant Application Cloudfront*/
+    this.appSiteDistro = new StaticSiteDistro(this, 'appsite', {
+      allowedMethods: ['GET', 'HEAD', 'OPTIONS'],
+      accessLogsBucket: this.accessLogsBucket,
+      env: {
+        account: this.account,
+        region: this.region
+      }
+    });
+
+    this.appSiteUrl = `https://${this.appSiteDistro.cloudfrontDistribution.domainName}`;
+    //******/
+
+    this.tenantMappingTable = new Table(this, 'TenantMappingTable', {
+      partitionKey: { name: 'tenantId', type: AttributeType.STRING }
+    });
+
+    //**Output */
     new cdk.CfnOutput(this, 'ALBDnsName', {
       value: this.alb.loadBalancerDnsName,
       exportName: 'ALBDnsName'
@@ -241,6 +285,14 @@ export class SharedInfraStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'ApiGatewayUrl', {
       value: this.apiGateway.restApi.url
+    });
+
+    new cdk.CfnOutput(this, 'adminSiteUrl', {
+      value: this.adminSiteUrl
+    });
+
+    new cdk.CfnOutput(this, 'appSiteUrl', {
+      value: this.appSiteUrl
     });
 
     new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });

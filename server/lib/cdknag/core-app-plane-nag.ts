@@ -72,6 +72,10 @@ export class CoreAppPlaneNag extends Construct {
             {
               regex: '/^Resource::<StaticSiteDistroStaticSiteDistroBucket(.*).Arn(.*)\\*$/g'
             },
+            'Resource::arn:<AWS::Partition>:logs:<AWS::Region>:<AWS::AccountId>:log-group:/aws/codebuild/<TenantWebUITenantWebUINpmBuildProject02E6ED86>:*',
+            'Resource::arn:<AWS::Partition>:codebuild:<AWS::Region>:<AWS::AccountId>:report-group/<TenantWebUITenantWebUINpmBuildProject02E6ED86>-*',
+            'Resource::<appsiteappsiteBucketDC62C27C.Arn>/*',
+            'Resource::arn:<AWS::Partition>:s3:::cdk-hnb659fds-assets-<AWS::AccountId>-<AWS::Region>/*'
           ]
         },
         policy
@@ -124,41 +128,41 @@ export class CoreAppPlaneNag extends Construct {
         }
       ]
     );
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [
-        `/core-appplane-stack/StaticSiteDistro/StaticSiteDistroDistribution/Resource`,
-        `${nagWebPath}NpmBuildProject/Resource`
-      ],
-      [
-        {
-          id: 'AwsSolutions-CFR4',
-          reason: 'ECS Reference Arch uses the default CloudFront viewer certificate.'
-        },
-        {
-          id: 'AwsSolutions-CFR1',
-          reason: 'Warning: ECS Reference Arch:Geo Restriction'
-        },
-        {
-          id: 'AwsSolutions-CFR2',
-          reason: 'Warning: ECS Reference Arch:WAF'
-        },
-        {
-          id: 'AwsSolutions-CFR3',
-          reason: 'Warning: ECS The CloudFront does not have access logging enabled'
-        }
-      ]
-    );
+    // NagSuppressions.addResourceSuppressionsByPath(
+    //   cdk.Stack.of(this),
+    //   [
+    //     `/core-appplane-stack/StaticSiteDistro/StaticSiteDistroDistribution/Resource`,
+    //     `${nagWebPath}NpmBuildProject/Resource`
+    //   ],
+    //   [
+    //     {
+    //       id: 'AwsSolutions-CFR4',
+    //       reason: 'ECS Reference Arch uses the default CloudFront viewer certificate.'
+    //     },
+    //     {
+    //       id: 'AwsSolutions-CFR1',
+    //       reason: 'Warning: ECS Reference Arch:Geo Restriction'
+    //     },
+    //     {
+    //       id: 'AwsSolutions-CFR2',
+    //       reason: 'Warning: ECS Reference Arch:WAF'
+    //     },
+    //     {
+    //       id: 'AwsSolutions-CFR3',
+    //       reason: 'Warning: ECS The CloudFront does not have access logging enabled'
+    //     }
+    //   ]
+    // );
 
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      '/core-appplane-stack/TenantMappingTable/Resource',
-      [
-        {
-          id: 'AwsSolutions-DDB3',
-          reason: 'Warning: This ECS Reference Arch, Point-in-time Recovery not enabled'
-        }
-      ]
-    );
+    // NagSuppressions.addResourceSuppressionsByPath(
+    //   cdk.Stack.of(this),
+    //   '/core-appplane-stack/TenantMappingTable/Resource',
+    //   [
+    //     {
+    //       id: 'AwsSolutions-DDB3',
+    //       reason: 'Warning: This ECS Reference Arch, Point-in-time Recovery not enabled'
+    //     }
+    //   ]
+    // );
   }
 }

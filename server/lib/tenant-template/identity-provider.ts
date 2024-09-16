@@ -48,20 +48,24 @@ export class IdentityProvider extends Construct {
         // to use without having to hit an external db in the lambda tenant_authorizer function
         tenantTier: new aws_cognito.StringAttribute({
           mutable: true
+        }),
+        tenantName: new aws_cognito.StringAttribute({
+          mutable: true
         })
+
       },
       userInvitation: {
         emailSubject: 'Your temporary password tenant UI application',
         emailBody:
           `Login into tenant UI application at ${props.appSiteUrl} with username {username} and temporary password {####}`,
         smsMessage:
-          'Login into tenant UI application at ${props.appSiteUrl} with username {username} and temporary password {####}'
+          'Login: ${props.appSiteUrl}, tenant: ${tenantName}, username:{username}, temp P.W:{####}',
       }
     });
 
     const writeAttributes = new aws_cognito.ClientAttributes()
       .withStandardAttributes({ email: true })
-      .withCustomAttributes('tenantId', 'userRole', 'apiKey', 'tenantTier');
+      .withCustomAttributes('tenantId', 'userRole', 'apiKey', 'tenantTier', 'tenantName');
 
     this.tenantUserPoolClient = new aws_cognito.UserPoolClient(this, 'tenantUserPoolClient', {
       userPool: this.tenantUserPool,

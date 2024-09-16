@@ -22,7 +22,8 @@ export class ControlPlaneNag extends Construct {
         },
         {
           regex: '/^Resource::<StaticSiteDistro(.*).Arn(.*)\\*$/g'
-        }
+        },
+        'Resource::<adminsiteadminsiteBucketCFEB0FF8.Arn>/*'
       ]
     };
 
@@ -43,11 +44,12 @@ export class ControlPlaneNag extends Construct {
           reason: 'This Nag is from sbt-aws module',
           appliesTo: [
             {
-              regex: '/^Resource::arn:aws:execute-api:(.*):(.*)\\*$/g'
+              regex: '/^Resource::arn:(.*):execute-api:(.*):(.*)\\*$/g'
             },
             {
               regex: '/^Resource::<controlplanesbttenantManagementServicves(.*).Arn(.*)\\*$/g'
             }
+
           ]
         }
       ]
@@ -107,7 +109,9 @@ export class ControlPlaneNag extends Construct {
             },
             {
               regex: '/^Resource::<AdminWebUiSourceCodeBucket(.*).Arn(.*)\\*$/g'
-            }
+            },
+
+            'Resource::arn:<AWS::Partition>:s3:::cdk-hnb659fds-assets-<AWS::AccountId>-<AWS::Region>/*'
           ]
         },
         policy
@@ -166,25 +170,42 @@ export class ControlPlaneNag extends Construct {
 
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
-      `${nagSitePath}Distribution/Resource`,
+      [`${nagPath}NpmBuildProject/Role/DefaultPolicy/Resource`
+      ],
       [
         {
-          id: 'AwsSolutions-CFR4',
-          reason: 'ECS Reference Arch uses the default CloudFront viewer certificate.'
-        },
-        {
-          id: 'AwsSolutions-CFR1',
-          reason: 'Warning: ECS Reference Arch:Geo Restriction'
-        },
-        {
-          id: 'AwsSolutions-CFR2',
-          reason: 'Warning: ECS Reference Arch:WAF'
-        },
-        {
-          id: 'AwsSolutions-CFR3',
-          reason: 'Warning: ECS The CloudFront does not have access logging enabled'
+          id: 'AwsSolutions-IAM5',
+          reason: 'CDK S3 Bucket for Ref',
+          appliesTo: [
+            'Resource::arn:<AWS::Partition>:logs:<AWS::Region>:<AWS::AccountId>:log-group:/aws/codebuild/<AdminWebUiAdminWebUiNpmBuildProjectFBC2F979>:*',
+            'Resource::arn:<AWS::Partition>:codebuild:<AWS::Region>:<AWS::AccountId>:report-group/<AdminWebUiAdminWebUiNpmBuildProjectFBC2F979>-*'
+          ]
         }
       ]
     );
+
+
+    // NagSuppressions.addResourceSuppressionsByPath(
+    //   cdk.Stack.of(this),
+    //   `${nagSitePath}Distribution/Resource`,
+    //   [
+    //     {
+    //       id: 'AwsSolutions-CFR4',
+    //       reason: 'ECS Reference Arch uses the default CloudFront viewer certificate.'
+    //     },
+    //     {
+    //       id: 'AwsSolutions-CFR1',
+    //       reason: 'Warning: ECS Reference Arch:Geo Restriction'
+    //     },
+    //     {
+    //       id: 'AwsSolutions-CFR2',
+    //       reason: 'Warning: ECS Reference Arch:WAF'
+    //     },
+    //     {
+    //       id: 'AwsSolutions-CFR3',
+    //       reason: 'Warning: ECS The CloudFront does not have access logging enabled'
+    //     }
+    //   ]
+    // );
   }
 }

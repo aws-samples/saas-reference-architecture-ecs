@@ -4,43 +4,62 @@
 
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
-service_repos=("user" "product" "order" "rproxy")
+SERVICE_REPOS=("user" "product" "order" "rproxy")
+# RPROXY_VERSIONS=("v1" "v2")
+
+REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+REGISTRY="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
+aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin $REGISTRY
 
 deploy_service () {
 
     local SERVICE_NAME="$1"
+    local VERSION="$2"
 
     if [[ -z "$SERVICE_NAME" ]]; then
       echo "Please provide a SERVICE NAME"
       exit 1
     fi
 
-    local REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
-    local ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
     local SERVICEECR="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE_NAME"
-
-    CWD=$(pwd)
-    cd ../server/application
-    local REGISTRY=$(echo $SERVICEECR| cut -d'/' -f 1)
-
-    aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY
+    # Docker Image Build
     docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
-    docker push $SERVICEECR:latest
+    # Docker Image Tag
+    docker tag "$SERVICEECR" "$SERVICEECR:$VERSION"
+    # Docker Image Push to ECR
+    docker push "$SERVICEECR:$VERSION"
 
-    cd $CWD
     echo '************************' 
-    echo '************************' 
-    echo ""
-    echo "$SERVICE_NAME SERVICE_ECR_REPO:" $SERVICEECR
     echo "AWS_REGION:" $REGION
+    echo "$SERVICE_NAME SERVICE_ECR_REPO: $SERVICEECR VERSION: $VERSION"
+    
 
 }
 
-##export service_repos;
-for repository in "${service_repos[@]}"
-do
-echo $repository
-  aws ecr describe-repositories --repository-names "$repository" 2>/dev/null || echo "ECR Repository '$repository' does not exist. Creating..." && 
-  aws ecr create-repository --repository-name "$repository"
-  deploy_service $repository
+
+CWD=$(pwd)
+cd ../server/application
+
+for SERVICE in "${SERVICE_REPOS[@]}"; do
+  echo "➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤"
+  echo "Repository [$SERVICE] checking..."
+  REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text)
+
+  if [ "$REPO_EXISTS" == "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE" ]; then
+    echo "Repository [$SERVICE] already exists."
+  else
+    echo "Repository [$SERVICE] does not exist, creating it..."
+    aws ecr create-repository --repository-name "$SERVICE" | cat 
+    echo "Repository [$SERVICE] created."
+  fi
+
+  VERSION="latest"
+  deploy_service $SERVICE $VERSION
 done
+
+cd $CWD
+
+# cloud9 SSM plugins to connect to the inside of Container
+# sudo dnf install -y https://s3.amazonaws.com/session-manager-downloads/plugin/latest/linux_64bit/session-manager-plugin.rpm

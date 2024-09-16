@@ -1,11 +1,6 @@
 #!/bin/bash -e
 
-export CDK_PARAM_SYSTEM_ADMIN_EMAIL="$1"
-
-if [[ -z "$CDK_PARAM_SYSTEM_ADMIN_EMAIL" ]]; then
-  echo "Please provide system admin email"
-  exit 1
-fi
+export CDK_PARAM_SYSTEM_ADMIN_EMAIL="dummy"
 
 export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')  # Region setting
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -34,7 +29,7 @@ export CDK_PARAM_OFFBOARDING_DETAIL_TYPE='Offboarding'
 export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
 export CDK_PARAM_TIER='basic'
 export CDK_PARAM_STAGE='prod'
-
+export CDK_ADV_CLUSTER='INACTIV'
 export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
 
 npm install
@@ -51,4 +46,7 @@ for SERVICE in $SERVICES; do
         --no-cli-pager --query 'service.serviceArn' --output text
 done
 
-npx cdk deploy --all --require-approval=never
+# npx cdk deploy shared-infra-stack --require-approval=never
+npx cdk deploy \
+    tenant-template-stack-basic \
+    tenant-template-stack-advanced --require-approval=never
