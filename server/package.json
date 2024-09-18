@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "2.140.0-alpha.0",
+    "@aws-sdk/client-dynamodb": "^3.651.1",
     "@cdklabs/sbt-aws": "0.5.3",
     "aws-cdk-lib": "2.140.0",
     "constructs": "10.0.5"

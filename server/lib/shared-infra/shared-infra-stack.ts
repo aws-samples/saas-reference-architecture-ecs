@@ -260,7 +260,8 @@ export class SharedInfraStack extends cdk.Stack {
     //******/
 
     this.tenantMappingTable = new Table(this, 'TenantMappingTable', {
-      partitionKey: { name: 'tenantId', type: AttributeType.STRING }
+      partitionKey: { name: 'tenantId', type: AttributeType.STRING },
+      pointInTimeRecovery: true
     });
 
     //**Output */

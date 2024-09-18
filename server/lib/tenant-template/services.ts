@@ -13,11 +13,11 @@ import { getHashCode } from '../utilities/helper-functions';
 import { type ContainerInfo } from '../interfaces/container-info';
 import { type RproxyInfo } from '../interfaces/rproxy-info';
 import { addTemplateTag } from '../utilities/helper-functions';
-import getTimeString from '../utilities/helper-functions';
 import { TenantServiceNag } from '../cdknag/tenant-service-nag';
+import { Storage } from './storage';
+import { getServiceName, createTaskDefinition } from '../utilities/ecs-utils';
 
 export interface EcsServiceProps extends cdk.NestedStackProps {
-  stageName: string
   tenantId: string
   tenantName: string
   tier: string
@@ -38,6 +38,7 @@ export class EcsService extends cdk.NestedStack {
   isEc2Tier: boolean;
   ecrRepository: string;
   cluster: ecs.ICluster;
+  storage: Storage;
 
   constructor (scope: Construct, id: string, props: EcsServiceProps) {
     super(scope, id, props);
@@ -48,10 +49,8 @@ export class EcsService extends cdk.NestedStack {
     this.ecsSG = props.ecsSG;
     this.vpc = props.vpc;
     this.listener = props.listener;
-    const timeStr = getTimeString();
 
     this.namespace = new HttpNamespace(this, 'CloudMapNamespace', {
-      // name: `ecs-sbt.local-${props.tenantId}-${timeStr}`,
       name: `${tenantName}`,
     });
 
@@ -60,7 +59,7 @@ export class EcsService extends cdk.NestedStack {
     const microservicesObj = JSON.parse(containerInfoJSON.toString());
     const containerInfo: ContainerInfo[] = microservicesObj.Containers;
 
-    const info: RproxyInfo = microservicesObj.Rproxy;
+    const rProxyInfo: RproxyInfo = microservicesObj.Rproxy;
 
     const taskExecutionRole = new iam.Role(this, `ecsTaskExecutionRole-${tenantId}`, {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
@@ -69,105 +68,49 @@ export class EcsService extends cdk.NestedStack {
       ]
     });
 
-    let rproxyService: ecs.IService;
-    if (props.isRProxy) {
-      this.ecrRepository = info.image.split('/')[0];
-      rproxyService = this.createRproxyService(
-        props.cluster,
-        tenantId,
-        tenantName,
-        info,
-        taskExecutionRole,
-        props.stageName
-      );
-    }
+    const rproxyService = props.isRProxy 
+      ? this.createRproxyService( props.cluster, tenantId, tenantName, rProxyInfo, taskExecutionRole)
+      : null;
+
     //* ******/> Create ECS services dynamically    <=========
     //* ******/> based on container info JSON file. <=========
     containerInfo.forEach((info, index) => {
-      let table = null;
       let policy = JSON.stringify(info.policy);
-      if (info.name !== 'users') {
-        const tableName = info.tableName.replace(/_/g, '-').toLowerCase(); 
-        table = new cdk.aws_dynamodb.Table(this, `${info.tableName}`, {
-          tableName: `${tableName}-${tenantName}`,
-          billingMode: cdk.aws_dynamodb.BillingMode.PROVISIONED,
-          readCapacity: 5,
-          writeCapacity: 5,
-          partitionKey: {
-            name: 'tenantId',
-            type: cdk.aws_dynamodb.AttributeType.STRING
-          },
-          sortKey: {
-            name: `${info.sortKey}`,
-            type: cdk.aws_dynamodb.AttributeType.STRING
-          }
+      if (info.hasOwnProperty('tableName')) {
+        this.storage = new Storage(this, `${info.name}Storage`, {
+          name: info.name, partitionKey: 'tenantId', sortKey: `${info.sortKey}`,
+          tableName: `${info.tableName.replace(/_/g, '-').toLowerCase()}-${props.tenantName}`,
         });
-        new cdk.CfnOutput(this, `${info.name}TableName`, {
-          value: table.tableName
-        });
-
-        policy = policy.replace(/<TABLE_ARN>/g, `${table.tableArn}`);
+        policy = policy.replace(/<TABLE_ARN>/g, `${this.storage.tableArn}`);
       } else {
         policy = policy.replace(/<USER_POOL_ID>/g, `${props.idpDetails.details.userPoolId}`);
       }
-
       const policyDocument = iam.PolicyDocument.fromJson(JSON.parse(policy));
-
       const taskRole = new iam.Role(this, `${info.name}-ecsTaskRole`, {
         assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-        inlinePolicies: {
-          EcsContainerInlinePolicy: policyDocument
-        }
+        inlinePolicies: { EcsContainerInlinePolicy: policyDocument }
       });
-
       taskRole.addManagedPolicy(
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'service-role/AmazonEC2ContainerServiceforEC2Role'
-        )
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role')
       );
 
-      let taskDefinition = null;
-      if (this.isEc2Tier) {
-        // ec2
-        taskDefinition = new ecs.Ec2TaskDefinition(this, `${info.name}-TaskDef`, {
-          executionRole: taskExecutionRole,
-          taskRole: taskRole,
-          networkMode: ecs.NetworkMode.AWS_VPC
-        });
-      } else {
-        // fargate
-        taskDefinition = new ecs.FargateTaskDefinition(this, `${info.name}-TaskDef`, {
-          memoryLimitMiB: info.memoryLimitMiB,
-          cpu: info.cpu,
-          executionRole: taskExecutionRole,
-          taskRole: taskRole
-        });
-      }
+      const taskDefinition = createTaskDefinition(this, this.isEc2Tier, taskExecutionRole, taskRole, `${info.name}-TaskDef`);
 
       taskDefinition.addContainer(`${info.name}-container${index}`, {
-        image: ecs.ContainerImage.fromEcrRepository(
-          ecr.Repository.fromRepositoryName(this, info.name, info.image.split('/')[1]),
-          'latest'
-        ),
-        memoryLimitMiB: info.memoryLimitMiB,
-        cpu: info.cpu,
-        portMappings: [
-          {
-            name: info.name,
-            containerPort: info.containerPort,
-            appProtocol: ecs.AppProtocol.http,
-            protocol: ecs.Protocol.TCP
-          }
-        ],
+        image: ecs.ContainerImage.fromEcrRepository( ecr.Repository.fromRepositoryName(this, info.name, info.image.split('/')[1]), 'latest' ),
+        memoryLimitMiB: info.memoryLimitMiB, cpu: info.cpu,
+        portMappings: [{
+            name: info.name, containerPort: info.containerPort,
+            appProtocol: ecs.AppProtocol.http,protocol: ecs.Protocol.TCP
+        }],
         environment: {
-          [info.tableName]: table ? table.tableName : '',
+          [info.tableName]: this.storage.table ? this.storage.table.tableName : '',
           AWS_REGION: cdk.Stack.of(this).region,
           AWS_ACCOUNT_ID: cdk.Stack.of(this).account,
           COGNITO_USER_POOL_ID: props.idpDetails.details.userPoolId,
           COGNITO_CLIENT_ID: props.idpDetails.details.appClientId,
           COGNITO_REGION: cdk.Stack.of(this).region
         },
-        
         logging: ecs.LogDriver.awsLogs({ streamPrefix: 'ecs-container-logs' })
       });
 
@@ -178,50 +121,33 @@ export class EcsService extends cdk.NestedStack {
         securityGroups: [this.ecsSG],
         trunking: true,
         serviceConnectConfiguration: {
-          logDriver: ecs.LogDrivers.awsLogs({
-            streamPrefix: `${info.name}-sc-traffic-`
-          }),
           namespace: this.namespace.namespaceArn,
-          services: [
-            {
+          services: [{
               portMappingName: info.name,
-              dnsName: `${info.name}-api.${tenantName}.sc`,
+              dnsName: `${info.name}-api.${this.namespace.namespaceName}.sc`, //THIS IS DNS CALLED FROM NGINX
               port: info.containerPort,
               discoveryName: `${info.name}-api`
-            }
-          ]
+          }],
+          logDriver: ecs.LogDrivers.awsLogs({ streamPrefix: `${info.name}-sc-traffic-`}),
         }
       };
 
-      let service = null;
-      if (this.isEc2Tier) {
-        service = new ecs.Ec2Service(this, `${info.name}-service`, serviceProps);
-      } else {
-        service = new ecs.FargateService(this, `${info.name}-service`, serviceProps);
-      }
+      const service = this.isEc2Tier
+        ? new ecs.Ec2Service(this, `${info.name}-service`, serviceProps)
+        : new ecs.FargateService(this, `${info.name}-service`, serviceProps);
 
-      const cfnService = service.node.defaultChild as ecs.CfnService; 
-      // const alphaNumericName = `${tenantId}`.replace(/[^a-zA-Z0-9]/g, '');  // tenantId(UUID)
-      const alphaNumericName = `${props.tenantName}`.replace(/[^a-zA-Z0-9]/g, '');  // tenantName
-      cfnService.serviceName = `${info.name}${alphaNumericName}`;
-      cfnService.overrideLogicalId(cfnService.serviceName);
-      cfnService.enableExecuteCommand = true;
+      getServiceName(service.node.defaultChild as ecs.CfnService, props.tenantName, info.name);
 
-      if (props.isRProxy) {
+      if (props.isRProxy && rproxyService != null) {
         rproxyService.node.addDependency(service);
       } else {
-        const targetGroupHttp = new elbv2.ApplicationTargetGroup(
-          this,
-          `target-group-${info.name}-${tenantId}`,
+        const targetGroupHttp = new elbv2.ApplicationTargetGroup( this, `target-group-${info.name}-${tenantId}`,
           {
-            port: info.containerPort,
             vpc: this.vpc,
+            port: info.containerPort,
             protocol: elbv2.ApplicationProtocol.HTTP,
             targetType: elbv2.TargetType.IP,
-            healthCheck: {
-              path: `/${info.name}/health`,
-              protocol: elbv2.Protocol.HTTP
-            }
+            healthCheck: { path: `/${info.name}/health`,protocol: elbv2.Protocol.HTTP }
           }
         );
 
@@ -240,8 +166,7 @@ export class EcsService extends cdk.NestedStack {
       }
       // Autoscaling based on memory and CPU usage
       const scalableTarget = service.autoScaleTaskCount({
-        minCapacity: 2,
-        maxCapacity: 5
+        minCapacity: 2, maxCapacity: 5
       });
 
       scalableTarget.scaleOnMemoryUtilization('ScaleUpMem', {
@@ -256,139 +181,80 @@ export class EcsService extends cdk.NestedStack {
     //* ******/> based on container info JSON file. <=========
 
     new TenantServiceNag(this, 'TenantInfraNag', {
-      tenantId: props.tenantId,
-      isEc2Tier: props.isEc2Tier,
-      tier: props.tier,
-      isRProxy: props.isRProxy
+      tenantId: props.tenantId, isEc2Tier: props.isEc2Tier,
+      tier: props.tier, isRProxy: props.isRProxy
     })
-
-
   }
 
+  /**==> Reverse Proxy Creation <==**/
   private createRproxyService (
-    cluster: ecs.ICluster,
-    tenantId: string,
-    tenantName: string,
-    info: RproxyInfo,
-    taskExecutionRole: iam.Role,
-    stageName: string
+    cluster: ecs.ICluster, tenantId: string,
+    tenantName: string, rInfo: RproxyInfo,
+    taskExecutionRole: iam.Role
   ): ecs.IService {
 
-    let rproxyTaskDef = null;
-    if (this.isEc2Tier) {
-      // ec2
-      rproxyTaskDef = new ecs.Ec2TaskDefinition(this, 'rproxy-TaskDef', {
-        executionRole: taskExecutionRole,
-        networkMode: ecs.NetworkMode.AWS_VPC
-      });
-    } else {
-      // fargate
-      rproxyTaskDef = new ecs.FargateTaskDefinition(this, 'rproxy-TaskDef', {
-        memoryLimitMiB: 512,
-        executionRole: taskExecutionRole
-      });
-    }
+    const taskRole = new iam.Role(this, `rProxy-taskRole`, {
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+    });
 
-    rproxyTaskDef.addContainer(`${info.name}-nginx`, {
-      image: ecs.ContainerImage.fromEcrRepository(
-        ecr.Repository.fromRepositoryName(this, info.name, info.image.split('/')[1]),
-        'latest'
-      ),
-      portMappings: [
-        {
-          name: info.name,
-          containerPort: info.containerPort,
-          appProtocol: ecs.AppProtocol.http,
-          protocol: ecs.Protocol.TCP
-        }
-      ],
-      environment: {
-        TENANT_ID: tenantId,
-        NAMESPACE: tenantName
-      },
-      command: ['/bin/sh', '-c', "envsubst '${NAMESPACE}' < /etc/nginx/nginx.conf > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"],
+    taskRole.addManagedPolicy( iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy') );
+    taskRole.addManagedPolicy( iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchFullAccess') );
+
+    const rproxyTaskDef = createTaskDefinition(this, this.isEc2Tier, taskExecutionRole, taskRole, 'rproxy-TaskDef');
+
+    rproxyTaskDef.addContainer(`${rInfo.name}-nginx`, {
+      image: ecs.ContainerImage.fromEcrRepository( ecr.Repository.fromRepositoryName(this, rInfo.name, rInfo.image.split('/')[1]), 'latest' ),
+      memoryLimitMiB: rInfo.memoryLimitMiB , cpu: rInfo.cpu, 
+      portMappings: [{
+        name: rInfo.name, containerPort: rInfo.containerPort,
+        appProtocol: ecs.AppProtocol.http, protocol: ecs.Protocol.TCP
+      }],
+      environment: { TENANT_ID: tenantId, NAMESPACE: this.namespace.namespaceName },
       logging: new ecs.AwsLogDriver({ streamPrefix: `rproxy-app-${tenantId}-` }),
-      memoryLimitMiB: 320, // limit examples from the official docs
-      cpu: 208 // limit examples from the official docs
     });
 
     const serviceProps = {
       cluster,
-      minHealthyPercent: 0, // for zero downtime rolling deployment set desiredcount=2 and minHealty = 50
-      desiredCount: 1,
+      minHealthyPercent: 0, desiredCount: 1,//for zero downtime rolling deployment set desiredcount=2, minHealty=50
       taskDefinition: rproxyTaskDef,
       securityGroups: [this.ecsSG],
-
       serviceConnectConfiguration: {
-        logDriver: ecs.LogDrivers.awsLogs({
-          streamPrefix: `${info.name}-traffic-`
-        }),
         namespace: this.namespace.namespaceArn,
-        services: [
-          {
-            portMappingName: info.name,
-            dnsName: `${info.name}-api.${tenantName}.sc`,
-            port: info.containerPort,
-            discoveryName: `${info.name}-api`
-          }
-        ]
+        services: [ { 
+            portMappingName: rInfo.name, dnsName: `${rInfo.name}-api.prod.sc`,
+            port: rInfo.containerPort, discoveryName: `${rInfo.name}-api`
+        }],
+        logDriver: ecs.LogDrivers.awsLogs({ streamPrefix: `${rInfo.name}-traffic-`}),
       }
     };
-    let service = null;
-    if (this.isEc2Tier) {
-      service = new ecs.Ec2Service(this, `${info.name}-nginx`, serviceProps);
-    } else {
-      service = new ecs.FargateService(this, `${info.name}-nginx`, serviceProps);
-    }
 
-    const cfnService = service.node.defaultChild as ecs.CfnService;
-    
-    //const alphaNumericName = `${tenantId}`.replace(/[^a-zA-Z0-9]/g, '');
-    const alphaNumericName = `${tenantName}`.replace(/[^a-zA-Z0-9]/g, '');
-    cfnService.serviceName = `${info.name}${alphaNumericName}`;
-    cfnService.overrideLogicalId(cfnService.serviceName);
-    cfnService.enableExecuteCommand = true;
+    const service = this.isEc2Tier
+        ? new ecs.Ec2Service(this, `${rInfo.name}-nginx`, serviceProps)
+        : new ecs.FargateService(this, `${rInfo.name}-nginx`, serviceProps);
+
+    getServiceName(service.node.defaultChild as ecs.CfnService, tenantName, rInfo.name);
 
     const targetGroupHttp = new elbv2.ApplicationTargetGroup(this, `target-group-${tenantId}`, {
-      port: info.containerPort,
       vpc: this.vpc,
+      port: rInfo.containerPort,
       protocol: elbv2.ApplicationProtocol.HTTP,
       targetType: elbv2.TargetType.IP,
-      healthCheck: {
-        path: '/health',
-        protocol: elbv2.Protocol.HTTP
-      }
+      healthCheck: { path: '/health', protocol: elbv2.Protocol.HTTP }
     });
 
     new elbv2.ApplicationListenerRule(this, `Rule-${tenantId}`, {
       listener: this.listener,
       priority: getHashCode(50000),
       action: elbv2.ListenerAction.forward([targetGroupHttp]),
-      conditions: [
-        elbv2.ListenerCondition.httpHeader('tenantPath', [tenantId])
-      ]
+      conditions: [ elbv2.ListenerCondition.httpHeader('tenantPath', [tenantId]) ]
     });
 
     service.attachToApplicationTargetGroup(targetGroupHttp);
     // required so the ALB can reach the health-check endpoint
-    service.connections.allowFrom(this.listener, ec2.Port.tcp(info.containerPort));
-
-    //* Set SSM policy to Reverse Proxy to connect the inside of container  */
-    // console.log(info.policy);
-    // let policy = JSON.stringify(info.policy);
-    // const policyDocument = iam.PolicyDocument.fromJson(JSON.parse(policy));
-    // const inlinePolicy = new iam.Policy(this, `${info.name}-execPolicy`, {
-    //   document: policyDocument
-    // });
-    // rproxyTaskDef.taskRole.attachInlinePolicy(inlinePolicy); 
-    
-    rproxyTaskDef.taskRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchAgentServerPolicy')
-    );
-    rproxyTaskDef.taskRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchFullAccess')
-    );
+    service.connections.allowFrom(this.listener, ec2.Port.tcp(rInfo.containerPort));
 
     return service;
   }
 }
+
+

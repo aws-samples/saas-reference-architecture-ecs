@@ -75,7 +75,6 @@ export class TenantUpdatePipeline extends cdk.Stack {
 
       role: deployerRole
     });
-
     
     const sourceOutput = new codepipeline.Artifact();
     const sourceArtifact = new codepipeline.Artifact();

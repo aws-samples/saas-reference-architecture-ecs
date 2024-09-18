@@ -12,10 +12,9 @@ import {
   PhysicalResourceId
 } from 'aws-cdk-lib/custom-resources';
 import { EcsCluster } from './ecs-cluster';
+import { EcsService } from './services';
 import { TenantTemplateNag } from '../cdknag/tenant-template-nag';
 import { addTemplateTag } from '../utilities/helper-functions';
-import { EcsService } from './services';
-// import { HttpNamespace } from 'aws-cdk-lib/aws-servicediscovery';
 
 interface TenantTemplateStackProps extends cdk.StackProps {
   stageName: string
@@ -35,7 +34,6 @@ export class TenantTemplateStack extends cdk.Stack {
   productServiceUri: string;
   orderServiceUri: string;
   cluster: ecs.ICluster;
-  // namespace: HttpNamespace;
 
   constructor (scope: Construct, id: string, props: TenantTemplateStackProps) {
     super(scope, id, props);
@@ -75,14 +73,10 @@ export class TenantTemplateStack extends cdk.Stack {
     ecsSG.connections.allowFrom(ecsSG, ec2.Port.tcp(3010), 'Backend Microservices');
 
     //=====================================================================
-    const ec2Tier = ['advanced', 'premium'];
+    const ec2Tier = [''];
     const isEc2Tier: boolean = ec2Tier.includes(props.tier.toLowerCase());
     const rProxy = ['advanced', 'premium'];
     const isRProxy: boolean = rProxy.includes(props.tier.toLowerCase());
-
-    // const namespace = new HttpNamespace(this, 'CloudMapNamespace', {
-    //   name: `ecs-sbt.local-${props.tenantId}-${timeStr}`,
-    // });
     
     if('advanced' === props.tier.toLocaleLowerCase() && 'ACTIVE' === props.advancedCluster ) {
       let clusterName = `${props.stageName}-advanced-${cdk.Stack.of(this).account}`
@@ -111,7 +105,6 @@ export class TenantTemplateStack extends cdk.Stack {
 
     if( 'advanced' !== props.tier.toLocaleLowerCase() || 'ACTIVE' === props.advancedCluster) {
       new EcsService(this, 'EcsServices', {
-        stageName: props.stageName,
         tenantId: props.tenantId,
         tenantName: props.tenantName,
         tier: props.tier,
@@ -191,7 +184,5 @@ export class TenantTemplateStack extends cdk.Stack {
       advancedCluster: props.advancedCluster,
       isRProxy
     })
-
-
   }
 }

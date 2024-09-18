@@ -5,10 +5,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
 import { type Construct } from 'constructs';
-import { type IdentityDetails } from '../interfaces/identity-details';
 import { CustomEniTrunking } from './eni-trunking';
 import { addTemplateTag } from '../utilities/helper-functions';
-import { TenantTemplateNag } from '../cdknag/tenant-template-nag';
 
 export interface EcsClusterProps extends cdk.NestedStackProps {
   vpc: ec2.IVpc

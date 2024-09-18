@@ -75,17 +75,6 @@ export class TenantServiceNag extends Construct {
       ]
     );
 
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [`${nagPath}/ORDER_TABLE_NAME/Resource`, `${nagPath}/PRODUCT_TABLE_NAME/Resource`],
-      [
-        {
-          id: 'AwsSolutions-DDB3',
-          reason: 'Reference for SBT-ECS SaaS: Point-in-time Recovery not need to be Enabled'
-        }
-      ]
-    );
-
     if (props.isRProxy) {
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
@@ -99,7 +88,7 @@ export class TenantServiceNag extends Construct {
       );
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
-        `${nagPath}/rproxy-TaskDef/TaskRole/Resource`,
+        `${nagPath}/rProxy-taskRole/Resource`,
         [
           {
             id: 'AwsSolutions-IAM4',

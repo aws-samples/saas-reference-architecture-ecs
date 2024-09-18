@@ -55,8 +55,6 @@
         "memoryLimitMiB": 512,
         "cpu": 256,
         "containerPort": 3010,
-        "sortKey": "",
-        "tableName": "USER_TABLE_NAME",
         "policy": {
           "Version": "2012-10-17",
           "Statement": [
