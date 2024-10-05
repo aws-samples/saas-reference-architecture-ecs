@@ -26,7 +26,9 @@ aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAM
 unzip -q $CDK_SOURCE_NAME
 cd ./server
 
-sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+# sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+
+cat ./lib/service-info.json
 
 npm install
 
@@ -47,23 +49,25 @@ BOOTSTRAP_STACK_NAME="shared-infra-stack"
 
 # Deploy the tenant template for premium && advanced tier(silo)
 if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
-  STACK_NAME="tenant-template-stack-$CDK_PARAM_TENANT_ID"
-  if [[ $TIER == "PREMIUM" ]]; then
-    export CDK_ADV_CLUSTER='INACTIVE'
-  else
-    export CDK_ADV_CLUSTER='ACTIVE'
-  fi
+    STACK_NAME="tenant-template-stack-$CDK_PARAM_TENANT_ID"
+    if [[ $TIER == "PREMIUM" ]]; then
+      export CDK_ADV_CLUSTER='INACTIVE'
+    else
+      export CDK_ADV_CLUSTER='ACTIVE'
+    fi
 
-  export CDK_PARAM_CONTROL_PLANE_SOURCE='sbt-control-plane-api'
-  export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'
-  export CDK_PARAM_PROVISIONING_DETAIL_TYPE=$CDK_PARAM_ONBOARDING_DETAIL_TYPE
-  export CDK_PARAM_OFFBOARDING_DETAIL_TYPE='Offboarding'
-  export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
-  export CDK_PARAM_PROVISIONING_EVENT_SOURCE="sbt-application-plane-api"
-  export CDK_PARAM_APPLICATION_NAME_PLANE_SOURCE="sbt-application-plane-api"
-  export CDK_PARAM_TIER=$TIER
-  export CDK_PARAM_TENANT_NAME=$TENANT_NAME  #Added for demonstration during the workshop
-  cdk deploy $STACK_NAME --exclusively --require-approval never 
+    export CDK_PARAM_CONTROL_PLANE_SOURCE='sbt-control-plane-api'
+    export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'
+    export CDK_PARAM_PROVISIONING_DETAIL_TYPE=$CDK_PARAM_ONBOARDING_DETAIL_TYPE
+    export CDK_PARAM_OFFBOARDING_DETAIL_TYPE='Offboarding'
+    export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
+    export CDK_PARAM_PROVISIONING_EVENT_SOURCE="sbt-application-plane-api"
+    export CDK_PARAM_APPLICATION_NAME_PLANE_SOURCE="sbt-application-plane-api"
+    export CDK_PARAM_TIER=$TIER
+    export CDK_PARAM_TENANT_NAME=$TENANT_NAME  #Added for demonstration during the workshop
+    export CDK_USE_DB='MYSQL'
+
+    cdk deploy $STACK_NAME --exclusively --require-approval never 
 fi
 
 # Read tenant details from the cloudformation stack output parameters

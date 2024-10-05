@@ -1,4 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
+import { Aws } from 'aws-cdk-lib';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
@@ -14,8 +15,37 @@ import { type ContainerInfo } from '../interfaces/container-info';
 import { type RproxyInfo } from '../interfaces/rproxy-info';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { TenantServiceNag } from '../cdknag/tenant-service-nag';
-import { Storage } from './storage';
+import { EcsDynamoDB } from './ecs-dynamodb';
 import { getServiceName, createTaskDefinition } from '../utilities/ecs-utils';
+// import { MysqlSchema } from './mysql-schema';
+// import * as lambda from 'aws-cdk-lib/aws-lambda';
+import {LambdaClient, InvokeCommand} from '@aws-sdk/client-lambda'
+
+
+// interface InvokeLambdaProps {
+//   tenantId: string;
+//   lambdaArn: string;
+// }
+
+// export async function invokeLambda(props: InvokeLambdaProps): Promise<string> {
+
+//   const lambdaClient = new LambdaClient();
+//   try {
+//     const command = new InvokeCommand({
+//       FunctionName: props.lambdaArn,
+//       Payload: Buffer.from(JSON.stringify({ tenantId: props.tenantId })),
+//     });
+//     const response = await lambdaClient.send(command);
+//     const payload = response.Payload ? response.Payload.toString() : 'No data';
+//     console.log('Lambda 호출 결과 :', payload);
+//     return payload;
+//   } catch (error) {
+//     console.error('Lambda 호출 에러 :', error);
+//     throw error;
+//   }
+  
+// }
+
 
 export interface EcsServiceProps extends cdk.NestedStackProps {
   tenantId: string
@@ -26,8 +56,9 @@ export interface EcsServiceProps extends cdk.NestedStackProps {
   isRProxy: boolean
   cluster: ecs.ICluster
   ecsSG: ec2.SecurityGroup 
-  vpc: ec2.IVpc;
-  listener: elbv2.IApplicationListener;
+  vpc: ec2.IVpc
+  listener: elbv2.IApplicationListener
+  // env: cdk.Environment
 }
 
 export class EcsService extends cdk.NestedStack {
@@ -38,12 +69,12 @@ export class EcsService extends cdk.NestedStack {
   isEc2Tier: boolean;
   ecrRepository: string;
   cluster: ecs.ICluster;
-  storage: Storage;
+  storage: EcsDynamoDB;
 
   constructor (scope: Construct, id: string, props: EcsServiceProps) {
     super(scope, id, props);
     addTemplateTag(this, 'EcsClusterStack');
-    const tenantId = props.tenantId;
+    // const tenantId = props.tenantId;
     const tenantName = props.tenantName;
     this.isEc2Tier = props.isEc2Tier;
     this.ecsSG = props.ecsSG;
@@ -61,42 +92,81 @@ export class EcsService extends cdk.NestedStack {
 
     const rProxyInfo: RproxyInfo = microservicesObj.Rproxy;
 
-    const taskExecutionRole = new iam.Role(this, `ecsTaskExecutionRole-${tenantId}`, {
+    const taskExecutionRole = new iam.Role(this, `ecsTaskExecutionRole-${props.tenantId}`, {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy')
       ]
-    });
+    })
 
     const rproxyService = props.isRProxy 
-      ? this.createRproxyService( props.cluster, tenantId, tenantName, rProxyInfo, taskExecutionRole)
+      ? this.createRproxyService( props.cluster, props.tenantId, tenantName, rProxyInfo, taskExecutionRole)
       : null;
+
+   
+    // if(process.env.CDK_USE_DB =='MYSQL') {
+    //   const stsRoleArn = cdk.Stack.of(this).formatArn({
+    //     service: 'iam',
+    //     resource: 'role',
+    //     resourceName: cdk.Fn.importValue('STSRoleArn')
+    //   });
+
+    const stsRoleArn = cdk.Fn.importValue('STSRoleArn')
+    const rdsStsRole = iam.Role.fromRoleArn(this, 'RdsStsRole', stsRoleArn, {
+      mutable: true,
+    })
+    
+    const dbProxyArn = cdk.Fn.importValue('DbProxyArn');
+    const proxyName = cdk.Fn.select(6, cdk.Fn.split(':', dbProxyArn));
+
+    // const taskRole = process.env.CDK_USE_DB =='MYSQL' ?
+    //  iam.Role.fromRoleArn(this, 'taskRole', cdk.Fn.importValue('TaskRoleArn'), {
+    //   mutable: true,
+    // }) : null;
+    
 
     //* ******/> Create ECS services dynamically    <=========
     //* ******/> based on container info JSON file. <=========
     containerInfo.forEach((info, index) => {
+      
       let policy = JSON.stringify(info.policy);
-      if (info.hasOwnProperty('tableName')) {
-        this.storage = new Storage(this, `${info.name}Storage`, {
-          name: info.name, partitionKey: 'tenantId', sortKey: `${info.sortKey}`,
-          tableName: `${info.tableName.replace(/_/g, '-').toLowerCase()}-${props.tenantName}`,
-        });
-        policy = policy.replace(/<TABLE_ARN>/g, `${this.storage.tableArn}`);
+
+
+      // console.log("info:" + JSON.stringify(info));
+
+      // const database = info?.database;
+      if (info.hasOwnProperty('database')) {
+        // const database = JSON.stringify(info.database);
+        if(info.database?.kind == 'dynamodb') {
+          this.storage = new EcsDynamoDB(this, `${info.name}Storage`, {
+            name: info.name, partitionKey: 'tenantId', sortKey: `${info.database?.sortKey}`,
+            tableName: `${info.database?.tableName.replace(/_/g, '-').toLowerCase()}-${props.tenantName}`,
+            tenantName: props.tenantName
+          });
+        }
+        // policy = policy.replace(/<TABLE_ARN>/g, `${this.storage.tableArn}`);  
       } else {
         policy = policy.replace(/<USER_POOL_ID>/g, `${props.idpDetails.details.userPoolId}`);
+      } 
+
+      let taskRole = null;
+      if(info.database?.kind == 'dynamodb') {
+        taskRole = new iam.Role(this, `${info.name}-ecsTaskRole`, {
+          assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+          inlinePolicies: { EcsContainerInlinePolicy: info.hasOwnProperty('database')? this.storage.policyDocument: new iam.PolicyDocument(JSON.parse(policy)) }
+        });
+        taskRole.addManagedPolicy(
+          iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role')
+        );
+      } else {
+        taskRole = iam.Role.fromRoleArn(this, `${info.name}-ecsTaskRole`, cdk.Fn.importValue('TaskRoleArn'), {
+          mutable: true,
+        })
       }
-      const policyDocument = iam.PolicyDocument.fromJson(JSON.parse(policy));
-      const taskRole = new iam.Role(this, `${info.name}-ecsTaskRole`, {
-        assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-        inlinePolicies: { EcsContainerInlinePolicy: policyDocument }
-      });
-      taskRole.addManagedPolicy(
-        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role')
-      );
 
       const taskDefinition = createTaskDefinition(this, this.isEc2Tier, taskExecutionRole, taskRole, `${info.name}-TaskDef`);
 
-      taskDefinition.addContainer(`${info.name}-container${index}`, {
+      const container = taskDefinition.addContainer(`${info.name}-container${index}`, {
         image: ecs.ContainerImage.fromEcrRepository( ecr.Repository.fromRepositoryName(this, info.name, info.image.split('/')[1]), 'latest' ),
         memoryLimitMiB: info.memoryLimitMiB, cpu: info.cpu,
         portMappings: [{
@@ -104,16 +174,22 @@ export class EcsService extends cdk.NestedStack {
             appProtocol: ecs.AppProtocol.http,protocol: ecs.Protocol.TCP
         }],
         environment: {
-          [info.tableName]: this.storage.table ? this.storage.table.tableName : '',
+          [info.database? info.database.tableName: "NOTABLE"]: this.storage.table ? this.storage.table.tableName : '',
           AWS_REGION: cdk.Stack.of(this).region,
           AWS_ACCOUNT_ID: cdk.Stack.of(this).account,
           COGNITO_USER_POOL_ID: props.idpDetails.details.userPoolId,
           COGNITO_CLIENT_ID: props.idpDetails.details.appClientId,
-          COGNITO_REGION: cdk.Stack.of(this).region
+          COGNITO_REGION: cdk.Stack.of(this).region,
+          //RdsProxy
+          IAM_ARN: stsRoleArn,
+          RESOURCE: `arn:aws:rds-db:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:dbuser:*/`,
+          PROXY_ENDPOINT: cdk.Fn.importValue('RdsProxyEndpoint'),
+          CLUSTER_ENDPOINT_RESOURCE: `arn:${Aws.PARTITION}:rds-db:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:dbuser:${proxyName}/`,
         },
         logging: ecs.LogDriver.awsLogs({ streamPrefix: 'ecs-container-logs' })
       });
 
+ 
       const serviceProps = {
         cluster: props.cluster,
         desiredCount: 2,
@@ -138,10 +214,34 @@ export class EcsService extends cdk.NestedStack {
 
       getServiceName(service.node.defaultChild as ecs.CfnService, props.tenantName, info.name);
 
+      ///////MYSQL-S
+      // if(process.env.CDK_USE_DB =='MYSQL') {
+      //   // const rdsConnectPolicyStatement = new iam.PolicyStatement({
+      //   //   effect: iam.Effect.ALLOW,
+      //   //   actions: ['rds-db:connect'],
+      //   //   resources: [`arn:aws:rds-db:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:dbuser:*`],
+      //   // });
+      //   // taskRole.addToPolicy(rdsConnectPolicyStatement);
+
+      //   // rdsStsRole.grantAssumeRole(new iam.ArnPrincipal(taskRole.grantPrincipal.assumeRoleAction));
+      //   // rdsStsRole.grantPrincipal.addToPrincipalPolicy(taskRole.assumeRolePolicy?.addStatements);
+      //   // rdsStsRole.addToPrincipalPolicy(
+      //   //   new iam.PolicyStatement({
+      //   //     effect: iam.Effect.ALLOW,
+      //   //     principals: [new iam.ArnPrincipal(taskRole.roleArn)],
+      //   //     actions: ['sts:AssumeRole']
+      //   //   })
+      //   // );
+      //   rdsStsRole.grant(new iam.ArnPrincipal(taskRole.roleArn));
+        
+
+      // }////////MYSQL-E
+
+
       if (props.isRProxy && rproxyService != null) {
         rproxyService.node.addDependency(service);
       } else {
-        const targetGroupHttp = new elbv2.ApplicationTargetGroup( this, `target-group-${info.name}-${tenantId}`,
+        const targetGroupHttp = new elbv2.ApplicationTargetGroup( this, `target-group-${info.name}-${props.tenantId}`,
           {
             vpc: this.vpc,
             port: info.containerPort,
@@ -151,18 +251,19 @@ export class EcsService extends cdk.NestedStack {
           }
         );
 
-        new elbv2.ApplicationListenerRule(this, `Rule-${info.name}-${tenantId}`, {
+        new elbv2.ApplicationListenerRule(this, `Rule-${info.name}-${props.tenantId}`, {
           listener: this.listener,
           priority: getHashCode(50000),
           action: elbv2.ListenerAction.forward([targetGroupHttp]),
           conditions: [
-            elbv2.ListenerCondition.httpHeader('tenantPath', [tenantId]),
+            elbv2.ListenerCondition.httpHeader('tenantPath', [props.tenantId]),
             elbv2.ListenerCondition.pathPatterns([`/${info.name}*`])
           ]
         });
 
         service.attachToApplicationTargetGroup(targetGroupHttp);
         service.connections.allowFrom(this.listener, ec2.Port.tcp(info.containerPort));
+        // service.node.addDependency(invokeLambdaLazy);
       }
       // Autoscaling based on memory and CPU usage
       const scalableTarget = service.autoScaleTaskCount({
@@ -180,10 +281,10 @@ export class EcsService extends cdk.NestedStack {
     //* ******/> Create ECS services dynamically    <=========
     //* ******/> based on container info JSON file. <=========
 
-    new TenantServiceNag(this, 'TenantInfraNag', {
-      tenantId: props.tenantId, isEc2Tier: props.isEc2Tier,
-      tier: props.tier, isRProxy: props.isRProxy
-    })
+    // new TenantServiceNag(this, 'TenantInfraNag', {
+    //   tenantId: props.tenantId, isEc2Tier: props.isEc2Tier,
+    //   tier: props.tier, isRProxy: props.isRProxy
+    // });
   }
 
   /**==> Reverse Proxy Creation <==**/
@@ -221,7 +322,7 @@ export class EcsService extends cdk.NestedStack {
       serviceConnectConfiguration: {
         namespace: this.namespace.namespaceArn,
         services: [ { 
-            portMappingName: rInfo.name, dnsName: `${rInfo.name}-api.prod.sc`,
+            portMappingName: rInfo.name, dnsName: `${rInfo.name}-api.${this.namespace.namespaceName}.sc`,
             port: rInfo.containerPort, discoveryName: `${rInfo.name}-api`
         }],
         logDriver: ecs.LogDrivers.awsLogs({ streamPrefix: `${rInfo.name}-traffic-`}),

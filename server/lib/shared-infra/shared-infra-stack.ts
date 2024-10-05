@@ -18,6 +18,8 @@ import { TenantApiKey } from './tenant-api-key';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from './static-site-distro';
 import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
+import { RdsCluster } from './rds-cluster';
+
 
 export interface SharedInfraProps extends cdk.StackProps {
   isPooledDeploy: boolean
@@ -49,7 +51,7 @@ export class SharedInfraStack extends cdk.Stack {
     super(scope, id);
     addTemplateTag(this, 'SharedInfraStack');
     const azs = cdk.Fn.getAzs(this.region);
-    // 스택의 리전에 있는 모든 가용 영역 목록 가져오기
+    // Get a list of all available zones in a stack's region
 
     const selectedAzs = Array(props.azCount).fill('').map(() => '');
 
@@ -264,6 +266,23 @@ export class SharedInfraStack extends cdk.Stack {
       pointInTimeRecovery: true
     });
 
+    //=====>>MYSQL<<===========
+    if(process.env.CDK_USE_DB == 'MYSQL') {
+      const rdsCluster = new RdsCluster(this, 'RdsCluster', {
+        vpc: this.vpc,
+        stageName: props.stageName,
+        lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
+        env: {
+          account: this.account,
+          region: this.region
+        }
+      });
+      new cdk.CfnOutput(this, 'SchemeLambdaArn', {
+        value: rdsCluster.schemeLambda.functionArn,
+        exportName: 'SchemeLambdaArn'
+      });
+    }
+    
     //**Output */
     new cdk.CfnOutput(this, 'ALBDnsName', {
       value: this.alb.loadBalancerDnsName,
@@ -296,7 +315,7 @@ export class SharedInfraStack extends cdk.Stack {
       value: this.appSiteUrl
     });
 
-    new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
+    // new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
   }
 
   ssmLookup (parameterName: string) {

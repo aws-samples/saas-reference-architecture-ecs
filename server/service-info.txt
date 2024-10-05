@@ -13,20 +13,12 @@
         "memoryLimitMiB": 512,
         "cpu": 256,
         "containerPort": 3010,
-        "sortKey": "orderId",
-        "tableName": "ORDER_TABLE_NAME",
-        "policy": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Action": [
-                "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:BatchGetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchWriteItem", "dynamodb:UpdateItem", "dynamodb:GetRecords"
-              ],
-              "Resource": "<TABLE_ARN>",
-              "Effect": "Allow"
-            }
-          ]
+        "database": {
+            "kind": "dynamodb",
+            "sortKey": "orderId",
+            "tableName": "ORDER_TABLE_NAME"
         }
+        
       },
       {
         "name": "products",
@@ -34,19 +26,10 @@
         "memoryLimitMiB": 512,
         "cpu": 256,
         "containerPort": 3010,
-        "sortKey": "productId",
-        "tableName": "PRODUCT_TABLE_NAME",
-        "policy": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Action": [
-                "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:BatchGetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchWriteItem", "dynamodb:UpdateItem", "dynamodb:GetRecords"
-              ],
-              "Resource": "<TABLE_ARN>",
-              "Effect": "Allow"
-            }
-          ]
+        "database": {
+            "kind": "mysql",
+            "sortKey": "productId",
+            "tableName": "PRODUCT_TABLE_NAME"
         }
       },
       {

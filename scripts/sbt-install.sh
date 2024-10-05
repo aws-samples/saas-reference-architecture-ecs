@@ -20,9 +20,10 @@ cd ../server
 
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
+export CDK_USE_DB='MYSQL'
 
 #npx cdk deploy --all --require-approval=never
-npx cdk deploy core-appplane-stack --require-approval=never
+npx cdk deploy core-appplane-stack --require-approval=any-change
 
 # Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name shared-infra-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)

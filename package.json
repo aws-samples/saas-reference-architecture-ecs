@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@aws-sdk/client-lambda": "^3.656.0",
+    "@aws-sdk/client-rds-data": "^3.654.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145"
+  }
+}

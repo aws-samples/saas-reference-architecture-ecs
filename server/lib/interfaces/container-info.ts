@@ -4,7 +4,16 @@ export interface ContainerInfo {
   memoryLimitMiB: number
   cpu: number
   containerPort: number
-  sortKey?: string
-  tableName: string
-  policy: string
+  policy?: string
+  database?: {
+    kind: string
+    sortKey?: string,
+    tableName: string
+  }
 }
+
+// export interface Database {
+//   kind: string
+//   sortKey?: string,
+//   tableName: string
+// }

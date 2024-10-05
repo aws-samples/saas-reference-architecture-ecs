@@ -35,6 +35,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       username: payload['cognito:username'],
       tenantId: payload['custom:tenantId'],
       tenantTier: payload['custom:tenantTier'],
+      tenantName: payload['custom:tenantName'],
       email: payload.email,
       userPoolId: match?.[0],
       appClientId: payload.aud

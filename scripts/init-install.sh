@@ -31,6 +31,7 @@ export CDK_PARAM_TIER='basic'
 export CDK_PARAM_STAGE='prod'
 export CDK_ADV_CLUSTER='INACTIV'
 export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
+export CDK_USE_DB='MYSQL'
 
 npm install
 npx cdk bootstrap
@@ -46,7 +47,12 @@ for SERVICE in $SERVICES; do
         --no-cli-pager --query 'service.serviceArn' --output text
 done
 
+### export DEPLOY_ENV=true
 # npx cdk deploy shared-infra-stack --require-approval=never
+
+
 npx cdk deploy \
+    shared-infra-stack \
     tenant-template-stack-basic \
-    tenant-template-stack-advanced --require-approval=never
+    tenant-template-stack-advanced --require-approval=any-change
+# 

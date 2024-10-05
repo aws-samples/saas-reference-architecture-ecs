@@ -153,14 +153,14 @@ for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^contr
 done
 
 #delete ecr repositories
-SERVICE_REPOS=("user" "product" "order" "rproxy")
-for SERVICE in "${SERVICE_REPOS[@]}"; do
-  echo "Repository [$SERVICE] checking..."
-  REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text)
-  if [ "$REPO_EXISTS" == "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE" ]; then
-    echo "Repository [$REPO_EXISTS] is deleting..."
-    aws ecr delete-repository --repository-name "$SERVICE" --force | cat
-  else
-    echo "Repository [$SERVICE] does not exist"
-  fi
-done
+# SERVICE_REPOS=("user" "product" "order" "rproxy")
+# for SERVICE in "${SERVICE_REPOS[@]}"; do
+#   echo "Repository [$SERVICE] checking..."
+#   REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text)
+#   if [ "$REPO_EXISTS" == "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE" ]; then
+#     echo "Repository [$REPO_EXISTS] is deleting..."
+#     aws ecr delete-repository --repository-name "$SERVICE" --force | cat
+#   else
+#     echo "Repository [$SERVICE] does not exist"
+#   fi
+# done

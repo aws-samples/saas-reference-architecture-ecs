@@ -6,7 +6,6 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import { RemovalPolicy } from 'aws-cdk-lib';
 import { addTemplateTag } from '../utilities/helper-functions';
-import { Environment } from 'aws-cdk-lib/aws-appconfig';
 
 export interface StaticSiteDistroProps {
   readonly allowedMethods: string[]

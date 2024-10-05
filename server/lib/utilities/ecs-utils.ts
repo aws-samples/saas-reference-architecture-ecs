@@ -15,7 +15,7 @@ export function createTaskDefinition (
   scope: Construct,
   isEc2Tier: boolean,
   taskExecutionRole: iam.Role,
-  taskRole: iam.Role,
+  taskRole: iam.IRole,
   familyName: string
 ): ecs.TaskDefinition {
   const baseProps = {

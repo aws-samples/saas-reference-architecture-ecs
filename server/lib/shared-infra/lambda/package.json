@@ -1,0 +1,23 @@
+{
+  "name": "lambda-function",
+  "version": "1.0.0",
+  "description": "Lambda function for creating tenant databases",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+  },
+
+  "dependencies": {
+    "aws-cdk-lib": "latest",
+    "constructs": "^10.0.0",
+    "@aws-sdk/client-secrets-manager": "^3.282.0",
+    "mysql2": "^3.1.2"
+  },
+
+  "devDependencies": {
+    "@types/node": "^18.14.6",
+    "typescript": "^4.9.5"
+  }
+
+}
+

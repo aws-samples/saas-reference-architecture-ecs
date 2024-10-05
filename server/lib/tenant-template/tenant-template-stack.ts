@@ -15,6 +15,7 @@ import { EcsCluster } from './ecs-cluster';
 import { EcsService } from './services';
 import { TenantTemplateNag } from '../cdknag/tenant-template-nag';
 import { addTemplateTag } from '../utilities/helper-functions';
+import { Environment } from 'aws-cdk-lib/aws-appconfig';
 
 interface TenantTemplateStackProps extends cdk.StackProps {
   stageName: string
@@ -56,6 +57,7 @@ export class TenantTemplateStack extends cdk.Stack {
     const albSGId = cdk.Fn.importValue('AlbSgId');
     // alb Security Group
     const albSG = ec2.SecurityGroup.fromSecurityGroupId(this, 'albSG', albSGId);
+    
 
     const listener = elbv2.ApplicationListener.fromApplicationListenerAttributes(this, 'ecs-sbt-listener',
       {
@@ -71,6 +73,12 @@ export class TenantTemplateStack extends cdk.Stack {
     });
     ecsSG.connections.allowFrom(albSG, ec2.Port.tcp(80), 'Application Load Balancer');
     ecsSG.connections.allowFrom(ecsSG, ec2.Port.tcp(3010), 'Backend Microservices');
+
+    // if(process.env.CDK_USE_DB =='MYSQL') {
+    //   const rdsProxyEndpoint = cdk.Fn.importValue('RdsProxyEndpoint');
+    // }
+
+    const schemeLambdaArn = process.env.CDK_USE_DB =='MYSQL'? cdk.Fn.importValue('SchemeLambdaArn'):"";
 
     //=====================================================================
     const ec2Tier = [''];
@@ -102,9 +110,8 @@ export class TenantTemplateStack extends cdk.Stack {
       this.cluster = ecsCluster.cluster;
     }
 
-
     if( 'advanced' !== props.tier.toLocaleLowerCase() || 'ACTIVE' === props.advancedCluster) {
-      new EcsService(this, 'EcsServices', {
+      const ecsService = new EcsService(this, 'EcsServices', {
         tenantId: props.tenantId,
         tenantName: props.tenantName,
         tier: props.tier,
@@ -115,13 +122,20 @@ export class TenantTemplateStack extends cdk.Stack {
         ecsSG: ecsSG,
         vpc: vpc,
         listener: listener,
-      }).node.addDependency(this.cluster)
+        // env: {
+        //   account: this.account,
+        //   region: this.region
+        // }
+      })
+      ecsService.node.addDependency(this.cluster);
+      ecsService.node.addDependency(vpc);
     }
     //=====================================================================
 
     new AwsCustomResource(this, 'CreateTenantMapping', {
       installLatestAwsSdk: true,
-      onCreate: {
+      onCreate: 
+      {
         service: 'DynamoDB',
         action: 'putItem',
         physicalResourceId: PhysicalResourceId.of('CreateTenantMapping'),
@@ -165,6 +179,43 @@ export class TenantTemplateStack extends cdk.Stack {
       })
     });
 
+    // CDK CustomResource condition setting (based on Environment)
+    const shouldExecuteCustomResource = new cdk.CfnCondition(this, 'ShouldExecuteCustomResource', {
+      expression: cdk.Fn.conditionEquals(process.env.CDK_USE_DB, 'MYSQL'),
+    });
+
+    
+    const mysqlCustomResource = new AwsCustomResource(this, 'InvokeLambdaCustomResource', {
+      installLatestAwsSdk: true,
+      onCreate: {
+        service: 'Lambda',
+        action: 'invoke',
+        physicalResourceId: PhysicalResourceId.of('InvokeLambdaCustomResource'),
+        parameters: {
+          FunctionName:  schemeLambdaArn,
+          InvocationType: 'Event',
+          Payload: JSON.stringify({
+            tenantName: props.tenantName,
+            stackName: cdk.Stack.of(this).stackName,
+          })
+        }
+      },
+     
+      policy: AwsCustomResourcePolicy.fromStatements([
+        new cdk.aws_iam.PolicyStatement({
+          actions: ['lambda:InvokeFunction'],
+          resources: [schemeLambdaArn],
+        }),
+      ]),
+    });
+    
+    if (mysqlCustomResource.node.defaultChild && mysqlCustomResource.node.defaultChild instanceof cdk.CfnResource) {
+      (mysqlCustomResource.node.defaultChild as cdk.CfnResource).cfnOptions.condition = shouldExecuteCustomResource;
+    } else {
+      console.warn('mysqlCustomResource.node.defaultChild is not a CfnResource');
+    }
+
+
     new cdk.CfnOutput(this, 'TenantUserpoolId', {
       value: identityProvider.tenantUserPool.userPoolId
     });
@@ -184,5 +235,7 @@ export class TenantTemplateStack extends cdk.Stack {
       advancedCluster: props.advancedCluster,
       isRProxy
     })
+
   }
+  
 }

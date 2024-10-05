@@ -9,8 +9,8 @@ import { SharedInfraStack } from '../lib/shared-infra/shared-infra-stack';
 import { AwsSolutionsChecks } from 'cdk-nag';
 
 const app = new cdk.App();
-cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
-// cdk.Aspects.of(app);
+// cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+cdk.Aspects.of(app);
 // required input parameters
 if (!process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL) {
   throw new Error('Please provide system admin email');
@@ -153,4 +153,6 @@ advancedTierTempStack.addDependency(sharedInfraStack);
 
 cdk.Tags.of(tenantTemplateStack).add('TenantId', tenantId);
 cdk.Tags.of(tenantTemplateStack).add('IsPooledDeploy', String(isPooledDeploy));
+cdk.Tags.of(tenantTemplateStack).add('TenantName', tenantName);
+
 cdk.Aspects.of(tenantTemplateStack).add(new DestroyPolicySetter());
