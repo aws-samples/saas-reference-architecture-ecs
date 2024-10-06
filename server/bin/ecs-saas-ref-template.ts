@@ -125,7 +125,6 @@ const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-
   tenantId: tenantId,
   tenantName: tenantName,
   stageName: stageName,
-  isPooledDeploy: isPooledDeploy,
   ApiKeySSMParameterNames: apiKeySSMParameterNames,
   tenantMappingTable: sharedInfraStack.tenantMappingTable,
   commitId: commitId,
@@ -139,7 +138,6 @@ const advancedTierTempStack = new TenantTemplateStack(app, `tenant-template-stac
   tenantId: 'advanced',
   tenantName: tenantName,
   stageName: stageName,
-  isPooledDeploy: false,
   ApiKeySSMParameterNames: apiKeySSMParameterNames,
   tenantMappingTable: sharedInfraStack.tenantMappingTable,
   commitId: commitId,
@@ -152,7 +150,6 @@ tenantTemplateStack.addDependency(sharedInfraStack);
 advancedTierTempStack.addDependency(sharedInfraStack);
 
 cdk.Tags.of(tenantTemplateStack).add('TenantId', tenantId);
-cdk.Tags.of(tenantTemplateStack).add('IsPooledDeploy', String(isPooledDeploy));
 cdk.Tags.of(tenantTemplateStack).add('TenantName', tenantName);
 
 cdk.Aspects.of(tenantTemplateStack).add(new DestroyPolicySetter());

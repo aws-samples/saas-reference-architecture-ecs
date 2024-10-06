@@ -11,7 +11,6 @@ import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
 import { ApiMethods } from './api-methods';
 import { type ContainerInfo } from '../interfaces/container-info';
-import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 import { ApiGateway } from './api-gateway';
 import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
 import { TenantApiKey } from './tenant-api-key';
@@ -19,6 +18,7 @@ import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from './static-site-distro';
 import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { RdsCluster } from './rds-cluster';
+import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 
 
 export interface SharedInfraProps extends cdk.StackProps {
@@ -36,7 +36,6 @@ export class SharedInfraStack extends cdk.Stack {
   vpc: ec2.IVpc;
   alb: elbv2.ApplicationLoadBalancer;
   albSG: ec2.ISecurityGroup;
-  ecsSG: ec2.SecurityGroup;
   listener: elbv2.ApplicationListener;
   nlbListener: elbv2.NetworkListener;
   apiGateway: ApiGateway;
@@ -176,10 +175,8 @@ export class SharedInfraStack extends cdk.Stack {
     });
 
     this.apiGateway = new ApiGateway(this, 'ApiGateway', {
-      tenantId: 'ecs-sbt',
       isPooledDeploy: props.isPooledDeploy,
       lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
-      nlb: nlb,
       apiKeyBasicTier: {
         apiKeyId: basicKey.apiKey.keyId,
         value: basicKey.apiKeyValue

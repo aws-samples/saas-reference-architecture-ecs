@@ -13,10 +13,8 @@ import { addTemplateTag } from '../utilities/helper-functions';
 
 interface ApiGatewayProps {
   lambdaEcsSaaSLayers: lambda.LayerVersion
-  tenantId: string
   isPooledDeploy: boolean
   stageName: string
-  nlb: elbv2.NetworkLoadBalancer
   apiKeyBasicTier: CustomApiKey
   apiKeyAdvancedTier: CustomApiKey
   apiKeyPremiumTier: CustomApiKey

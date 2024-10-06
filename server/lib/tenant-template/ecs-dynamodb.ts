@@ -12,7 +12,6 @@ export interface EcsDynamoDBProps  {
 
 export class EcsDynamoDB extends Construct {
   public readonly table: dynamodb.Table;
-  // public readonly tableArn: string;
   public readonly policyDocument: cdk.aws_iam.PolicyDocument;
 
   constructor (scope: Construct, id: string, props: EcsDynamoDBProps) {
@@ -28,8 +27,6 @@ export class EcsDynamoDB extends Construct {
       pointInTimeRecovery: true
     });
     cdk.Tags.of(this.table).add('TenantName', props.tenantName);
-
-    // this.tableArn = this.table.tableArn;
 
     this.policyDocument = new cdk.aws_iam.PolicyDocument({ 
       statements: [new cdk.aws_iam.PolicyStatement({

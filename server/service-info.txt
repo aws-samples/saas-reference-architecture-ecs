@@ -4,7 +4,13 @@
       "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/rproxy",
       "memoryLimitMiB": 512,
       "cpu": 256,
-      "containerPort":80
+      "containerPort":80,
+      "portMappings": [{
+          "name": "rproxy", "containerPort": 80
+        }],
+      "environment" : {
+        "NAMESPACE": "<NAMESPACE>"
+      }
     },
     "Containers": [
       {
@@ -15,8 +21,13 @@
         "containerPort": 3010,
         "database": {
             "kind": "dynamodb",
-            "sortKey": "orderId",
-            "tableName": "ORDER_TABLE_NAME"
+            "sortKey": "orderId"
+        },
+        "portMappings": [{
+          "name": "orders", "containerPort": 3010
+        }],
+        "environment" : {
+          "TABLE_NAME": "ORDER_TABLE_NAME"
         }
         
       },
@@ -28,8 +39,16 @@
         "containerPort": 3010,
         "database": {
             "kind": "mysql",
-            "sortKey": "productId",
-            "tableName": "PRODUCT_TABLE_NAME"
+            "sortKey": "productId"
+        },
+        "portMappings": [{
+          "name": "products", "containerPort": 3010
+        }],
+        "environment" : {
+          "IAM_ARN": "<IAM_ARN>",
+          "RESOURCE": "`arn:aws:rds-db:<REGION>:<ACCOUNT_ID>:dbuser:*/`",
+          "PROXY_ENDPOINT": "<PROXY_ENDPOINT>",
+          "CLUSTER_ENDPOINT_RESOURCE": "<CLUSTER_ENDPOINT_RESOURCE>"
         }
       },
       {
@@ -51,7 +70,11 @@
               "Effect": "Allow"
             }
           ]
-        }
+        },
+        "portMappings": [{
+          "name": "users", "containerPort": 3010
+        }]
+
       }
     ]
 }
