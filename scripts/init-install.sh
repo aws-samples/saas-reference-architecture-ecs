@@ -27,7 +27,7 @@ fi
 # Preprovision basic infrastructure
 cd ../server
 
-if [ $DB_TYPE == 'mysql' ]; then 
+if [ "$DB_TYPE" == 'mysql' ]; then 
     sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
 else
     sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json

@@ -56,19 +56,17 @@ deploy_service () {
 
       if [ "$DB_TYPE" == "mysql" ]; then
         echo "Building $SERVICE_NAME service for MySQL"
-        docker build -t $SERVICEECR -f Dockerfile.product.mysql .
+        cp -r ./microservices/product_mysql ./microservices/product
       elif [ "$DB_TYPE" == "dynamodb" ]; then
         echo "Building $SERVICE_NAME service for DynamoDB"
-        docker build -t $SERVICEECR -f Dockerfile.product .
+        cp -r ./microservices/product_dynamodb ./microservices/product
       else
         echo "Unknown DB_TYPE: $DB_TYPE. Exiting..."
         exit 1
       fi
-    else
-      # Docker Image Build for other services
-      docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     fi
-
+    # Docker Image Build for other services
+    docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     # Docker Image Tag
     docker tag "$SERVICEECR" "$SERVICEECR:$VERSION"
     # Docker Image Push to ECR
@@ -77,7 +75,7 @@ deploy_service () {
     echo '************************' 
     echo "AWS_REGION:" $REGION
     echo "$SERVICE_NAME SERVICE_ECR_REPO: $SERVICEECR VERSION: $VERSION"
-
+    rm -rf ./microservices/product || echo "Directory ./microservices/product does not exist."
 }
 
 # Call the select_db_type function for DB_TYPE selection
