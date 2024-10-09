@@ -27,6 +27,9 @@ fi
 # Preprovision basic infrastructure
 cd ../server
 
+source /tmp/db_type.env
+echo "DB_TYPE: $DB_TYPE"
+
 if [ "$DB_TYPE" == 'mysql' ]; then 
     sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
 else
@@ -42,8 +45,6 @@ export CDK_PARAM_TIER='basic'
 export CDK_PARAM_STAGE='prod'
 export CDK_ADV_CLUSTER='INACTIV'
 export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
-source /tmp/db_type.env
-echo "DB_TYPE: $DB_TYPE"
 export CDK_USE_DB=$DB_TYPE
 
 npm install

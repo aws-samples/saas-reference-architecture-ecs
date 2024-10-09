@@ -26,7 +26,20 @@ aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAM
 unzip -q $CDK_SOURCE_NAME
 cd ./server
 
-sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+RDS_PROXY=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
+if [ -z "$RDS_PROXY" ] 
+then
+  export CDK_USE_DB='dynamodb'
+else
+  export CDK_USE_DB='mysql'
+fi
+echo "DB_TYPE:$CDK_USE_DB"
+
+if [ "$DB_TYPE" == 'mysql' ]; then 
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
+else
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+fi
 
 cat ./lib/service-info.json
 
@@ -47,14 +60,6 @@ API_GATEWAY_URL_OUTPUT_PARAM_NAME="ApiGatewayUrl"
 APP_CLIENT_ID_OUTPUT_PARAM_NAME="UserPoolClientId"
 BOOTSTRAP_STACK_NAME="shared-infra-stack"
 
-RDS_PROXY=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
-if [ -z "$RDS_PROXY" ] 
-then
-  export CDK_USE_DB='dynamodb'
-else
-  export CDK_USE_DB='mysql'
-fi
-echo "DB_TYPE:$CDK_USE_DB"
 
 # Deploy the tenant template for premium && advanced tier(silo)
 if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
