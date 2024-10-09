@@ -20,7 +20,10 @@ cd ../server
 
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
-export CDK_USE_DB='dynamodb'
+echo "DB_TYPE: $DB_TYPE"
+source /tmp/db_type.env
+echo "DB_TYPE: $DB_TYPE"
+export CDK_USE_DB=$DB_TYPE
 
 #npx cdk deploy --all --require-approval=never
 npx cdk deploy core-appplane-stack --require-approval=any-change
