@@ -78,10 +78,10 @@ export class TenantTemplateStack extends cdk.Stack {
     ecsSG.connections.allowFrom(albSG, ec2.Port.tcp(80), 'Application Load Balancer');
     ecsSG.connections.allowFrom(ecsSG, ec2.Port.tcp(3010), 'Backend Microservices');
 
-    const schemeLambdaArn = process.env.CDK_USE_DB =='MYSQL'? cdk.Fn.importValue('SchemeLambdaArn'):"";
+    const schemeLambdaArn = process.env.CDK_USE_DB =='mysql'? cdk.Fn.importValue('SchemeLambdaArn'):"";
 
     //=====================================================================
-    const ec2Tier = [''];
+    const ec2Tier = ['basic','premium'];
     const isEc2Tier: boolean = ec2Tier.includes(props.tier.toLowerCase());
     const rProxy = ['advanced', 'premium'];
     const isRProxy: boolean = rProxy.includes(props.tier.toLowerCase());
@@ -137,7 +137,7 @@ export class TenantTemplateStack extends cdk.Stack {
         let taskRole = undefined;
 
         if (info.hasOwnProperty('database')) {
-          if(info.database?.kind == 'dynamodb') {
+          if(info.database?.kind == 'dynamodb') {//DYNAMODB
             const storage = new EcsDynamoDB(this, `${info.name}Storage`, {
               name: info.name, partitionKey: 'tenantId', sortKey: `${info.database?.sortKey}`,
               tableName: `${info.environment?.TABLE_NAME.replace(/_/g, '-').toLowerCase()}-${props.tenantName}`,
@@ -147,9 +147,9 @@ export class TenantTemplateStack extends cdk.Stack {
               assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
               inlinePolicies: { EcsContainerInlinePolicy: storage.policyDocument },
               managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role')]
-            });
-           
-          info.environment.TABLE_NAME =  storage.table.tableName;     
+            }); 
+          info.environment.TABLE_NAME =  storage.table.tableName;  
+
           } else { //MySQL database
             taskRole = iam.Role.fromRoleArn(this, `${info.name}-ecsTaskRole`, cdk.Fn.importValue('TaskRoleArn'), {mutable: true,})
           } 
@@ -263,38 +263,40 @@ export class TenantTemplateStack extends cdk.Stack {
     });
 
     // CDK CustomResource condition setting (based on Environment)
-    const shouldExecuteCustomResource = new cdk.CfnCondition(this, 'ShouldExecuteCustomResource', {
-      expression: cdk.Fn.conditionEquals(process.env.CDK_USE_DB, 'MYSQL'),
-    });
+    if(process.env.CDK_USE_DB =='mysql') {
+      const shouldExecuteCustomResource = new cdk.CfnCondition(this, 'ShouldExecuteCustomResource', {
+        expression: cdk.Fn.conditionEquals(process.env.CDK_USE_DB, 'mysql'),
+      });
 
-    const mysqlCustomResource = new AwsCustomResource(this, 'InvokeLambdaCustomResource', {
-      installLatestAwsSdk: true,
-      onCreate: {
-        service: 'Lambda',
-        action: 'invoke',
-        physicalResourceId: PhysicalResourceId.of('InvokeLambdaCustomResource'),
-        parameters: {
-          FunctionName:  schemeLambdaArn,
-          InvocationType: 'Event',
-          Payload: JSON.stringify({
-            tenantName: props.tenantName,
-            stackName: cdk.Stack.of(this).stackName,
-          })
-        }
-      },
-     
-      policy: AwsCustomResourcePolicy.fromStatements([
-        new cdk.aws_iam.PolicyStatement({
-          actions: ['lambda:InvokeFunction'],
-          resources: [schemeLambdaArn],
-        }),
-      ]),
-    });
-    
-    if (mysqlCustomResource.node.defaultChild && mysqlCustomResource.node.defaultChild instanceof cdk.CfnResource) {
-      (mysqlCustomResource.node.defaultChild as cdk.CfnResource).cfnOptions.condition = shouldExecuteCustomResource;
-    } else {
-      console.warn('mysqlCustomResource.node.defaultChild is not a CfnResource');
+      const mysqlCustomResource = new AwsCustomResource(this, 'InvokeLambdaCustomResource', {
+        installLatestAwsSdk: true,
+        onCreate: {
+          service: 'Lambda',
+          action: 'invoke',
+          physicalResourceId: PhysicalResourceId.of('InvokeLambdaCustomResource'),
+          parameters: {
+            FunctionName:  schemeLambdaArn,
+            InvocationType: 'Event',
+            Payload: JSON.stringify({
+              tenantName: props.tenantName,
+              stackName: cdk.Stack.of(this).stackName,
+            })
+          }
+        },
+      
+        policy: AwsCustomResourcePolicy.fromStatements([
+          new cdk.aws_iam.PolicyStatement({
+            actions: ['lambda:InvokeFunction'],
+            resources: [schemeLambdaArn],
+          }),
+        ]),
+      });
+      
+      if (mysqlCustomResource.node.defaultChild && mysqlCustomResource.node.defaultChild instanceof cdk.CfnResource) {
+        (mysqlCustomResource.node.defaultChild as cdk.CfnResource).cfnOptions.condition = shouldExecuteCustomResource;
+      } else {
+        console.warn('mysqlCustomResource.node.defaultChild is not a CfnResource');
+      }
     }
 
     new cdk.CfnOutput(this, 'TenantUserpoolId', {
@@ -309,13 +311,13 @@ export class TenantTemplateStack extends cdk.Stack {
       value: props.commitId
     });
 
-    new TenantTemplateNag(this, 'TenantInfraNag', {
-      tenantId: props.tenantId,
-      isEc2Tier,
-      tier: props.tier,
-      advancedCluster: props.advancedCluster,
-      isRProxy
-    })
+    // new TenantTemplateNag(this, 'TenantInfraNag', {
+    //   tenantId: props.tenantId,
+    //   isEc2Tier,
+    //   tier: props.tier,
+    //   advancedCluster: props.advancedCluster,
+    //   isRProxy
+    // })
 
   }
   

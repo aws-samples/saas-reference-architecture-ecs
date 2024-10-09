@@ -1,0 +1,24 @@
+FROM public.ecr.aws/bitnami/node:20 AS build
+WORKDIR /app
+COPY package.json ./
+# COPY yarn.lock ./
+RUN yarn
+COPY . .
+RUN yarn build product_mysql
+
+FROM public.ecr.aws/bitnami/node:20
+WORKDIR /app
+COPY --from=build /app ./
+
+########################WORKSHOP-TEST##############################
+# RUN apt-get update && \
+#     apt-get install -y \
+#     unzip \
+#     && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+#     && unzip awscliv2.zip \
+#     && ./aws/install \
+#     && rm -rf awscliv2.zip 
+########################WORKSHOP-TEST##############################
+
+EXPOSE 3010
+CMD ["npm", "run", "start:product"]

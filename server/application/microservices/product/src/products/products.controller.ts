@@ -29,7 +29,7 @@ export class ProductsController {
     @TenantCredentials() tenant
   ) {
     console.log('Create product', tenant);
-    await this.productsService.create(createProductDto, tenant.tenantId, tenant.tenantName);
+    await this.productsService.create(createProductDto, tenant.tenantId);
   }
 
   @Get()
@@ -37,7 +37,7 @@ export class ProductsController {
   async findAll (@TenantCredentials() tenant) {
     console.log('Get products', tenant);
     const tenantId = tenant.tenantId;
-    return await this.productsService.findAll(tenantId, tenant.tenantName);
+    return await this.productsService.findAll(tenantId);
   }
 
   @Get('/health')
@@ -51,7 +51,7 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard)
   async findOne (@Param('id') id: string, @TenantCredentials() tenant) {
     console.log('Get One product', tenant);
-    return await this.productsService.findOne(id, tenant.tenantId, tenant.tenantName);
+    return await this.productsService.findOne(id, tenant.tenantId);
   }
 
   @Put(':id')
@@ -62,6 +62,6 @@ export class ProductsController {
     @TenantCredentials() tenant
   ) {
     console.log(tenant);
-    return await this.productsService.update(id, tenant.tenantId, tenant.tenantName, updateProductDto);
+    return await this.productsService.update(id, tenant.tenantId, updateProductDto);
   }
 }

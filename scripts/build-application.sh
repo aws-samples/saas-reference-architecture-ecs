@@ -1,6 +1,27 @@
 #!/bin/bash
-
 # build and push application services into ECR
+
+# Prompt user for DB_TYPE selection
+select_db_type () {
+    echo "Select the database type for 'product' service:"
+    echo "1) DynamoDB"
+    echo "2) MySQL"
+    read -p "Enter the number corresponding to the database type (default 1): " db_selection
+
+    case $db_selection in
+        2)
+            DB_TYPE="mysql"
+            ;;
+        *)
+            DB_TYPE="dynamodb"
+            ;;
+    esac
+    
+    echo "export DB_TYPE=$DB_TYPE" > /tmp/db_type.env
+    echo "Selected DB_TYPE: $DB_TYPE"
+}
+
+
 
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
@@ -25,8 +46,29 @@ deploy_service () {
     fi
 
     local SERVICEECR="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE_NAME"
-    # Docker Image Build
-    docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
+
+    # Dabase handling for 'product' service  
+    if [ "$SERVICE_NAME" == "product" ]; then
+      echo "➤➤➤ Database App handling for $SERVICE_NAME"
+
+      # Check environment variable or configuration to determine if MySQL or DynamoDB is used
+      DB_TYPE=${DB_TYPE:-"dynamodb"}  # default to mysql if not set
+
+      if [ "$DB_TYPE" == "mysql" ]; then
+        echo "Building $SERVICE_NAME service for MySQL"
+        docker build -t $SERVICEECR -f Dockerfile.product.mysql .
+      elif [ "$DB_TYPE" == "dynamodb" ]; then
+        echo "Building $SERVICE_NAME service for DynamoDB"
+        docker build -t $SERVICEECR -f Dockerfile.product .
+      else
+        echo "Unknown DB_TYPE: $DB_TYPE. Exiting..."
+        exit 1
+      fi
+    else
+      # Docker Image Build for other services
+      docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
+    fi
+
     # Docker Image Tag
     docker tag "$SERVICEECR" "$SERVICEECR:$VERSION"
     # Docker Image Push to ECR
@@ -35,10 +77,11 @@ deploy_service () {
     echo '************************' 
     echo "AWS_REGION:" $REGION
     echo "$SERVICE_NAME SERVICE_ECR_REPO: $SERVICEECR VERSION: $VERSION"
-    
 
 }
 
+# Call the select_db_type function for DB_TYPE selection
+select_db_type
 
 CWD=$(pwd)
 cd ../server/application

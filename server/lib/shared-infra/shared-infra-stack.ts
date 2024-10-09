@@ -264,7 +264,7 @@ export class SharedInfraStack extends cdk.Stack {
     });
 
     //=====>>MYSQL<<===========
-    if(process.env.CDK_USE_DB == 'MYSQL') {
+    if(process.env.CDK_USE_DB == 'mysql') {
       const rdsCluster = new RdsCluster(this, 'RdsCluster', {
         vpc: this.vpc,
         stageName: props.stageName,
@@ -279,7 +279,7 @@ export class SharedInfraStack extends cdk.Stack {
         exportName: 'SchemeLambdaArn'
       });
     }
-    
+
     //**Output */
     new cdk.CfnOutput(this, 'ALBDnsName', {
       value: this.alb.loadBalancerDnsName,
@@ -312,7 +312,7 @@ export class SharedInfraStack extends cdk.Stack {
       value: this.appSiteUrl
     });
 
-    // new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
+    new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
   }
 
   ssmLookup (parameterName: string) {

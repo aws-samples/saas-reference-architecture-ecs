@@ -14,6 +14,7 @@
     "start": "nest start",
     "start:order": "node dist/microservices/order/main",
     "start:product": "node dist/microservices/product/main",
+    "start:product_mysql": "node dist/microservices/product_mysql/main",
     "start:user": "node dist/microservices/user/main"
   },
   "dependencies": {

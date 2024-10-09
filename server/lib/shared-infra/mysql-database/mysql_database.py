@@ -140,7 +140,6 @@ def create_tenant_database_and_tables(connection, tenant_name):
             """
         ]
 
-
         for query in queries:
             cursor.execute(query)
 

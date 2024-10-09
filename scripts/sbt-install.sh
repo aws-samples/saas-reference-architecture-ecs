@@ -20,7 +20,7 @@ cd ../server
 
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
-export CDK_USE_DB='MYSQL'
+export CDK_USE_DB='dynamodb'
 
 #npx cdk deploy --all --require-approval=never
 npx cdk deploy core-appplane-stack --require-approval=any-change

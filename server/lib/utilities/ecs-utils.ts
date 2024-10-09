@@ -60,16 +60,33 @@ export function getContainerDefinitionOptions(
     ...(jsonConfig.environment || {}), // JSON에서 추가한 값 적용
   };
 
+  const appProtocolMap: { [key: string]: ecs.AppProtocol } = {
+    'ecs.AppProtocol.http': ecs.AppProtocol.http,
+    'ecs.AppProtocol.http2': ecs.AppProtocol.http2,
+    'ecs.AppProtocol.grpc': ecs.AppProtocol.grpc,
+  };
+
+  const protocolMap: { [key: string]: ecs.Protocol } = {
+    'ecs.Protocol.TCP': ecs.Protocol.TCP,
+    'ecs.Protocol.UDP': ecs.Protocol.UDP,
+  };
+
   // ContainerDefinitionOptions 생성
   const containerOptions: ecs.ContainerDefinitionOptions = {
     image: ecs.ContainerImage.fromRegistry(jsonConfig.image),
     cpu: jsonConfig.cpu,
     memoryLimitMiB: jsonConfig.memoryLimitMiB,
+    // portMappings: jsonConfig.portMappings?.map((port: any) => ({
+    //   name: port.name,
+    //   containerPort: port.containerPort,
+    //   appProtocol: ecs.AppProtocol.http, 
+    //   protocol: port.protocol //ecs.Protocol.TCP, // Default TCP
+    // })),
     portMappings: jsonConfig.portMappings?.map((port: any) => ({
       name: port.name,
       containerPort: port.containerPort,
-      appProtocol: ecs.AppProtocol.http, 
-      protocol: ecs.Protocol.TCP, // Default TCP
+      appProtocol: protocolMap[port.appProtocolMap] || ecs.AppProtocol.http, // ecs.AppProtocol 값을 매핑하거나 기본값 HTTP// ecs.AppProtocol 값을 매핑하거나 기본값 HTTP 할당
+      protocol:  protocolMap[port.protocol] || ecs.Protocol.TCP,
     })),
     environment: environmentVariables, // 
     logging: ecs.LogDriver.awsLogs({ streamPrefix: 'ecs-container-logs' })

@@ -16,7 +16,6 @@ interface RdsClusterProps {
     lambdaEcsSaaSLayers: lambda.LayerVersion,
   }
 
-
 export class RdsCluster extends Construct {
   public readonly dbName: string;
   public readonly stsRole: iam.Role;
@@ -46,7 +45,6 @@ export class RdsCluster extends Construct {
 
     });
 
-
     const rdsSecurityGroup = new ec2.SecurityGroup(this, 'RDSSecurityGroup', {
       vpc: props.vpc,
       description: 'RDS Security Group',
@@ -62,13 +60,9 @@ export class RdsCluster extends Construct {
         vpc: props.vpc,
         securityGroups: [rdsSecurityGroup],
         defaultDatabaseName: this.dbName,
-        
-        
+
         credentials: rds.Credentials.fromSecret(dbSecret, 'admin'),
-        // {
-        //   username: 'admin',
-        //   password: dbSecret.secretValueFromJson('password'),
-        // },
+
         writer: rds.ClusterInstance.provisioned('writer', {
           instanceType: ec2.InstanceType.of(ec2.InstanceClass.R6G, ec2.InstanceSize.XLARGE4),
         //   publiclyAccessible: false,
@@ -183,139 +177,6 @@ export class RdsCluster extends Construct {
       })
     );
 
-/////////////////start
-// const lambdaSecurityGroup = new ec2.SecurityGroup(this, 'LambdaSecurityGroup', {
-//   vpc: props.vpc,
-//   description: 'Lambda Security Group',
-//   allowAllOutbound: true,
-// });
-
-// lambdaSecurityGroup.addEgressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(443), 'Allow outbound HTTPS traffic');
-// lambdaSecurityGroup.addEgressRule(ec2.SecurityGroup.fromSecurityGroupId(this, 'RDSSecurityGroup2', rdsSecurityGroup.securityGroupId), ec2.Port.tcp(3306), 'Allow DB outbound traffic');
-
-// const lambdaToRDSIngress = new ec2.CfnSecurityGroupIngress(this, 'LambdaToRDSIngress', {
-//   ipProtocol: 'tcp',
-//   fromPort: 3306,
-//   toPort: 3306,
-//   groupId: rdsSecurityGroup.securityGroupId,
-//   sourceSecurityGroupId: lambdaSecurityGroup.securityGroupId,
-// });
-
-
-//   new ec2.CfnSecurityGroupIngress(this, 'LambdaToProxyIngress', {
-//     ipProtocol: 'tcp',
-//     fromPort: 3306,
-//     toPort: 3306,
-//     groupId: rdsSecurityGroup.securityGroupId,
-//     sourceSecurityGroupId: lambdaSecurityGroup.securityGroupId,
-//   });
-
-
-// const lambdaRole2 = new iam.Role(this, 'LambdaAddUsersRole2', {
-//   assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-// });
-
-// lambdaRole2.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'));
-
-// const xrayPolicy = new iam.ManagedPolicy(this, 'XrayServiceAccessPolicy', {
-//   description: `Allows Lambda Function to access X-Ray.`,
-//   statements: [
-//     new iam.PolicyStatement({
-//       actions: [
-//         'xray:PutTraceSegments',
-//         'xray:PutTelemetryRecords',
-//         'xray:GetSamplingRules',
-//         'xray:GetSamplingTargets',
-//         'xray:GetSamplingStatisticSummaries'
-//       ],
-//       resources: ['*'],
-//     }),
-//   ],
-// });
-
-// const cloudWatchLogsPolicy = new iam.ManagedPolicy(this, 'CloudWatchLogsServiceAccessPolicy', {
-//   description: `Allows Lambda Function to access CloudWatch logs.`,
-//   statements: [
-//     new iam.PolicyStatement({
-//       actions: [
-//         'logs:CreateLogGroup',
-//         'logs:CreateLogStream',
-//         'logs:PutLogEvents'
-//       ],
-//       resources: [
-//         `arn:aws:logs:${props.env.region}:${props.env.account}:log-group:*`,
-//         `arn:aws:logs:${props.env.region}:${props.env.account}:log-group:*:log-stream:*`
-//       ],
-//     }),
-//   ],
-// });
-
-// const vpcPolicy = new iam.ManagedPolicy(this, 'VPCServiceAccessPolicy', {
-//   description: `Allows Lambda Function to create and delete network interfaces.`,
-//   statements: [
-//     new iam.PolicyStatement({
-//       actions: ['ec2:DescribeNetworkInterfaces'],
-//       resources: ['*'],
-//     }),
-//     new iam.PolicyStatement({
-//       actions: [
-//         'ec2:CreateNetworkInterface',
-//         'ec2:DeleteNetworkInterface',
-//         'ec2:AssignPrivateIpAddresses',
-//         'ec2:UnassignPrivateIpAddresses',
-//       ],
-//       resources: ['*'],
-//     }),
-//   ],
-// });
-
-// const secretManagerPolicy = new iam.ManagedPolicy(this, 'SecretsManagerServiceAccessPolicy', {
-//   description: `Allows Lambda Function to access and manage Secrets Manager secrets.`,
-//   statements: [
-//     new iam.PolicyStatement({
-//       actions: ['secretsmanager:GetSecretValue'],
-//       resources: [dbSecret.secretArn],
-//     }),
-//     new iam.PolicyStatement({
-//       actions: ['secretsmanager:CreateSecret', 'secretsmanager:DeleteSecret', 'secretsmanager:TagResource'],
-//       resources: [`arn:aws:secretsmanager:${props.env.region}:${props.env.account}:secret:rds_proxy_multitenant/proxy_secret_for_user*`],
-//     }),
-//   ],
-// });
-
-// lambdaRole2.addManagedPolicy(xrayPolicy);
-// lambdaRole2.addManagedPolicy(cloudWatchLogsPolicy);
-// lambdaRole2.addManagedPolicy(vpcPolicy);
-// lambdaRole2.addManagedPolicy(secretManagerPolicy);
-
-
-//   const dbProxyPolicy = new iam.ManagedPolicy(this, 'DBProxyPolicy', {
-//     description: `Allows Lambda Function to modify RDS Proxy to associate with Secrets Manager.`,
-//     statements: [
-//       new iam.PolicyStatement({
-//         actions: ['rds:ModifyDBProxy'],
-//         resources: [dbSecret.secretArn],
-//       }),
-//     ],
-//   });
-
-//   const dbProxyPolicy2 = new iam.ManagedPolicy(this, 'DBProxyPolicy2', {
-//     description: `Allows Lambda Function to modify RDS Proxy to associate with Secrets Manager.`,
-//     statements: [
-//       new iam.PolicyStatement({
-//         actions: ["rds-db:connect"],
-//         resources: [
-//           `arn:aws:rds-db:${props.env.region}:${props.env.account}:dbuser:${cluster.clusterResourceIdentifier}/admin`
-//         ],
-//       }),
-//     ],
-//   });
-//   lambdaRole2.addManagedPolicy(dbProxyPolicy);
-//   lambdaRole2.addManagedPolicy(dbProxyPolicy2);
-
-
-//////////////
-
     const lambdaSecurityGroup = new ec2.SecurityGroup(this, 'LambdaSecurityGroup', {
       vpc: props.vpc,
       description: 'Lambda Security Group',
@@ -331,14 +192,6 @@ export class RdsCluster extends Construct {
       groupId: rdsSecurityGroup.securityGroupId,
       sourceSecurityGroupId: lambdaSecurityGroup.securityGroupId,
     });
-
-    // new ec2.CfnSecurityGroupIngress(this, 'LambdaToProxyIngress', {
-    //   ipProtocol: 'tcp',
-    //   fromPort: 3306,
-    //   toPort: 3306,
-    //   groupId: rdsSecurityGroup.securityGroupId,
-    //   sourceSecurityGroupId: lambdaSecurityGroup.securityGroupId,
-    // });
 
     this.schemeLambda = new lambda_python.PythonFunction(this, 'MySqlDababase', {
       entry: path.join(__dirname, './mysql-database'),
@@ -399,7 +252,7 @@ export class RdsCluster extends Construct {
     taskRole.addManagedPolicy(
       iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role')
     );
-    // ### DynamoDB ABAC not GA yet 
+    // ### DynamoDB ABAC not GA yet: https://aws.amazon.com/about-aws/whats-new/2024/09/amazon-dynamodb-attribute-based-access-control/
     // taskRole.addToPolicy(new iam.PolicyStatement({
     //   actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 
     //     'dynamodb:UpdateItem', 'dynamodb:DeleteItem', 'dynamodb:Query'],

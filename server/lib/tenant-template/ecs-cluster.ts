@@ -36,29 +36,49 @@ export class EcsCluster extends cdk.NestedStack {
     if (props.isEc2Tier) {
       const trunking = new CustomEniTrunking(this, "EniTrunking");
 
+      // Add ECS-specific user data
+      const userData = ec2.UserData.forLinux();
+      userData?.addCommands(
+        `echo ECS_CLUSTER=${this.cluster.clusterName} >> /etc/ecs/ecs.config`
+      );
+      const launchTemplateRole = new iam.Role(this.cluster, "launchTemplateRole", { assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com") })
+      launchTemplateRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role'))
+      
+      const launchTemplate = new ec2.LaunchTemplate(this, `EcsLaunchTemplate-${props.tenantId}`, {
+        instanceType: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.LARGE),
+        machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
+        userData,
+        role: trunking.ec2Role,
+        // role: launchTemplateRole,
+        requireImdsv2: true,
+        securityGroup: new ec2.SecurityGroup(this, 'LaunchTemplateSG', {
+          vpc: props.vpc,
+          description: 'Allow ECS instance traffic',
+          allowAllOutbound: true
+        }),
+      });
+
       const autoScalingGroup = new AutoScalingGroup(this, `ecs-autoscaleG-${props.tenantId}`, {
         vpc: props.vpc,
-        instanceType: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
-        machineImage: ecs.EcsOptimizedImage.amazonLinux2(ecs.AmiHardwareType.STANDARD),
+        launchTemplate: launchTemplate,
         desiredCapacity: 3, minCapacity: 2, maxCapacity: 5,
-        requireImdsv2: true,
-        newInstancesProtectedFromScaleIn: false,
-        role: trunking.ec2Role,
       });
+
       autoScalingGroup.role.addManagedPolicy(
         iam.ManagedPolicy.fromAwsManagedPolicyName( 'service-role/AmazonEC2ContainerServiceforEC2Role' )
       );
       autoScalingGroup.scaleOnCpuUtilization('autoscaleCPU', {
-        targetUtilizationPercent: 50,
+        targetUtilizationPercent: 70,
       });
       const capacityProvider = new ecs.AsgCapacityProvider(this, `AsgCapacityProvider-${props.tenantId}`, {
           autoScalingGroup,
+          enableManagedScaling: true,
           enableManagedTerminationProtection: false // important for offboarding.
         }
       );
       const thisCluster = this.cluster as ecs.Cluster;
       thisCluster.addAsgCapacityProvider(capacityProvider);
     }
-   
+  
   }
 }

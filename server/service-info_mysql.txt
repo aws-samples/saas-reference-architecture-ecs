@@ -44,7 +44,7 @@
         "cpu": 256,
         "containerPort": 3010,
         "database": {
-            "kind": "dynamodb",
+            "kind": "mysql",
             "sortKey": "productId"
         },
         "portMappings": [{
@@ -54,7 +54,10 @@
           "protocol": "ecs.Protocol.TCP"
         }],
         "environment" : {
-          "TABLE_NAME": "PRODUCT_TABLE_NAME"
+          "IAM_ARN": "<IAM_ARN>",
+          "RESOURCE": "arn:aws:rds-db:<REGION>:<ACCOUNT_ID>:dbuser:*/",
+          "PROXY_ENDPOINT": "<PROXY_ENDPOINT>",
+          "CLUSTER_ENDPOINT_RESOURCE": "<CLUSTER_ENDPOINT_RESOURCE>"
         }
       },
       {

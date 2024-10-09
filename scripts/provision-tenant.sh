@@ -65,7 +65,7 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
     export CDK_PARAM_APPLICATION_NAME_PLANE_SOURCE="sbt-application-plane-api"
     export CDK_PARAM_TIER=$TIER
     export CDK_PARAM_TENANT_NAME=$TENANT_NAME  #Added for demonstration during the workshop
-    export CDK_USE_DB='MYSQL'
+    export CDK_USE_DB='dynamodb'
 
     cdk deploy $STACK_NAME --exclusively --require-approval never 
 fi

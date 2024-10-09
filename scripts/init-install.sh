@@ -27,7 +27,11 @@ fi
 # Preprovision basic infrastructure
 cd ../server
 
-sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+if [ $DB_TYPE == 'mysql' ]; then 
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
+else
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+fi
 
 # npx cdk bootstrap
 export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'
@@ -38,7 +42,9 @@ export CDK_PARAM_TIER='basic'
 export CDK_PARAM_STAGE='prod'
 export CDK_ADV_CLUSTER='INACTIV'
 export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
-export CDK_USE_DB='MYSQL'
+source /tmp/db_type.env
+echo "DB_TYPE: $DB_TYPE"
+export CDK_USE_DB=$DB_TYPE
 
 npm install
 npx cdk bootstrap

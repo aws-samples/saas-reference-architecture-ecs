@@ -52,6 +52,15 @@ export class EcsService extends cdk.NestedStack {
     const taskDefinition = createTaskDefinition(this, props.isEc2Tier, taskExecutionRole, props.taskRole, `${props.info.name}-TaskDef`);
     taskDefinition.addContainer( `${props.info.name}-container`, props.containerDef);
 
+    const servicesDns = props.containerDef.portMappings?.map((obj) => {
+      return{
+        portMappingName: obj.name,
+        dnsName: `${obj.name}-api.${props.namespace.namespaceName}.sc`,
+        port: obj.containerPort,
+        discoveryName: `${obj.name}-api`
+      }
+    })
+
     const serviceProps = {
       cluster: props.cluster,
       desiredCount: 2,
