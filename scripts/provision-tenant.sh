@@ -47,6 +47,16 @@ API_GATEWAY_URL_OUTPUT_PARAM_NAME="ApiGatewayUrl"
 APP_CLIENT_ID_OUTPUT_PARAM_NAME="UserPoolClientId"
 BOOTSTRAP_STACK_NAME="shared-infra-stack"
 
+EXPORTED_VALUE=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
+
+if [ -z "$EXPORTED_VALUE" ] then
+  echo "DynamoDB"
+  export CDK_USE_DB='dynamodb'
+else
+  echo "MYSQL"
+  export CDK_USE_DB='mysql'
+fi
+
 # Deploy the tenant template for premium && advanced tier(silo)
 if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
     STACK_NAME="tenant-template-stack-$CDK_PARAM_TENANT_ID"
@@ -65,7 +75,6 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
     export CDK_PARAM_APPLICATION_NAME_PLANE_SOURCE="sbt-application-plane-api"
     export CDK_PARAM_TIER=$TIER
     export CDK_PARAM_TENANT_NAME=$TENANT_NAME  #Added for demonstration during the workshop
-    export CDK_USE_DB='dynamodb'
 
     cdk deploy $STACK_NAME --exclusively --require-approval never 
 fi

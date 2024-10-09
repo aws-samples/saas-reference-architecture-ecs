@@ -20,7 +20,6 @@ cd ../server
 
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
-echo "DB_TYPE: $DB_TYPE"
 source /tmp/db_type.env
 echo "DB_TYPE: $DB_TYPE"
 export CDK_USE_DB=$DB_TYPE
