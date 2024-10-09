@@ -20,9 +20,13 @@ cd ../server
 
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
-source /tmp/db_type.env
-echo "DB_TYPE: $DB_TYPE"
-export CDK_USE_DB=$DB_TYPE
+EXPORTED_VALUE=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
+if [ -z "$EXPORTED_VALUE" ] then
+  export CDK_USE_DB='dynamodb'
+else
+  export CDK_USE_DB='mysql'
+fi
+echo "DB_TYPE:$CDK_USE_DB"
 
 #npx cdk deploy --all --require-approval=never
 npx cdk deploy core-appplane-stack --require-approval=any-change

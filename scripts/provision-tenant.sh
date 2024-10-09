@@ -48,14 +48,12 @@ APP_CLIENT_ID_OUTPUT_PARAM_NAME="UserPoolClientId"
 BOOTSTRAP_STACK_NAME="shared-infra-stack"
 
 EXPORTED_VALUE=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
-
 if [ -z "$EXPORTED_VALUE" ] then
-  echo "DynamoDB"
   export CDK_USE_DB='dynamodb'
 else
-  echo "MYSQL"
   export CDK_USE_DB='mysql'
 fi
+echo "DB_TYPE:$CDK_USE_DB"
 
 # Deploy the tenant template for premium && advanced tier(silo)
 if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
