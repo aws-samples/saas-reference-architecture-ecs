@@ -21,7 +21,8 @@ cd ../server
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
 EXPORTED_VALUE=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
-if [ -z "$EXPORTED_VALUE" ] then
+if [ -z "$EXPORTED_VALUE" ] 
+then
   export CDK_USE_DB='dynamodb'
 else
   export CDK_USE_DB='mysql'
