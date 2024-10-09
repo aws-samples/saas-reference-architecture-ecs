@@ -47,8 +47,8 @@ API_GATEWAY_URL_OUTPUT_PARAM_NAME="ApiGatewayUrl"
 APP_CLIENT_ID_OUTPUT_PARAM_NAME="UserPoolClientId"
 BOOTSTRAP_STACK_NAME="shared-infra-stack"
 
-EXPORTED_VALUE=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
-if [ -z "$EXPORTED_VALUE" ] 
+RDS_PROXY=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
+if [ -z "$RDS_PROXY" ] 
 then
   export CDK_USE_DB='dynamodb'
 else
