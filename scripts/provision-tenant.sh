@@ -33,9 +33,9 @@ then
 else
   export CDK_USE_DB='mysql'
 fi
-echo "DB_TYPE:$CDK_USE_DB"
+echo "CDK_USE_DB:$CDK_USE_DB"
 
-if [ "$DB_TYPE" == 'mysql' ]; then 
+if [ "$CDK_USE_DB" == 'mysql' ]; then 
     sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
 else
     sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
