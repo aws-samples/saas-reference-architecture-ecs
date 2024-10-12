@@ -20,7 +20,6 @@ import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { RdsCluster } from './rds-cluster';
 import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 
-
 export interface SharedInfraProps extends cdk.StackProps {
   isPooledDeploy: boolean
   ApiKeySSMParameterNames: ApiKeySSMParameterNames
@@ -274,10 +273,7 @@ export class SharedInfraStack extends cdk.Stack {
           region: this.region
         }
       });
-      new cdk.CfnOutput(this, 'SchemeLambdaArn', {
-        value: rdsCluster.schemeLambda.functionArn,
-        exportName: 'SchemeLambdaArn'
-      });
+     
     }
 
     //**Output */

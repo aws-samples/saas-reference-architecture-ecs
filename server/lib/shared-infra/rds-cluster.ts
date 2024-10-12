@@ -34,7 +34,7 @@ export class RdsCluster extends Construct {
     const kmsKey = secretsmanager.Secret.fromSecretCompleteArn(this, 'KmsKey', `arn:aws:secretsmanager:${props.env.region}:${props.env.account}:secret:alias/aws/secretsmanager`).encryptionKey;
     // Credentials create in Secrets Manager 
     const dbSecret = new secretsmanager.Secret(this, 'DbSecret', {
-      secretName: `DbSecret-${id}`,
+      secretName: `DBsecret-${id}`,
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ username: 'admin' }),
         excludePunctuation: true,
@@ -271,6 +271,11 @@ export class RdsCluster extends Construct {
         principals: [new iam.ArnPrincipal(taskRole.roleArn)],
       })
     );
+
+    new cdk.CfnOutput(this, 'SchemeLambdaArn', {
+      value: this.schemeLambda.functionArn,
+      exportName: 'SchemeLambdaArn'
+    });
 
     new cdk.CfnOutput(this, 'TaskRoleArn', {
       value: taskRole.roleArn,

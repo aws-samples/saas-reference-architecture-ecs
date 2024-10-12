@@ -81,7 +81,7 @@ export class TenantTemplateStack extends cdk.Stack {
     const schemeLambdaArn = process.env.CDK_USE_DB =='mysql'? cdk.Fn.importValue('SchemeLambdaArn'):"";
 
     //=====================================================================
-    const ec2Tier = ['basic','premium'];
+    const ec2Tier = ['basic','premium']; //ec2 mode
     const isEc2Tier: boolean = ec2Tier.includes(props.tier.toLowerCase());
     const rProxy = ['advanced', 'premium'];
     const isRProxy: boolean = rProxy.includes(props.tier.toLowerCase());
@@ -161,8 +161,6 @@ export class TenantTemplateStack extends cdk.Stack {
           });
         } 
 
-        const containerOptions = getContainerDefinitionOptions(this, info, identityProvider.identityDetails);
-
         const ecsService = new EcsService(this, `${info.name}-EcsServices`, {
           tenantId: props.tenantId,
           tenantName: props.tenantName,
@@ -173,7 +171,7 @@ export class TenantTemplateStack extends cdk.Stack {
           taskRole,    
           namespace: this.namespace,
           info,
-          containerDef: containerOptions
+          identityDetails: identityProvider.identityDetails
           // env: { account: this.account, region: this.region }
         });
 
@@ -188,7 +186,6 @@ export class TenantTemplateStack extends cdk.Stack {
 
       if (isRProxy ) {
         const rProxyInfo: ContainerInfo = serviceInfo.Rproxy;
-        const containerOptions = getContainerDefinitionOptions(this, rProxyInfo, identityProvider.identityDetails);
         const taskRole = new iam.Role(this, `rProxy-taskRole`, {
           assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
         });
@@ -206,7 +203,7 @@ export class TenantTemplateStack extends cdk.Stack {
           taskRole,
           namespace: this.namespace,
           info: rProxyInfo,
-          containerDef: containerOptions
+          identityDetails: identityProvider.identityDetails
           // env: { account: this.account, region: this.region }
         });
         if(previousNestedStack) {

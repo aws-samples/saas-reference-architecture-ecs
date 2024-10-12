@@ -9,7 +9,8 @@ import { getHashCode } from '../utilities/helper-functions';
 import { type ContainerInfo } from '../interfaces/container-info';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { TenantServiceNag } from '../cdknag/tenant-service-nag';
-import { getServiceName, createTaskDefinition } from '../utilities/ecs-utils';
+import { getServiceName, createTaskDefinition, getContainerDefinitionOptions } from '../utilities/ecs-utils';
+import { IdentityDetails } from '../interfaces/identity-details';
 
 export interface EcsServiceProps extends cdk.NestedStackProps {
   tenantId: string
@@ -25,7 +26,8 @@ export interface EcsServiceProps extends cdk.NestedStackProps {
 
   namespace: HttpNamespace
   info: ContainerInfo
-  containerDef: ecs.ContainerDefinitionOptions
+  identityDetails: IdentityDetails
+  // containerDef: ecs.ContainerDefinitionOptions
   // serviceProps: ecs.FargateServiceProps
   // env: cdk.Environment
 }
@@ -49,10 +51,11 @@ export class EcsService extends cdk.NestedStack {
       ]
     })
 
-    const taskDefinition = createTaskDefinition(this, props.isEc2Tier, taskExecutionRole, props.taskRole, `${props.info.name}-TaskDef`);
-    taskDefinition.addContainer( `${props.info.name}-container`, props.containerDef);
+    const containerDef = getContainerDefinitionOptions(this, props.info, props.identityDetails);
+    const taskDefinition = createTaskDefinition(this, props.isEc2Tier, taskExecutionRole, props.taskRole, containerDef);
+    taskDefinition.addContainer( `${props.info.name}-container`, containerDef);
 
-    const servicesDns = props.containerDef.portMappings?.map((obj) => {
+    const servicesDns = containerDef.portMappings?.map((obj) => {
       return{
         portMappingName: obj.name,
         dnsName: `${obj.name}-api.${props.namespace.namespaceName}.sc`,

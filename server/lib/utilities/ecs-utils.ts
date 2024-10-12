@@ -18,14 +18,15 @@ export function createTaskDefinition (
   isEc2Tier: boolean,
   taskExecutionRole: iam.Role,
   taskRole: iam.IRole| undefined,
-  familyName: string
+  containerDef: ecs.ContainerDefinitionOptions,
 ): ecs.TaskDefinition {
+  const familyName = `${containerDef.containerName}-TaskDef`
   const baseProps = {
     executionRole: taskExecutionRole,
     taskRole: taskRole,
     family: familyName
   };
-
+  
   if (isEc2Tier) {
     return new ecs.Ec2TaskDefinition(scope, familyName, {
       ...baseProps,
@@ -34,7 +35,8 @@ export function createTaskDefinition (
   } else {
     return new ecs.FargateTaskDefinition(scope, familyName, {
       ...baseProps,
-      memoryLimitMiB: 512
+      cpu: containerDef.cpu || 256,
+      memoryLimitMiB: containerDef.memoryLimitMiB || 512,
     });
   }
 };
@@ -85,8 +87,8 @@ export function getContainerDefinitionOptions(
     portMappings: jsonConfig.portMappings?.map((port: any) => ({
       name: port.name,
       containerPort: port.containerPort,
-      appProtocol: protocolMap[port.appProtocolMap] || ecs.AppProtocol.http, // ecs.AppProtocol 값을 매핑하거나 기본값 HTTP// ecs.AppProtocol 값을 매핑하거나 기본값 HTTP 할당
-      protocol:  protocolMap[port.protocol] || ecs.Protocol.TCP,
+      appProtocol: protocolMap[port.appProtocolMap], // ecs.AppProtocol 값을 매핑하거나 기본값 HTTP//
+      protocol:  protocolMap[port.protocol] //|| ecs.Protocol.TCP,
     })),
     environment: environmentVariables, // 
     logging: ecs.LogDriver.awsLogs({ streamPrefix: 'ecs-container-logs' })
