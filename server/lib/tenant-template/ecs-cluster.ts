@@ -2,13 +2,10 @@ import * as cdk from 'aws-cdk-lib';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
 import { type Construct } from 'constructs';
-import { type IdentityDetails } from '../interfaces/identity-details';
 import { CustomEniTrunking } from './eni-trunking';
 import { addTemplateTag } from '../utilities/helper-functions';
-import { TenantTemplateNag } from '../cdknag/tenant-template-nag';
 
 export interface EcsClusterProps extends cdk.NestedStackProps {
   vpc: ec2.IVpc
@@ -16,66 +13,70 @@ export interface EcsClusterProps extends cdk.NestedStackProps {
   tenantId: string
   tier: string
   isEc2Tier: boolean
-  isRProxy: boolean
-  env: cdk.Environment
 }
 
 export class EcsCluster extends cdk.NestedStack {
-  vpc: ec2.IVpc;
-  alb: elbv2.ApplicationLoadBalancer;
-  albSG: ec2.ISecurityGroup;
-  ecsSG: ec2.SecurityGroup;
-  listener: elbv2.IApplicationListener;
-  isEc2Tier: boolean;
-  ecrRepository: string;
   cluster: ecs.ICluster;
 
   constructor (scope: Construct, id: string, props: EcsClusterProps) {
     super(scope, id, props);
     addTemplateTag(this, 'EcsClusterStack');
-    const tenantId = props.tenantId;
-    this.isEc2Tier = props.isEc2Tier;
-    this.vpc = props.vpc;
     
-    let clusterName = `${props.stageName}-${tenantId}`;
-    if('advanced' === props.tier.toLocaleLowerCase() ) {
-      clusterName = `${props.stageName}-advanced-${cdk.Stack.of(this).account}`
-    }
+    let clusterName = 'advanced' === props.tier.toLocaleLowerCase() 
+        ? `${props.stageName}-advanced-${cdk.Stack.of(this).account}`
+        : `${props.stageName}-${props.tenantId}`;
+        
     this.cluster = new ecs.Cluster(this, 'EcsCluster', {
       clusterName,
-      vpc: this.vpc,
+      vpc: props.vpc,
       containerInsights: true,
     });
 
-    if (this.isEc2Tier) {
+    if (props.isEc2Tier) {
       const trunking = new CustomEniTrunking(this, "EniTrunking");
 
-      const autoScalingGroup = new AutoScalingGroup(this, `ecs-autoscaleG-${tenantId}`, {
-        vpc: this.vpc,
-        instanceType: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.XLARGE),
-        machineImage: ecs.EcsOptimizedImage.amazonLinux2(ecs.AmiHardwareType.STANDARD),
-        desiredCapacity: 3,
-        minCapacity: 2,
-        maxCapacity: 5,
-        requireImdsv2: true,
-        newInstancesProtectedFromScaleIn: false,
+      // Add ECS-specific user data
+      const userData = ec2.UserData.forLinux();
+      userData?.addCommands(
+        `echo ECS_CLUSTER=${this.cluster.clusterName} >> /etc/ecs/ecs.config`
+      );
+      const launchTemplateRole = new iam.Role(this.cluster, "launchTemplateRole", { assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com") })
+      launchTemplateRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role'))
+      
+      const launchTemplate = new ec2.LaunchTemplate(this, `EcsLaunchTemplate-${props.tenantId}`, {
+        instanceType: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.LARGE),
+        machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
+        userData,
         role: trunking.ec2Role,
+        // role: launchTemplateRole,
+        requireImdsv2: true,
+        securityGroup: new ec2.SecurityGroup(this, 'LaunchTemplateSG', {
+          vpc: props.vpc,
+          description: 'Allow ECS instance traffic',
+          allowAllOutbound: true
+        }),
       });
+
+      const autoScalingGroup = new AutoScalingGroup(this, `ecs-autoscaleG-${props.tenantId}`, {
+        vpc: props.vpc,
+        launchTemplate: launchTemplate,
+        desiredCapacity: 3, minCapacity: 2, maxCapacity: 5,
+      });
+
       autoScalingGroup.role.addManagedPolicy(
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'service-role/AmazonEC2ContainerServiceforEC2Role'
-        )
+        iam.ManagedPolicy.fromAwsManagedPolicyName( 'service-role/AmazonEC2ContainerServiceforEC2Role' )
       );
       autoScalingGroup.scaleOnCpuUtilization('autoscaleCPU', {
-        targetUtilizationPercent: 50,
+        targetUtilizationPercent: 70,
       });
-      const capacityProvider = new ecs.AsgCapacityProvider(this, `AsgCapacityProvider-${tenantId}`, {
+      const capacityProvider = new ecs.AsgCapacityProvider(this, `AsgCapacityProvider-${props.tenantId}`, {
           autoScalingGroup,
+          enableManagedScaling: true,
           enableManagedTerminationProtection: false // important for offboarding.
         }
       );
-      const thiCluster = this.cluster as ecs.Cluster;
-      thiCluster.addAsgCapacityProvider(capacityProvider);
+      const thisCluster = this.cluster as ecs.Cluster;
+      thisCluster.addAsgCapacityProvider(capacityProvider);
     }
    
   }
