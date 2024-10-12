@@ -99,11 +99,6 @@ export class TenantTemplateStack extends cdk.Stack {
         tenantId: props.tenantId,
         tier: props.tier,
         isEc2Tier,
-        isRProxy,
-        env: {
-          account: process.env.CDK_DEFAULT_ACCOUNT,
-          region: process.env.CDK_DEFAULT_REGION
-        }
       });
       this.cluster = ecsCluster.cluster;
     }

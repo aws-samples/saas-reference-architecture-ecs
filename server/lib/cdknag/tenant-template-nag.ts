@@ -34,7 +34,6 @@ export class TenantTemplateNag extends Construct {
         }
       ]
     );
-
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
       [
@@ -50,7 +49,6 @@ export class TenantTemplateNag extends Construct {
         }
       ]
     );
-
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
       [`/tenant-template-stack-${props.tenantId}/AWS679f53fac002430cb0da5b7982bd2287/Resource`],
@@ -61,7 +59,6 @@ export class TenantTemplateNag extends Construct {
         }
       ]
     );
-
     if('advanced' !== props.tier.toLocaleLowerCase() || 'INACTIVE' === props.advancedCluster )
     if (props.isEc2Tier) {
       NagSuppressions.addResourceSuppressionsByPath(
@@ -95,7 +92,6 @@ export class TenantTemplateNag extends Construct {
           }
         ]
       );
-     
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
         [`${nagEcsPath}/EniTrunking/EC2Role/DefaultPolicy/Resource`],
@@ -107,23 +103,19 @@ export class TenantTemplateNag extends Construct {
           }
         ]
       );
-
-
-
-
-
-
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
         [
           `${nagPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/ServiceRole/Resource`,
+          `${nagEcsPath}/EcsCluster/launchTemplateRole/Resource`
         ],
         [
           {
             id: 'AwsSolutions-IAM4',
             reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
             appliesTo: [
-              'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+              'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole',
+              'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role'
             ]
           }
         ]
@@ -138,11 +130,9 @@ export class TenantTemplateNag extends Construct {
           }
         ]
       );
-      
-
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
-        [`${nagPath}/ecs-autoscaleG-${props.tenantId}/LaunchConfig`],
+        [`${nagPath}/ecs-autoscaleG-${props.tenantId}/ASG`],
         [
           {
             id: 'AwsSolutions-EC26',
@@ -150,7 +140,6 @@ export class TenantTemplateNag extends Construct {
           }
         ]
       );
-
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
         [`${nagPath}/ecs-autoscaleG-${props.tenantId}/ASG`],
@@ -161,7 +150,6 @@ export class TenantTemplateNag extends Construct {
           }
         ]
       );
-
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
         [
