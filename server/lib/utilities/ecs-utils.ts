@@ -75,6 +75,7 @@ export function getContainerDefinitionOptions(
 
   // ContainerDefinitionOptions 생성
   const containerOptions: ecs.ContainerDefinitionOptions = {
+    containerName: jsonConfig.name,
     image: ecs.ContainerImage.fromRegistry(jsonConfig.image),
     cpu: jsonConfig.cpu,
     memoryLimitMiB: jsonConfig.memoryLimitMiB,

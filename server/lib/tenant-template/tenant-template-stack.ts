@@ -13,7 +13,6 @@ import { EcsService } from './services';
 import { TenantTemplateNag } from '../cdknag/tenant-template-nag';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { ContainerInfo } from '../interfaces/container-info';
-import { getContainerDefinitionOptions } from '../utilities/ecs-utils';
 import { HttpNamespace } from 'aws-cdk-lib/aws-servicediscovery';
 import { EcsDynamoDB } from './ecs-dynamodb';
 import path = require('path');
@@ -296,7 +295,7 @@ export class TenantTemplateStack extends cdk.Stack {
       }
     }
 
-    new cdk.CfnOutput(this, 'TenantUserpoolId', {
+    new cdk.CfnOutput(this, 'TenantUserPoolId', {
       value: identityProvider.tenantUserPool.userPoolId
     });
 
