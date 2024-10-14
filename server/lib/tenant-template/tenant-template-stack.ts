@@ -295,7 +295,7 @@ export class TenantTemplateStack extends cdk.Stack {
       }
     }
 
-    new cdk.CfnOutput(this, 'TenantUserPoolId', {
+    new cdk.CfnOutput(this, 'TenantUserpoolId', {
       value: identityProvider.tenantUserPool.userPoolId
     });
 
