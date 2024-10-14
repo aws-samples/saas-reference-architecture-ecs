@@ -6,7 +6,6 @@ import random
 from os import environ
 import logger
 
-
 # ENV
 PROXY_ENDPOINT = environ.get('DB_PROXY_ENDPOINT')
 DB_ENDPOINT = environ.get('DB_ENDPOINT')
@@ -21,27 +20,6 @@ rds = boto3.client('rds')
 
 def get_iam_auth_token():
     # Generate an IAM authentication token for RDS Proxy
-
-    # session_policy = {
-    #     "Version": "2012-10-17",
-    #     "Statement": [
-    #         {
-    #             "Effect": "Allow",
-    #             "Action": "rds-db:connect",
-    #             "Resource": '*',
-    #         }
-    #     ]
-    # }
-
-    # sts_client = boto3.client("sts")
-    # assumed_role_object = sts_client.assume_role(
-    #     RoleArn=iam_arn,
-    #     RoleSessionName="session",
-    #     Policy=str(session_policy)
-    # )
-    # credentials = assumed_role_object["Credentials"]
-
-
     iam_token = rds.generate_db_auth_token(
         DBHostname=PROXY_ENDPOINT,
         Port=3306,  # Adjust this to your DB port
@@ -50,9 +28,7 @@ def get_iam_auth_token():
     )
     return iam_token
 
-
 def lambda_handler(event, context):
-
     tenant_name = event["tenantName"]
     if not tenant_name:
         raise ValueError('Tenant ID is required')
@@ -60,15 +36,10 @@ def lambda_handler(event, context):
     try:
         connection = None
 
-        # iam_token = get_iam_auth_token()
-
         secret_value = json.loads(
             secrets_manager.get_secret_value(SecretId=SECRET_ARN)["SecretString"]
         )
-        # db_password = secret_value['password']
-
         logger.info('tenant_name: '+ tenant_name)
-        logger.info('user: '+ secret_value['username'])
         logger.info('username: '+ secret_value['username'])
 
         connection = pymysql.connect(
@@ -78,9 +49,6 @@ def lambda_handler(event, context):
             port=PORT,
             database=DB_NAME,
             cursorclass=pymysql.cursors.DictCursor,
-            # ssl={
-            #     'ca': '/var/task/SSLCA.pem',
-            # }
         )
 
         # Check the Database which is already exists.
@@ -120,14 +88,14 @@ def create_tenant_database_and_tables(connection, tenant_name):
             f"CREATE DATABASE {db_name};",
             f"GRANT CREATE VIEW, SHOW VIEW, SELECT, INSERT, UPDATE ON {db_name}.* TO '{db_username}'@'%';",
             f"USE {db_name}",
-            """
-            CREATE TABLE orders (
-                orderId INT AUTO_INCREMENT PRIMARY KEY,
-                orderName VARCHAR(255),
-                tenantId VARCHAR(255),
-                orderProducts JSON
-            );
-            """,
+            # """
+            # CREATE TABLE orders (
+            #     orderId INT AUTO_INCREMENT PRIMARY KEY,
+            #     orderName VARCHAR(255),
+            #     tenantId VARCHAR(255),
+            #     orderProducts JSON
+            # );
+            # """,
             """
             CREATE TABLE products (
                 productId INT AUTO_INCREMENT PRIMARY KEY,
