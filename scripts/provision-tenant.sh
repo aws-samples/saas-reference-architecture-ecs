@@ -26,8 +26,8 @@ aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAM
 unzip -q $CDK_SOURCE_NAME
 cd ./server
 
-RDS_PROXY=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
-if [ -z "$RDS_PROXY" ] 
+RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::RDS::DBInstance']" --output text)
+if [ -z "$RDS_RESOURCES" ] 
 then
   export CDK_USE_DB='dynamodb'
 else

@@ -6,7 +6,7 @@ select_db_type () {
     echo "Select the database type for 'product' service:"
     echo "1) DynamoDB"
     echo "2) MySQL"
-    read -p "Enter the number corresponding to the database type (default 1): " db_selection
+    read -p "Enter the number corresponding to the database type [ default: 1) DynamoDB ]: " db_selection
 
     case $db_selection in
         2)
@@ -20,8 +20,6 @@ select_db_type () {
     echo "export DB_TYPE=$DB_TYPE" > /tmp/db_type.env
     echo "Selected DB_TYPE: $DB_TYPE"
 }
-
-
 
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 

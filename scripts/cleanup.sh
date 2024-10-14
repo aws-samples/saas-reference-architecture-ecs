@@ -31,9 +31,15 @@ for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^contr
     if [[ ${i} == *"accesslog"* ]]; then
         aws s3 rb --force "s3://${i}" #delete in stack
     fi
-    
 done
 
+SECRETS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::SecretsManager::Secret']" --output text)
+if [ -z "$SECRETS_RESOURCES" ]; then
+  :
+else
+  echo "$SECRETS_RESOURCES"
+  sh ./del-secrets.sh
+fi
 
 cd ../server
 npm install

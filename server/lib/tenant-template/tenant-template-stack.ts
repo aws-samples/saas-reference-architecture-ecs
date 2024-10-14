@@ -81,7 +81,7 @@ export class TenantTemplateStack extends cdk.Stack {
     const schemeLambdaArn = process.env.CDK_USE_DB =='mysql'? cdk.Fn.importValue('SchemeLambdaArn'):"";
 
     //=====================================================================
-    const ec2Tier = ['basic','premium']; //ec2 mode
+    const ec2Tier = ['']; //ec2 mode
     const isEc2Tier: boolean = ec2Tier.includes(props.tier.toLowerCase());
     const rProxy = ['advanced', 'premium'];
     const isRProxy: boolean = rProxy.includes(props.tier.toLowerCase());

@@ -20,8 +20,8 @@ cd ../server
 
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
-RDS_PROXY=$(aws cloudformation list-exports --query "Exports[?Name=='DbProxyName'].Value" --output text)
-if [ -z "$RDS_PROXY" ] 
+RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::RDS::DBInstance']" --output text)
+if [ -z "$RDS_RESOURCES" ] 
 then
   export CDK_USE_DB='dynamodb'
 else
