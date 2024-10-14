@@ -22,7 +22,7 @@ export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # Define variables
 STACK_NAME="tenant-template-stack-basic"
-USER_POOL_OUTPUT_PARAM_NAME="TenantUserpoolId"
+USER_POOL_OUTPUT_PARAM_NAME="TenantUserPoolId"
 PRODUCT_TABLE_OUTPUT_PARAM_NAME="productsTableName"
 ORDER_TABLE_OUTPUT_PARAM_NAME="ordersTableName"
 
