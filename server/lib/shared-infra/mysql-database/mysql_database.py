@@ -88,14 +88,6 @@ def create_tenant_database_and_tables(connection, tenant_name):
             f"CREATE DATABASE {db_name};",
             f"GRANT CREATE VIEW, SHOW VIEW, SELECT, INSERT, UPDATE ON {db_name}.* TO '{db_username}'@'%';",
             f"USE {db_name}",
-            # """
-            # CREATE TABLE orders (
-            #     orderId INT AUTO_INCREMENT PRIMARY KEY,
-            #     orderName VARCHAR(255),
-            #     tenantId VARCHAR(255),
-            #     orderProducts JSON
-            # );
-            # """,
             """
             CREATE TABLE products (
                 productId INT AUTO_INCREMENT PRIMARY KEY,
@@ -106,6 +98,15 @@ def create_tenant_database_and_tables(connection, tenant_name):
                 price DECIMAL(10, 2)
             );
             """
+            # ,
+            # """
+            # CREATE TABLE orders (
+            #     orderId INT AUTO_INCREMENT PRIMARY KEY,
+            #     orderName VARCHAR(255),
+            #     tenantId VARCHAR(255),
+            #     orderProducts JSON
+            # );
+            # """
         ]
 
         for query in queries:
