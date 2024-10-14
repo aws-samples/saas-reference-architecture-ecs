@@ -88,7 +88,7 @@ export function getContainerDefinitionOptions(
     portMappings: jsonConfig.portMappings?.map((port: any) => ({
       name: port.name,
       containerPort: port.containerPort,
-      appProtocol: protocolMap[port.appProtocolMap], // ecs.AppProtocol 값을 매핑하거나 기본값 HTTP//
+      appProtocol: appProtocolMap[port.appProtocolMap], // ecs.AppProtocol 값을 매핑하거나 기본값 HTTP//
       protocol:  protocolMap[port.protocol] //|| ecs.Protocol.TCP,
     })),
     environment: environmentVariables, // 
