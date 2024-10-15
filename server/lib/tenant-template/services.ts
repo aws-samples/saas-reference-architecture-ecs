@@ -21,28 +21,35 @@ export interface EcsServiceProps extends cdk.NestedStackProps {
   vpc: ec2.IVpc
   cluster: ecs.ICluster
   ecsSG: ec2.SecurityGroup 
-  listener: elbv2.IApplicationListener
   taskRole?: iam.IRole 
 
   namespace: HttpNamespace
   info: ContainerInfo
   identityDetails: IdentityDetails
-  // containerDef: ecs.ContainerDefinitionOptions
-  // serviceProps: ecs.FargateServiceProps
   // env: cdk.Environment
 }
 
 export class EcsService extends cdk.NestedStack {
-  vpc: ec2.IVpc;
-  listener: elbv2.IApplicationListener;
-  ecsSG: ec2.SecurityGroup;
-  isEc2Tier: boolean;
-  ecrRepository: string;
-  cluster: ecs.ICluster;
 
   constructor (scope: Construct, id: string, props: EcsServiceProps) {
     super(scope, id, props);
     addTemplateTag(this, 'EcsClusterStack');
+
+    const albSGId = cdk.Fn.importValue('AlbSgId'); // ALB Security Group ID
+    const albSG = ec2.SecurityGroup.fromSecurityGroupId(this, 'albSG', albSGId);  // ALB Security Group
+
+    const listener = elbv2.ApplicationListener.fromApplicationListenerAttributes(this, 'ecs-sbt-listener',
+      {
+        listenerArn: cdk.Fn.importValue('ListenerArn'),
+        securityGroup: albSG
+      }
+    );
+
+    if(props.isRProxy == true && props.isTarget == true){
+      props.ecsSG.connections.allowFrom(albSG, ec2.Port.tcp(props.info.containerPort), `ALB to RProxy interface`);
+    } else {
+      props.ecsSG.connections.allowFrom(props.ecsSG, ec2.Port.tcp(props.info.containerPort), `Add ${props.info.name} Port into backend Security Group`);
+    }
 
     const taskExecutionRole = new iam.Role(this, `ecsTaskExecutionRole-${props.tenantId}`, {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
@@ -102,7 +109,7 @@ export class EcsService extends cdk.NestedStack {
       );
 
       new elbv2.ApplicationListenerRule(this, `Rule-${props.info.name}-${props.tenantId}`, {
-        listener: props.listener,
+        listener: listener,
         priority: getHashCode(50000),
         action: elbv2.ListenerAction.forward([targetGroupHttp]),
         conditions: props.isRProxy ?[
@@ -113,7 +120,7 @@ export class EcsService extends cdk.NestedStack {
         ]
       });
       service.attachToApplicationTargetGroup(targetGroupHttp);
-      service.connections.allowFrom(props.listener, ec2.Port.tcp(props.info.containerPort));
+      service.connections.allowFrom(listener, ec2.Port.tcp(props.info.containerPort));
     } 
 
     // Autoscaling based on memory and CPU usage

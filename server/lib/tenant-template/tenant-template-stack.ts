@@ -56,35 +56,24 @@ export class TenantTemplateStack extends cdk.Stack {
       vpcId: cdk.Fn.importValue('EcsVpcId'),
       availabilityZones: cdk.Fn.split(',', cdk.Fn.importValue('AvailabilityZones')),
       privateSubnetIds : cdk.Fn.split(',', cdk.Fn.importValue('PrivateSubnetIds'))
-      
     });
 
-    const albSGId = cdk.Fn.importValue('AlbSgId'); // ALB Security Group ID
-    const albSG = ec2.SecurityGroup.fromSecurityGroupId(this, 'albSG', albSGId);  // ALB Security Group
-
-    const listener = elbv2.ApplicationListener.fromApplicationListenerAttributes(this, 'ecs-sbt-listener',
-      {
-        listenerArn: cdk.Fn.importValue('ListenerArn'),
-        securityGroup: albSG
-      }
-    );
-
-    // ECS SG for ALB to ECS communication
+    // SG for ALB to ECS & ECS services's communication
     const ecsSG = new ec2.SecurityGroup(this, 'ecsSG', {
       vpc: vpc,
       allowAllOutbound: true
     });
-    ecsSG.connections.allowFrom(albSG, ec2.Port.tcp(80), 'Application Load Balancer');
-    ecsSG.connections.allowFrom(ecsSG, ec2.Port.tcp(3010), 'Backend Microservices');
-
-    const schemeLambdaArn = process.env.CDK_USE_DB =='mysql'? cdk.Fn.importValue('SchemeLambdaArn'):"";
+    
+    //=============================
+    //| 1. EC2 or Fargate setting |
+    //| 2. Reverse Proxy setting  |
+    //=============================
+    const ec2Tier = [''];
+    const rProxy = ['advanced', 'premium'];
+    const isEc2Tier: boolean = ec2Tier.includes(props.tier.toLowerCase());
+    const isRProxy: boolean = rProxy.includes(props.tier.toLowerCase());
 
     //=====================================================================
-    const ec2Tier = ['']; //ec2 mode
-    const isEc2Tier: boolean = ec2Tier.includes(props.tier.toLowerCase());
-    const rProxy = ['advanced', 'premium'];
-    const isRProxy: boolean = rProxy.includes(props.tier.toLowerCase());
-    
     if('advanced' === props.tier.toLocaleLowerCase() && 'ACTIVE' === props.advancedCluster ) {
       let clusterName = `${props.stageName}-advanced-${cdk.Stack.of(this).account}`
       this.cluster =  ecs.Cluster.fromClusterAttributes(this, 'advanced', {
@@ -131,7 +120,6 @@ export class TenantTemplateStack extends cdk.Stack {
 
       let previousNestedStack: EcsService | undefined;
       containerInfo.forEach((info, index) => {
-
         let policy = JSON.stringify(info.policy);
         let taskRole = undefined;
 
@@ -147,9 +135,8 @@ export class TenantTemplateStack extends cdk.Stack {
               inlinePolicies: { EcsContainerInlinePolicy: storage.policyDocument },
               managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role')]
             }); 
-          info.environment.TABLE_NAME =  storage.table.tableName;  
-
-          } else { //MySQL database
+            info.environment.TABLE_NAME =  storage.table.tableName;  
+          } else { //MySQL database per TENANT
             taskRole = iam.Role.fromRoleArn(this, `${info.name}-ecsTaskRole`, cdk.Fn.importValue('TaskRoleArn'), {mutable: true,})
           } 
         } else {
@@ -164,16 +151,15 @@ export class TenantTemplateStack extends cdk.Stack {
           tenantId: props.tenantId,
           tenantName: props.tenantName,
           isEc2Tier, isRProxy,
-          isTarget: !isRProxy,
+          isTarget: !isRProxy,//(isRProxy==true && isTarget==false) or (isRProxy==false && isTarget==true)
           vpc: vpc, cluster: this.cluster, ecsSG: ecsSG,
-          listener: listener,
           taskRole,    
           namespace: this.namespace,
           info,
           identityDetails: identityProvider.identityDetails
           // env: { account: this.account, region: this.region }
         });
-
+        
         ecsService.node.addDependency(this.cluster);
         ecsService.node.addDependency(vpc);
         if(previousNestedStack) {
@@ -196,15 +182,15 @@ export class TenantTemplateStack extends cdk.Stack {
           tenantId: props.tenantId,
           tenantName: props.tenantName,
           isEc2Tier, isRProxy,
-          isTarget: isRProxy,
+          isTarget: isRProxy, //isRProxy == true && isTarget == true 
           vpc: vpc, cluster: this.cluster, ecsSG: ecsSG,
-          listener: listener,
           taskRole,
           namespace: this.namespace,
           info: rProxyInfo,
           identityDetails: identityProvider.identityDetails
           // env: { account: this.account, region: this.region }
         });
+       
         if(previousNestedStack) {
           rproxyService.node.addDependency(previousNestedStack);
         }
@@ -263,6 +249,7 @@ export class TenantTemplateStack extends cdk.Stack {
       const shouldExecuteCustomResource = new cdk.CfnCondition(this, 'ShouldExecuteCustomResource', {
         expression: cdk.Fn.conditionEquals(process.env.CDK_USE_DB, 'mysql'),
       });
+      const schemeLambdaArn = process.env.CDK_USE_DB =='mysql'? cdk.Fn.importValue('SchemeLambdaArn'):"";
 
       const mysqlCustomResource = new AwsCustomResource(this, 'InvokeLambdaCustomResource', {
         installLatestAwsSdk: true,
