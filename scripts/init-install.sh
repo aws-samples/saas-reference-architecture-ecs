@@ -27,8 +27,14 @@ fi
 # Preprovision basic infrastructure
 cd ../server
 
-source /tmp/db_type.env
-echo "DB_TYPE: $DB_TYPE"
+FILE="/tmp/db_type.env"
+
+if [ -f "$FILE" ]; then
+    source /tmp/db_type.env
+    echo "DB_TYPE: $DB_TYPE"
+else
+    DB_TYPE="dynamodb"
+fi
 
 if [ "$DB_TYPE" == 'mysql' ]; then 
     sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
