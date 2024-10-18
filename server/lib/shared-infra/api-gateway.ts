@@ -12,14 +12,12 @@ import type * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 interface ApiGatewayProps {
   lambdaEcsSaaSLayers: lambda.LayerVersion
-  isPooledDeploy: boolean
   stageName: string
   nlb: elbv2.INetworkLoadBalancer
   vpcLink: cdk.aws_apigateway.VpcLink
   apiKeyBasicTier: CustomApiKey
   apiKeyAdvancedTier: CustomApiKey
   apiKeyPremiumTier: CustomApiKey
-  apiKeyPlatinumTier: CustomApiKey
 }
 
 export class ApiGateway extends Construct {
@@ -55,7 +53,6 @@ export class ApiGateway extends Construct {
           name: 'Cognito'
         }),
         ...{
-          PLATINUM_TIER_API_KEY: props.apiKeyPlatinumTier.value,
           PREMIUM_TIER_API_KEY: props.apiKeyPremiumTier.value,
           ADVANCED_TIER_API_KEY: props.apiKeyAdvancedTier.value,
           BASIC_TIER_API_KEY: props.apiKeyBasicTier.value

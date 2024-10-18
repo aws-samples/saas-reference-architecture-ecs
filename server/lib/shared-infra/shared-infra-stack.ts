@@ -18,9 +18,7 @@ import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 import { ApiGateway } from './api-gateway';
 
 export interface SharedInfraProps extends cdk.StackProps {
-  isPooledDeploy: boolean
   ApiKeySSMParameterNames: ApiKeySSMParameterNames
-  apiKeyPlatinumTierParameter: string
   apiKeyPremiumTierParameter: string
   apiKeyAdvancedTierParameter: string
   apiKeyBasicTierParameter: string
@@ -163,18 +161,11 @@ export class SharedInfraStack extends cdk.Stack {
       ssmParameterApiValueName: props.ApiKeySSMParameterNames.premium.value
     });
 
-    const platinumKey = new TenantApiKey(this, 'PlatinumTierApiKey', {
-      apiKeyValue: props.apiKeyPlatinumTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.platinum.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.platinum.value
-    });
-
     const vpcLink = new apigateway.VpcLink(this, 'ecs-vpc-link', {
       targets: [nlb]
     });
 
     this.apiGateway = new ApiGateway(this, 'ApiGateway', {
-      isPooledDeploy: props.isPooledDeploy,
       lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
       stageName: props.stageName,
       nlb,
@@ -190,25 +181,8 @@ export class SharedInfraStack extends cdk.Stack {
       apiKeyPremiumTier: {
         apiKeyId: premiumKey.apiKey.keyId,
         value: premiumKey.apiKeyValue
-      },
-      apiKeyPlatinumTier: {
-        apiKeyId: platinumKey.apiKey.keyId,
-        value: platinumKey.apiKeyValue
-      },
+      }
     });
-
-    // Read JSON file with container info
-    // const containerInfoJSON = fs.readFileSync(path.resolve(__dirname, '../service-info.json'));
-    // const containerInfo: ContainerInfo[] = JSON.parse(containerInfoJSON.toString()).Containers;
-
-    // containerInfo.forEach((info, _index) => {
-    //   new ApiMethods(this, `${info.name}-ApiMethods`, {
-    //     serviceName: info.name,
-    //     apiGateway: this.apiGateway,
-    //     nlb: nlb,
-    //     vpcLink: vpcLink
-    //   });
-    // });
 
     new cdk.CfnOutput(this, 'EcsVpcId', {
       value: this.vpc.vpcId,

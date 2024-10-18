@@ -38,7 +38,6 @@ if (!process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME) {
 }
 // default values for optional input parameters
 const defaultStageName = 'prod';
-const defaultApiKeyPlatinumTierParameter = '34135b26-7704-4ebc-adcc-9e0c604d4f04-sbt';
 const defaultApiKeyPremiumTierParameter = '508d335c-a768-4cfb-aaff-45a89129853c-sbt';
 const defaultApiKeyAdvancedTierParameter = '49cbd97a-7499-4939-bc3d-b116ca479dda-sbt';
 const defaultApiKeyBasicTierParameter = 'a6e257c3-a19d-4461-90a3-c998665a0d6b-sbt';
@@ -49,8 +48,7 @@ const systemAdminRoleName =
   process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME || defaultSystemAdminRoleName;
 const stageName = process.env.CDK_PARAM_STAGE || defaultStageName;
 
-const apiKeyPlatinumTierParameter =
-  process.env.CDK_PARAM_API_KEY_PLATINUM_TIER_PARAMETER || defaultApiKeyPlatinumTierParameter;
+
 const apiKeyPremiumTierParameter =
   process.env.CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER || defaultApiKeyPremiumTierParameter;
 const apiKeyAdvancedTierParameter =
@@ -76,10 +74,6 @@ const apiKeySSMParameterNames = {
   premium: {
     keyId: 'apiKeyPremiumTierKeyId',
     value: 'apiKeyPremiumTierValue'
-  },
-  platinum: {
-    keyId: 'apiKeyPlatinumTierKeyId',
-    value: 'apiKeyPlatinumTierValue'
   }
 };
 
@@ -89,9 +83,7 @@ const env = {
 }
 
 const sharedInfraStack = new SharedInfraStack(app, 'shared-infra-stack', {
-  isPooledDeploy: isPooledDeploy,
   ApiKeySSMParameterNames: apiKeySSMParameterNames,
-  apiKeyPlatinumTierParameter: apiKeyPlatinumTierParameter,
   apiKeyPremiumTierParameter: apiKeyPremiumTierParameter,
   apiKeyAdvancedTierParameter: apiKeyAdvancedTierParameter,
   apiKeyBasicTierParameter: apiKeyBasicTierParameter,
