@@ -82,7 +82,7 @@ export class ApiGateway extends Construct {
 
     const replacements: { [key: string]: string } = {
       '{{version}}': '1.0.0',
-      '{{API_TITLE}}': 'MyAPI',
+      '{{API_TITLE}}': 'ECSTenantAPI',
       '{{stage}}': props.stageName,
       '{{connection_id}}': props.vpcLink.vpcLinkId,
       '{{integration_uri}}': `http://${props.nlb.loadBalancerDnsName}`,
@@ -101,7 +101,7 @@ export class ApiGateway extends Construct {
 
     // API Gateway Rest API 생성
     this.restApi = new apigateway.SpecRestApi(this, 'TenantApi', {
-      restApiName: 'TenantApi',
+      restApiName: 'TenantAPI',
       description: 'API imported from a Swagger/OpenAPI definition with placeholders replaced',
       apiDefinition: apigateway.ApiDefinition.fromInline(JSON.parse(updateData)),
     
@@ -119,7 +119,7 @@ export class ApiGateway extends Construct {
 
     });
 
-    authorizerFunction.addPermission('InvokePermission', {
+    authorizerFunction.addPermission('AuthorizerPermission', {
       principal: new cdk.aws_iam.ServicePrincipal('apigateway.amazonaws.com'),
       sourceArn: `arn:aws:execute-api:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:${this.restApi.restApiId}/authorizers/*`
     });
