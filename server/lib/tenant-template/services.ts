@@ -62,14 +62,12 @@ export class EcsService extends cdk.NestedStack {
     const taskDefinition = createTaskDefinition(this, props.isEc2Tier, taskExecutionRole, props.taskRole, containerDef);
     taskDefinition.addContainer( `${props.info.name}-container`, containerDef);
 
-    const servicesDns = containerDef.portMappings?.map((obj) => {
-      return{
-        portMappingName: obj.name,
-        dnsName: `${obj.name}-api.${props.namespace.namespaceName}.sc`,
-        port: obj.containerPort,
-        discoveryName: `${obj.name}-api`
-      }
-    })
+    // const portDns = props.info.portMappings.map((port) => ({
+    //   portMappingName: port.name,
+    //   dnsName: `${port.name}-api.${props.namespace.namespaceName}.sc`,
+    //   port: port.containerPort,
+    //   discoveryName: `${port.name}-api`
+    // }))
 
     const serviceProps = {
       cluster: props.cluster,
@@ -79,12 +77,12 @@ export class EcsService extends cdk.NestedStack {
       trunking: true,
       serviceConnectConfiguration: {
         namespace: props.namespace.namespaceArn,
-        services: [{
-            portMappingName: props.info.name,
-            dnsName: `${props.info.name}-api.${props.namespace.namespaceName}.sc`, //THIS IS DNS CALLED FROM NGINX
-            port: props.info.containerPort,
-            discoveryName: `${props.info.name}-api`
-        }],
+        services: props.info.portMappings.map((port) => ({
+          portMappingName: port.name,
+          dnsName: `${port.name}-api.${props.namespace.namespaceName}.sc`,
+          port: port.containerPort,
+          discoveryName: `${port.name}-api`
+        })),
         logDriver: ecs.LogDrivers.awsLogs({ streamPrefix: `${props.info.name}-sc-traffic-`}),
       }
     };

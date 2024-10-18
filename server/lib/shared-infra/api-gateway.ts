@@ -1,20 +1,21 @@
-import * as cdk from 'aws-cdk-lib';
+
 import * as lambda_python from '@aws-cdk/aws-lambda-python-alpha';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { type CustomApiKey } from '../interfaces/custom-api-key';
+import * as cdk from 'aws-cdk-lib';
+import { Construct } from 'constructs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as path from 'path';
-import type * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { UsagePlans } from './usage-plans';
-import { type CustomApiKey } from '../interfaces/custom-api-key';
+import * as fs from 'fs';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
-import { Construct } from 'constructs';
-import { Duration } from 'aws-cdk-lib';
-import { addTemplateTag } from '../utilities/helper-functions';
+import type * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 
 interface ApiGatewayProps {
   lambdaEcsSaaSLayers: lambda.LayerVersion
   isPooledDeploy: boolean
   stageName: string
+  nlb: elbv2.INetworkLoadBalancer
+  vpcLink: cdk.aws_apigateway.VpcLink
   apiKeyBasicTier: CustomApiKey
   apiKeyAdvancedTier: CustomApiKey
   apiKeyPremiumTier: CustomApiKey
@@ -22,13 +23,12 @@ interface ApiGatewayProps {
 }
 
 export class ApiGateway extends Construct {
-  public readonly restApi: apigateway.RestApi;
+  public readonly restApi: apigateway.SpecRestApi;
   public readonly tenantScopedAccessRole: cdk.aws_iam.Role;
   public readonly requestValidator: apigateway.RequestValidator;
-  constructor (scope: Construct, id: string, props: ApiGatewayProps) {
+  constructor(scope: Construct, id: string, props: ApiGatewayProps) {
     super(scope, id);
-    addTemplateTag(this, 'ApiGateway');
-    // 👇Create ACM Permission Policy
+
     const basicAuthorizerExecutionRole = new cdk.aws_iam.PolicyDocument({
       statements: [
         new cdk.aws_iam.PolicyStatement({
@@ -62,7 +62,6 @@ export class ApiGateway extends Construct {
         }
       }
     });
-
     if (!authorizerFunction.role?.roleArn) {
       throw new Error('AuthorizerFunction roleArn is undefined');
     }
@@ -73,56 +72,56 @@ export class ApiGateway extends Construct {
       'AUTHORIZER_ACCESS_ROLE',
       this.tenantScopedAccessRole.roleArn
     );
-
     const logGroup = new LogGroup(this, 'PrdLogs');
 
-    this.restApi = new apigateway.RestApi(this, `TenantAPI-${props.stageName}`, {
-      apiKeySourceType: apigateway.ApiKeySourceType.AUTHORIZER,
-      defaultMethodOptions: {
-        apiKeyRequired: true,
-        authorizationType: apigateway.AuthorizationType.CUSTOM,
-        authorizer: new apigateway.TokenAuthorizer(this, 'TenantAPIAuthorizer', {
-          handler: authorizerFunction,
-          identitySource: apigateway.IdentitySource.header('Authorization'),
-          resultsCacheTtl: Duration.seconds(30)
-        })
-      },
+    // Swagger/OpenAPI 파일 경로
+    const swaggerFilePath = path.join(__dirname, '../TenantAPI-prod.json');
+
+    // Swagger 파일 읽기
+    let swaggerContent = fs.readFileSync(swaggerFilePath, 'utf-8');
+
+    const replacements: { [key: string]: string } = {
+      '{{version}}': '1.0.0',
+      '{{API_TITLE}}': 'MyAPI',
+      '{{stage}}': props.stageName,
+      '{{connection_id}}': props.vpcLink.vpcLinkId,
+      '{{integration_uri}}': `http://${props.nlb.loadBalancerDnsName}`,
+      '{{region}}': cdk.Stack.of(this).region,
+      '{{account_id}}': cdk.Stack.of(this).account,
+      '{{authorizer_function}}': authorizerFunction.functionName
+    }
+
+    let updateData = swaggerContent;
+    for(const [placeholder, replacement] of Object.entries(replacements)) {
+      const regex = new RegExp(placeholder, 'g');
+      updateData = updateData.replace(regex, replacement);
+    }
+
+    console.log('updateData: ' + updateData);
+
+    // API Gateway Rest API 생성
+    this.restApi = new apigateway.SpecRestApi(this, 'TenantApi', {
+      restApiName: 'TenantApi',
+      description: 'API imported from a Swagger/OpenAPI definition with placeholders replaced',
+      apiDefinition: apigateway.ApiDefinition.fromInline(JSON.parse(updateData)),
+    
       cloudWatchRole: true,
       deployOptions: {
         accessLogDestination: new apigateway.LogGroupLogDestination(logGroup),
         methodOptions: {
           '/*/*': {
             dataTraceEnabled: true,
-            loggingLevel: apigateway.MethodLoggingLevel.ERROR
-          }
-        }
+            loggingLevel: apigateway.MethodLoggingLevel.ERROR,
+          },
+        },
+        stageName: props.stageName,
       },
-      defaultCorsPreflightOptions: {
-        allowOrigins: ['*'],
-        allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-        allowHeaders: [
-          'Content-Type',
-          'Authorization',
-          'X-Amz-Date',
-          'X-Api-Key',
-          'X-Amz-Security-Token'
-        ]
-      }
+
     });
 
-    this.requestValidator = this.restApi.addRequestValidator('RequestValidator', {
-      requestValidatorName: 'ecsRequestValidator',
-      validateRequestBody: false,
-      validateRequestParameters: false
-    });
-
-    new UsagePlans(this, 'UsagePlans', {
-      apiGateway: this.restApi,
-      apiKeyIdBasicTier: props.apiKeyBasicTier.apiKeyId,
-      apiKeyIdAdvancedTier: props.apiKeyAdvancedTier.apiKeyId,
-      apiKeyIdPremiumTier: props.apiKeyPremiumTier.apiKeyId,
-      apiKeyIdPlatinumTier: props.apiKeyPlatinumTier.apiKeyId,
-      isPooledDeploy: props.isPooledDeploy
+    authorizerFunction.addPermission('InvokePermission', {
+      principal: new cdk.aws_iam.ServicePrincipal('apigateway.amazonaws.com'),
+      sourceArn: `arn:aws:execute-api:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:${this.restApi.restApiId}/authorizers/*`
     });
   }
 }
