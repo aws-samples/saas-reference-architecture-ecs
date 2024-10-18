@@ -74,15 +74,13 @@ export class ApiGateway extends Construct {
     );
     const logGroup = new LogGroup(this, 'PrdLogs');
 
-    // Swagger/OpenAPI 파일 경로
+    // Swagger/OpenAPI file path
     const swaggerFilePath = path.join(__dirname, '../tenant-api-prod.json');
-
-    // Swagger 파일 읽기
     let swaggerContent = fs.readFileSync(swaggerFilePath, 'utf-8');
 
     const replacements: { [key: string]: string } = {
       '{{version}}': '1.0.0',
-      '{{API_TITLE}}': 'ECSTenantAPI',
+      '{{API_TITLE}}': 'EcsTenantAPI',
       '{{stage}}': props.stageName,
       '{{connection_id}}': props.vpcLink.vpcLinkId,
       '{{integration_uri}}': `http://${props.nlb.loadBalancerDnsName}`,
@@ -96,10 +94,9 @@ export class ApiGateway extends Construct {
       const regex = new RegExp(placeholder, 'g');
       updateData = updateData.replace(regex, replacement);
     }
-
-    console.log('updateData: ' + updateData);
-
-    // API Gateway Rest API 생성
+    // console.log('updateData: ' + updateData);
+    
+    // API Gateway Rest API creation
     this.restApi = new apigateway.SpecRestApi(this, 'TenantApi', {
       restApiName: 'TenantAPI',
       description: 'API imported from a Swagger/OpenAPI definition with placeholders replaced',
@@ -116,7 +113,6 @@ export class ApiGateway extends Construct {
         },
         stageName: props.stageName,
       },
-
     });
 
     authorizerFunction.addPermission('AuthorizerPermission', {
