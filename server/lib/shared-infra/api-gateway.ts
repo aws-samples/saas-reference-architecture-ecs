@@ -75,7 +75,7 @@ export class ApiGateway extends Construct {
     const logGroup = new LogGroup(this, 'PrdLogs');
 
     // Swagger/OpenAPI 파일 경로
-    const swaggerFilePath = path.join(__dirname, '../TenantAPI-prod.json');
+    const swaggerFilePath = path.join(__dirname, '../tenant-api-prod.json');
 
     // Swagger 파일 읽기
     let swaggerContent = fs.readFileSync(swaggerFilePath, 'utf-8');
