@@ -10,7 +10,6 @@ from aws_requests_auth.aws_auth import AWSRequestsAuth
 from enum import Enum
 
 class TenantTier(Enum):
-    PLATINUM    = "Platinum"
     PREMIUM     = "Premium"
     ADVANCED    = "Advanced"
     BASIC       = "Basic"

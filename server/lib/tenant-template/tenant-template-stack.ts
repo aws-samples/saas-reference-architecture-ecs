@@ -6,7 +6,6 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { type Construct } from 'constructs';
 import { type Table } from 'aws-cdk-lib/aws-dynamodb';
 import { IdentityProvider } from './identity-provider';
-import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
 import { EcsCluster } from './ecs-cluster';
 import { EcsService } from './services';
 import { TenantTemplateNag } from '../cdknag/tenant-template-nag';
@@ -24,7 +23,6 @@ import {
 
 interface TenantTemplateStackProps extends cdk.StackProps {
   stageName: string
-  ApiKeySSMParameterNames: ApiKeySSMParameterNames
   tenantId: string
   tenantName: string
   tenantMappingTable: Table

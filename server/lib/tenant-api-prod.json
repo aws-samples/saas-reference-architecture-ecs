@@ -55,7 +55,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           }],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -78,7 +78,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           } ],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -144,7 +144,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           }],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -173,7 +173,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           } ],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -241,7 +241,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           }],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -264,7 +264,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           }],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -330,7 +330,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           } ],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -359,7 +359,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           }],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -388,7 +388,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           } ],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -456,7 +456,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           } ],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -479,7 +479,7 @@
           } ],
           "responses" : { },
           "security" : [ {
-            "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : [ ]
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
           }],
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
@@ -537,7 +537,7 @@
         "name" : "x-api-key",
         "in" : "header"
       },
-      "sharedinfrastackApiGatewayTenantAPIAuthorizer8DFA6916" : {
+      "sharedApigatewayTenantApiAuthorizer" : {
         "type" : "apiKey",
         "name" : "Authorization",
         "in" : "header",

@@ -94,7 +94,6 @@ const sharedInfraStack = new SharedInfraStack(app, 'shared-infra-stack', {
 
 const controlPlaneStack = new ControlPlaneStack(app, 'controlplane-stack', {
   systemAdminEmail: systemAdminEmail,
-  systemAdminRoleName: systemAdminRoleName,
   accessLogsBucket: sharedInfraStack.accessLogsBucket,
   distro: sharedInfraStack.adminSiteDistro,
   adminSiteUrl: sharedInfraStack.adminSiteUrl,
@@ -117,7 +116,6 @@ const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-
   tenantId: tenantId,
   tenantName: tenantName,
   stageName: stageName,
-  ApiKeySSMParameterNames: apiKeySSMParameterNames,
   tenantMappingTable: sharedInfraStack.tenantMappingTable,
   commitId: commitId,
   tier: tier,
@@ -130,7 +128,6 @@ const advancedTierTempStack = new TenantTemplateStack(app, `tenant-template-stac
   tenantId: 'advanced',
   tenantName: tenantName,
   stageName: stageName,
-  ApiKeySSMParameterNames: apiKeySSMParameterNames,
   tenantMappingTable: sharedInfraStack.tenantMappingTable,
   commitId: commitId,
   tier: 'advanced',

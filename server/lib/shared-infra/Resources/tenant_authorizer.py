@@ -15,14 +15,11 @@ import utils
 import idp_object_factory
 
 
-
 region = os.environ['AWS_REGION']
 sts_client = boto3.client("sts", region_name=region)
 
 # api keys for different tiers
-# for a basic(pooled) deployment, the PLATINUM_TIER_API_KEY env var WILL NOT be defined
-# for a siloed deployment, ONLY the PLATINUM_TIER_API_KEY env var will be defined
-platinum_tier_api_key = os.environ.get('PLATINUM_TIER_API_KEY', '')
+# for a basic(pooled) deployment
 premium_tier_api_key = os.environ.get('PREMIUM_TIER_API_KEY', '')
 advanced_tier_api_key = os.environ.get('ADVANCED_TIER_API_KEY', '')
 basic_tier_api_key = os.environ.get('BASIC_TIER_API_KEY', '')
@@ -31,7 +28,6 @@ authorizer_access_role = os.environ['AUTHORIZER_ACCESS_ROLE']
 
 idp_details=json.loads(os.environ['IDP_DETAILS'])
 idp_authorizer_service = idp_object_factory.get_idp_authorizer_object(idp_details['name'])
-
 
 def lambda_handler(event, context):
     input_details={}
@@ -42,8 +38,6 @@ def lambda_handler(event, context):
         raise Exception(
             'Authorization header should have a format Bearer <JWT> Token')
     jwt_bearer_token = token[1]
-
-    logger.info("Method ARN: " + event['methodArn'])
 
     input_details['jwtToken']=jwt_bearer_token
     response = idp_authorizer_service.validateJWT(input_details)
@@ -60,38 +54,31 @@ def lambda_handler(event, context):
         user_role = response["custom:userRole"]
         tenant_tier = response["custom:tenantTier"]
 
-    if (tenant_tier.upper() == utils.TenantTier.PLATINUM.value.upper()):
-        api_key = platinum_tier_api_key
-    elif (tenant_tier.upper() == utils.TenantTier.PREMIUM.value.upper()):
+    if (tenant_tier.upper() == utils.TenantTier.PREMIUM.value.upper()):
         api_key = premium_tier_api_key
     elif (tenant_tier.upper() == utils.TenantTier.ADVANCED.value.upper()):
         api_key = advanced_tier_api_key
     elif (tenant_tier.upper() == utils.TenantTier.BASIC.value.upper()):
         api_key = basic_tier_api_key
 
-    tmp = event['methodArn'].split(':')
-    api_gateway_arn_tmp = tmp[5].split('/')
-    aws_account_id = tmp[4]
+    logger.info("Method ARN: " + event['methodArn'])    
+
+    tmp = event['methodArn'].split(':') # arn:aws:execute-api:ap-northeast-2:1234567890:3uweihxqul/prod/GET/orders
+    aws_account_id = tmp[4] # 1234567890
 
     policy = AuthPolicy(principal_id, aws_account_id)
-    policy.restApiId = api_gateway_arn_tmp[0]
-    policy.region = tmp[3]
-    policy.stage = api_gateway_arn_tmp[1]
+    policy.region = tmp[3] # ap-northeast-2
+    api_gateway_arn_tmp = tmp[5].split('/') # 3uweihxqul/prod/GET/orders
+    policy.restApiId = api_gateway_arn_tmp[0] # 3uweihxqul
+    policy.stage = api_gateway_arn_tmp[1] # prod
 
-    if (auth_manager.isTenantAdmin(user_role)):
-        policy.allowMethod(HttpVerb.ALL, "users")
-        policy.allowMethod(HttpVerb.ALL, "orders")
-        policy.allowMethod(HttpVerb.ALL, "products")
-        policy.allowMethod(HttpVerb.ALL, "users/*")
-        policy.allowMethod(HttpVerb.ALL, "orders/*")
-        policy.allowMethod(HttpVerb.ALL, "products/*")        
-    else:
-        #if not tenant admin then only allow access to order and product services
-        policy.allowMethod(HttpVerb.ALL, "orders")
-        policy.allowMethod(HttpVerb.ALL, "products")
-        policy.allowMethod(HttpVerb.ALL, "orders/*")        
-        policy.allowMethod(HttpVerb.ALL, "products/*")
-        
+    policy.allowAllMethods()
+    is_denied_path = api_gateway_arn_tmp[3] in ['users']
+
+    if (auth_manager.isTenantUser(user_role) and is_denied_path):
+        policy.denyMethod(HttpVerb.ALL, "users")
+        policy.denyMethod(HttpVerb.ALL, "users/*")
+
     authResponse = policy.build()
 
     #   Generate STS credentials
@@ -144,7 +131,6 @@ def isTenantAuthorizedForThisAPI(apigateway_url, current_api_id):
     else:
         return True
 
-
 class HttpVerb:
     GET = "GET"
     POST = "POST"
@@ -154,7 +140,6 @@ class HttpVerb:
     DELETE = "DELETE"
     OPTIONS = "OPTIONS"
     ALL = "*"
-
 
 class AuthPolicy(object):
     awsAccountId = ""
