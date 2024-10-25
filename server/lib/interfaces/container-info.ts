@@ -1,4 +1,5 @@
 import * as ecs from 'aws-cdk-lib/aws-ecs';
+import * as cdk from 'aws-cdk-lib';
 
 
 export interface ContainerInfo {
@@ -27,6 +28,12 @@ export interface ContainerInfo {
     proxy_endpoint?: string,
     cluster_endpoint_resource?:string
     namespace?: string,
+  },
+  healthCheck?: {
+    command: string[],
+    interval?: cdk.Duration,
+    timeout?: cdk.Duration,
+    retries?: number,
+    startPeriod?: cdk.Duration
   }
-
 }

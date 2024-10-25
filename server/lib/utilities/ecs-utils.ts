@@ -92,8 +92,15 @@ export function getContainerDefinitionOptions(
       protocol:  protocolMap[port.protocol] //|| ecs.Protocol.TCP,
     })),
     environment: environmentVariables, // 
+    healthCheck: jsonConfig.healthCheck ? {
+      command: jsonConfig.healthCheck.command,
+      interval: cdk.Duration.seconds(jsonConfig.healthCheck.interval),
+      timeout: cdk.Duration.seconds(jsonConfig.healthCheck.timeout),
+      retries: jsonConfig.healthCheck.retries,
+      startPeriod: cdk.Duration.seconds(jsonConfig.healthCheck.startPeriod)
+    } : undefined,
+   
     logging: ecs.LogDriver.awsLogs({ streamPrefix: 'ecs-container-logs' })
-
   };
 
   return containerOptions;
