@@ -132,6 +132,13 @@ export class TenantTemplateStack extends cdk.Stack {
               inlinePolicies: { EcsContainerInlinePolicy: storage.policyDocument },
               managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role')]
             }); 
+            
+            if(policy) { //additional policy like SSM
+              taskRole.attachInlinePolicy( new iam.Policy(this, 'MyPolicy', {
+                document: iam.PolicyDocument.fromJson(JSON.parse(policy))
+              }));
+            }
+
             info.environment.TABLE_NAME =  storage.table.tableName;  
           } else { //MySQL database per TENANT
             taskRole = iam.Role.fromRoleArn(this, `${info.name}-ecsTaskRole`, cdk.Fn.importValue('TaskRoleArn'), {mutable: true,})

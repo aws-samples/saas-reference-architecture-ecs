@@ -37,6 +37,17 @@
             "kind": "dynamodb",
             "sortKey": "orderId"
         },
+        "policy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [ "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel","ssmmessages:OpenControlChannel","ssmmessages:OpenDataChannel"
+              ],
+              "Resource": "*"
+            }
+          ]
+        },
         "portMappings": [{
           "name": "orders", 
           "containerPort": 3010,
@@ -47,15 +58,14 @@
           "TABLE_NAME": "ORDER_TABLE_NAME"
         },
         "healthCheck": {
-                "command": [
-                    "CMD-SHELL", "curl -f http://localhost/ || exit 1"
-                ],
-                "interval": 60,
-                "timeout": 60,
-                "retries": 10,
-                "startPeriod": 300
+            "command": [
+              "CMD-SHELL", "curl -f http://localhost:3010/orders/health || exit 1"
+            ],
+            "interval": 60,
+            "timeout": 60,
+            "retries": 10,
+            "startPeriod": 300
         }
-        
       },
       {
         "name": "products",
