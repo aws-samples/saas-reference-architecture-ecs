@@ -37,7 +37,7 @@ export class ApiGateway extends Construct {
     });
 
     const authorizerFunction = new lambda_python.PythonFunction(this, 'AuthorizerFunction', {
-      entry: path.join(__dirname, './Resources'),
+      entry: path.join(__dirname, './authorizer-rest'),
       handler: 'lambda_handler',
       index: 'tenant_authorizer.py',
       runtime: lambda.Runtime.PYTHON_3_10,

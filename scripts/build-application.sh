@@ -23,8 +23,8 @@ select_db_type () {
 
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
-SERVICE_REPOS=("user" "product" "order" "rproxy")
-# SERVICE_REPOS=("product")
+SERVICE_REPOS=("user" "product" "order" "rproxy" "websocket")
+#SERVICE_REPOS=("rproxy")
 # RPROXY_VERSIONS=("v1" "v2")
 
 REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
@@ -63,6 +63,12 @@ deploy_service () {
         exit 1
       fi
     fi
+
+    if [ "$SERVICE_NAME" == "websocket" ]; then
+      echo "➤➤➤ WEBSOCKET for $SERVICE_NAME"
+      cd ./websocket || echo "Directory ./websocket does not exist."
+    fi
+
     # Docker Image Build for other services
     docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     # Docker Image Tag
@@ -74,6 +80,11 @@ deploy_service () {
     echo "AWS_REGION:" $REGION
     echo "$SERVICE_NAME SERVICE_ECR_REPO: $SERVICEECR VERSION: $VERSION"
     rm -rf ./microservices/product || echo "Directory ./microservices/product does not exist."
+
+    if [ "$SERVICE_NAME" == "websocket" ]; then
+      echo "➤➤➤ WEBSOCKET for $SERVICE_NAME END"
+      cd ..
+    fi
 }
 
 # Call the select_db_type function for DB_TYPE selection

@@ -28,6 +28,26 @@
     },
     "Containers": [
       {
+        "name": "websocket",
+        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/websocket",
+        "memoryLimitMiB": 512,
+        "cpu": 256,
+        "containerPort": 3010,
+        "database": {
+            "kind": "dynamodb",
+            "sortKey": "orderId"
+        },
+        "portMappings": [{
+          "name": "websocket", 
+          "containerPort": 3010,
+          "appProtocol": "ecs.AppProtocol.http",
+          "protocol": "ecs.Protocol.TCP"
+        }],
+        "environment" : {
+          "TABLE_NAME": "WS_TABLE_NAME"
+        }
+      },
+      {
         "name": "orders",
         "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/order",
         "memoryLimitMiB": 512,
