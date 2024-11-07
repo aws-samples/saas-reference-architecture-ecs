@@ -1,0 +1,15 @@
+
+!jest.config.js
+*.d.ts
+node_modules
+application-plane/
+
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+
+*service-info.json
+cdk.context.json
+
+
