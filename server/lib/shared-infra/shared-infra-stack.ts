@@ -16,7 +16,6 @@ import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { RdsCluster } from './rds-cluster';
 import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 import { ApiGateway } from './api-gateway';
-import { ApiWebSocket } from './api-websocket';
 
 export interface SharedInfraProps extends cdk.StackProps {
   ApiKeySSMParameterNames: ApiKeySSMParameterNames
@@ -171,25 +170,6 @@ export class SharedInfraStack extends cdk.Stack {
       stageName: props.stageName,
       nlb,
       vpcLink: vpcLink,
-      apiKeyBasicTier: {
-        apiKeyId: basicKey.apiKey.keyId,
-        value: basicKey.apiKeyValue
-      },
-      apiKeyAdvancedTier: {
-        apiKeyId: advanceKey.apiKey.keyId,
-        value: advanceKey.apiKeyValue
-      },
-      apiKeyPremiumTier: {
-        apiKeyId: premiumKey.apiKey.keyId,
-        value: premiumKey.apiKeyValue
-      }
-    });
-
-    new ApiWebSocket(this, 'ApiWebSocket', {
-      lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
-      stageName: props.stageName,
-      alb: this.alb,
-      sg: this.albSG,
       apiKeyBasicTier: {
         apiKeyId: basicKey.apiKey.keyId,
         value: basicKey.apiKeyValue

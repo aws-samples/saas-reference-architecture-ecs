@@ -23,22 +23,6 @@ http {
             return 200 '{"status":"ok"}';
     }
 
-
- # websocket api
-    location ~ ^/websocket {
-
-      # Only requests matching the expectations will
-      # get sent to the application server
-      proxy_pass http://websocket-api.${NAMESPACE}.sc:3010;
-      proxy_http_version 1.1;
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_set_header Connection 'upgrade';
-      proxy_set_header Host $host;
-      #add_header Content-Type "application/json";
-      #return 200 '{"message": "Connection closed"}';
-    }
-
-
     # orders api
     location ~ ^/orders {
       # Reject requests with unsupported HTTP method

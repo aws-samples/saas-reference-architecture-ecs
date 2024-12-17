@@ -20,7 +20,7 @@ cd ../server
 
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
-RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::RDS::DBInstance']" --output text  || true)
+RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::RDS::DBInstance']" --output text)
 if [ -z "$RDS_RESOURCES" ] 
 then
   export CDK_USE_DB='dynamodb'
@@ -30,9 +30,7 @@ fi
 echo "DB_TYPE:$CDK_USE_DB"
 
 #npx cdk deploy --all --require-approval=never
-npx cdk deploy shared-infra-stack \
-    controlplane-stack \
-    core-appplane-stack --require-approval=any-change
+npx cdk deploy core-appplane-stack --require-approval=any-change
 
 # Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name shared-infra-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)
