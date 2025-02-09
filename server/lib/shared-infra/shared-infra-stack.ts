@@ -277,7 +277,7 @@ export class SharedInfraStack extends cdk.Stack {
       value: this.appSiteUrl
     });
 
-    // new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
+    new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
   }
 
   ssmLookup (parameterName: string) {

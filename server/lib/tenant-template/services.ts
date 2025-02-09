@@ -134,6 +134,14 @@ export class EcsService extends cdk.NestedStack {
       targetUtilizationPercent: 75
     });
 
+    // new TenantServiceNag(this, 'TenantInfraNag', {
+    //   tenantId: props.tenantId,
+    //   isEc2Tier: props.isEc2Tier,
+    //   // tier: props.tier,
+    //   isRProxy: props.isRProxy
+    // })
+
+
   }
 }
 
