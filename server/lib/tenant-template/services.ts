@@ -8,7 +8,6 @@ import { type Construct } from 'constructs';
 import { getHashCode } from '../utilities/helper-functions';
 import { type ContainerInfo } from '../interfaces/container-info';
 import { addTemplateTag } from '../utilities/helper-functions';
-import { TenantServiceNag } from '../cdknag/tenant-service-nag';
 import { getServiceName, createTaskDefinition, getContainerDefinitionOptions } from '../utilities/ecs-utils';
 import { IdentityDetails } from '../interfaces/identity-details';
 
@@ -133,14 +132,6 @@ export class EcsService extends cdk.NestedStack {
     scalableTarget.scaleOnCpuUtilization('ScaleUpCPU', {
       targetUtilizationPercent: 75
     });
-
-    // new TenantServiceNag(this, 'TenantInfraNag', {
-    //   tenantId: props.tenantId,
-    //   isEc2Tier: props.isEc2Tier,
-    //   // tier: props.tier,
-    //   isRProxy: props.isRProxy
-    // })
-
 
   }
 }

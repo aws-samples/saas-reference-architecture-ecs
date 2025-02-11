@@ -9,7 +9,6 @@ import { IdentityProvider } from './identity-provider';
 import { EcsCluster } from './ecs-cluster';
 import { EcsService } from './services';
 import { TenantTemplateNag } from '../cdknag/tenant-template-nag';
-import { TenantServiceNag } from '../cdknag/tenant-service-nag'; 
 import { addTemplateTag } from '../utilities/helper-functions';
 import { ContainerInfo } from '../interfaces/container-info';
 import { HttpNamespace } from 'aws-cdk-lib/aws-servicediscovery';
@@ -307,13 +306,6 @@ export class TenantTemplateStack extends cdk.Stack {
       advancedCluster: props.advancedCluster,
       isRProxy
     })
-
-    // new TenantServiceNag(this, 'TenantServiceNag', {
-    //   tenantId: props.tenantId,
-    //   isEc2Tier,
-    //   // tier: props.tier,
-    //   isRProxy
-    // })
 
   }
   
