@@ -9,7 +9,19 @@ import { ActivatedRoute, Router } from '@angular/router';
   templateUrl: './detail.component.html',
 })
 export class DetailComponent implements OnInit {
-  tenant$: Observable<Tenant> = of({});
+  // tenant$: Observable<Tenant | null> = of(null);
+  tenant$: Observable<Tenant> = of({
+    tenantData: {
+      tenantName: '',
+      email: '',
+      tier: 'basic'
+    },
+    tenantRegistrationData: {
+      registrationStatus: 'In progress'
+    },
+    tenantRegistrationId: '',
+  });
+  
   constructor(
     private tenantsSvc: TenantsService,
     private route: ActivatedRoute,
@@ -20,6 +32,10 @@ export class DetailComponent implements OnInit {
     this.tenant$ = this.route.params.pipe(
       map((p) => p['tenantId']),
       switchMap((tenantId) => this.tenantsSvc.get(tenantId)),
+      map(tenant => ({
+        ...tenant,
+        tenantRegistrationId: this.route.snapshot.queryParams['tenantRegistrationId']
+      }))
     );
   }
 

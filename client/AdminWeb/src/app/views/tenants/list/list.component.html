@@ -20,9 +20,10 @@
         <ng-container matColumnDef="tenantId">
           <th mat-header-cell *matHeaderCellDef>Id</th>
           <td mat-cell *matCellDef="let element">
-            <a [routerLink]="['/tenants', 'detail', element.tenantId]">{{
-              element.tenantId
-            }}</a>
+            <a [routerLink]="['/tenants', 'detail', element.tenantId]"
+            [queryParams]="{ tenantRegistrationId: element.tenantRegistrationId }" >
+              {{ element.tenantId }}
+            </a>
           </td>
         </ng-container>
 
@@ -43,7 +44,7 @@
 
         <ng-container matColumnDef="tenantStatus">
           <th mat-header-cell *matHeaderCellDef>Status</th>
-          <td mat-cell *matCellDef="let element">{{ element.tenantStatus }}</td>
+          <td mat-cell *matCellDef="let element">{{ element.registrationStatus }}</td>
         </ng-container>
 
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>

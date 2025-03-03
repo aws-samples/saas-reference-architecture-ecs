@@ -1,9 +1,31 @@
-export interface Tenant {
-  tenantId?: string;
+// export interface Tenant {
+//   tenantId?: string;
+//   tenantName?: string | null;
+//   email?: string | undefined | null;
+//   tier?: string | undefined | null;
+//   tenantStatus?: string;
+//   isActive?: boolean;
+//   [key: string]: any;
+// }
+
+interface Price {
+  id: string;
+  metricName: string;
+}
+
+interface TenantData {
   tenantName?: string | null;
   email?: string | undefined | null;
   tier?: string | undefined | null;
-  tenantStatus?: string;
-  isActive?: boolean;
-  [key: string]: any;
+  prices?: Price[];
+}
+
+interface TenantRegistrationData {
+  registrationStatus?: string;
+}
+
+export interface Tenant {
+  tenantId?: string;
+  tenantData: TenantData;
+  tenantRegistrationData: TenantRegistrationData;
 }

@@ -2,7 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as fs from 'fs';
 import { type Construct } from 'constructs';
 import { Table, AttributeType } from 'aws-cdk-lib/aws-dynamodb';
-import { PolicyDocument } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyDocument, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from '../shared-infra/static-site-distro';
 import path = require('path');
@@ -30,65 +30,61 @@ export class CoreAppPlaneStack extends cdk.Stack {
 
     const systemAdminEmail = props.systemAdminEmail;
 
-    const provisioningScriptJobProps = {
-      permissions: PolicyDocument.fromJson(
-        JSON.parse(`
-{
-  "Version":"2012-10-17",
-  "Statement":[
-      {
-        "Action":[
-            "*"
+    const provisioningScriptJobProps : sbt.TenantLifecycleScriptJobProps = {
+      permissions: new PolicyDocument({
+        statements: [
+          new PolicyStatement({
+            actions: [
+              '*'
+            ],
+            resources: ['*'],
+            effect: Effect.ALLOW,
+          }),
         ],
-        "Resource":"*",
-        "Effect":"Allow"
-      }
-  ]
-}
-`)
-      ),
+      }),
       script: fs.readFileSync('../scripts/provision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email'],
-      environmentVariablesToOutgoingEvent: [
+      environmentJSONVariablesFromIncomingEvent: ['prices'],
+      environmentVariablesToOutgoingEvent: {tenantData:[
+        'tenantS3Bucket',
         'tenantConfig',
-        'tenantStatus',
+        // 'tenantStatus',
         'prices', // added so we don't lose it for targets beyond provisioning (ex. billing)
         'tenantName', // added so we don't lose it for targets beyond provisioning (ex. billing)
         'email', // added so we don't lose it for targets beyond provisioning (ex. billing)
       ],
+      tenantRegistrationData: ['registrationStatus'],
+     },
       scriptEnvironmentVariables: {
         // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
         // the control plane is also deployed. To ensure the operation does not error out, this value
         // is provided as an env parameter.
         CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail,
       },
-      outgoingEvent: sbt.DetailType.PROVISION_SUCCESS,
-      incomingEvent: sbt.DetailType.ONBOARDING_REQUEST,
+      // outgoingEvent: sbt.DetailType.PROVISION_SUCCESS,
+      // incomingEvent: sbt.DetailType.ONBOARDING_REQUEST,
       eventManager: props.eventManager
     };
 
-    const deprovisioningScriptJobProps = {
-      permissions: PolicyDocument.fromJson(
-        JSON.parse(`
-{
-  "Version":"2012-10-17",
-  "Statement":[
-      {
-        "Action":[
-            "*"
+    const deprovisioningScriptJobProps: sbt.TenantLifecycleScriptJobProps = {
+      permissions: new PolicyDocument({
+        statements: [
+          new PolicyStatement({
+            actions: [
+              '*'
+            ],
+            resources: ['*'],
+            effect: Effect.ALLOW,
+          }),
         ],
-        "Resource":"*",
-        "Effect":"Allow"
-      }
-  ]
-}
-`)
-      ),
+      }),
       script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
-      environmentVariablesToOutgoingEvent: ['tenantStatus'],
-      outgoingEvent: sbt.DetailType.DEPROVISION_SUCCESS,
-      incomingEvent: sbt.DetailType.OFFBOARDING_REQUEST,
+      environmentVariablesToOutgoingEvent: {
+        tenantRegistrationData:['registrationStatus']
+      },
+      // outgoingEvent: sbt.DetailType.DEPROVISION_SUCCESS,
+      // incomingEvent: sbt.DetailType.OFFBOARDING_REQUEST,
       scriptEnvironmentVariables: {
         TENANT_STACK_MAPPING_TABLE: props.tenantMappingTable.tableName,
         // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
@@ -99,12 +95,16 @@ export class CoreAppPlaneStack extends cdk.Stack {
       eventManager: props.eventManager
     };
 
-    const provisioningScriptJob: sbt.ProvisioningScriptJob = new sbt.ProvisioningScriptJob(this,
-      'provisioningScriptJob', provisioningScriptJobProps
+    const provisioningScriptJob: sbt.ProvisioningScriptJob = new sbt.ProvisioningScriptJob(
+      this,
+      'provisioningScriptJob', 
+      provisioningScriptJobProps
     );
 
-    const deprovisioningScriptJob: sbt.ProvisioningScriptJob = new sbt.DeprovisioningScriptJob(this,
-      'deprovisioningScriptJob', deprovisioningScriptJobProps
+    const deprovisioningScriptJob: sbt.ProvisioningScriptJob = new sbt.DeprovisioningScriptJob(
+      this,
+      'deprovisioningScriptJob', 
+      deprovisioningScriptJobProps
     );
 
     new sbt.CoreApplicationPlane(this, 'coreappplane-sbt', {

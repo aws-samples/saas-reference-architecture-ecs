@@ -111,4 +111,4 @@ export tenantConfig=$(jq --arg SAAS_APP_USERPOOL_ID "$SAAS_APP_USERPOOL_ID" \
 --arg SAAS_APP_CLIENT_ID "$SAAS_APP_CLIENT_ID" \
 --arg API_GATEWAY_URL "$API_GATEWAY_URL" \
 -n '{"userPoolId":$SAAS_APP_USERPOOL_ID,"appClientId":$SAAS_APP_CLIENT_ID,"apiGatewayUrl":$API_GATEWAY_URL}')
-export tenantStatus="Complete"
+export registrationStatus="Created"
