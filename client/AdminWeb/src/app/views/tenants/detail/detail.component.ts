@@ -17,9 +17,10 @@ export class DetailComponent implements OnInit {
       tier: 'basic'
     },
     tenantRegistrationData: {
+      tenantRegistrationId: '',
       registrationStatus: 'In progress'
     },
-    tenantRegistrationId: '',
+   
   });
   
   constructor(
@@ -30,12 +31,30 @@ export class DetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.tenant$ = this.route.params.pipe(
-      map((p) => p['tenantId']),
-      switchMap((tenantId) => this.tenantsSvc.get(tenantId)),
-      map(tenant => ({
-        ...tenant,
-        tenantRegistrationId: this.route.snapshot.queryParams['tenantRegistrationId']
-      }))
+      switchMap(() => this.route.queryParams),
+      switchMap((queryParams) => {
+        return this.tenantsSvc.get(queryParams['tenantRegistrationId']).pipe(
+          map(registrationInfo => ({
+            tenantId: this.route.snapshot.params['tenantId'],
+            tenantRegistrationData: {
+              tenantRegistrationId: registrationInfo.tenantRegistrationId,
+              registrationStatus: registrationInfo.registrationStatus
+            },
+            tenantData: {
+              tenantName: queryParams['tenantName'],
+              email: queryParams['email'],
+              tier: queryParams['tier']
+            },
+          }))
+        );
+      })
+
+      // map((p) => p['tenantId']),
+      // switchMap((tenantId) => this.tenantsSvc.get(tenantId)),
+      // map(tenant => ({
+      //   ...tenant,
+      //   tenantRegistrationId: this.route.snapshot.queryParams['tenantRegistrationId']
+      // }))
     );
   }
 

@@ -1,6 +1,16 @@
 <div class="tenant-list">
   <h2>Tenant List</h2>
-  <div class="d-flex flex-row-reverse mb-4">
+  <div class="d-flex justify-content-between mb-4">
+    <button
+      routerLink="/tenants/create"
+      routerLinkActive="router-link-active"
+      mat-raised-button
+      color="primary"
+      class="ms-2"
+    >
+      Provision Tenant
+    </button>
+
     <button
       class="refresh-btn"
       color="primary"
@@ -21,7 +31,7 @@
           <th mat-header-cell *matHeaderCellDef>Id</th>
           <td mat-cell *matCellDef="let element">
             <a [routerLink]="['/tenants', 'detail', element.tenantId]"
-            [queryParams]="{ tenantRegistrationId: element.tenantRegistrationId }" >
+            [queryParams]="element" >
               {{ element.tenantId }}
             </a>
           </td>
@@ -42,24 +52,9 @@
           <td mat-cell *matCellDef="let element">{{ element.tier }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="tenantStatus">
-          <th mat-header-cell *matHeaderCellDef>Status</th>
-          <td mat-cell *matCellDef="let element">{{ element.registrationStatus }}</td>
-        </ng-container>
-
         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
       </table>
-      <div class="button-panel">
-        <button
-          routerLink="/tenants/create"
-          routerLinkActive="router-link-active"
-          mat-raised-button
-          color="primary"
-        >
-          Provision Tenant
-        </button>
-      </div>
     </div>
   </div>
 </div>

@@ -25,7 +25,8 @@ STACK_NAME="tenant-template-stack-basic"
 USER_POOL_OUTPUT_PARAM_NAME="TenantUserpoolId"
 PRODUCT_TABLE_OUTPUT_PARAM_NAME="productsTableName"
 ORDER_TABLE_OUTPUT_PARAM_NAME="ordersTableName"
-
+PRODUCT_TABLE_NAME="product-table-name-basic"
+ORDER_TABLE_NAME="order-table-name-basic"
 # Delete tenant items 
 delete_items_if_exists() {
   TABLE_NAME="$1"
@@ -115,11 +116,6 @@ else
   # Read tenant details from the cloudformation stack output parameters
   SAAS_APP_USERPOOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='$USER_POOL_OUTPUT_PARAM_NAME'].OutputValue" --output text)
   
-  NESTED_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME | jq -rc '.StackResources | .[] | select(.ResourceType=="AWS::CloudFormation::Stack") | .PhysicalResourceId | split("/")[1]')
-
-  PRODUCT_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name $NESTED_NAME --query "Stacks[0].Outputs[?OutputKey=='$PRODUCT_TABLE_OUTPUT_PARAM_NAME'].OutputValue" --output text)
-  ORDER_TABLE_NAME=$(aws cloudformation describe-stacks --stack-name $NESTED_NAME --query "Stacks[0].Outputs[?OutputKey=='$ORDER_TABLE_OUTPUT_PARAM_NAME'].OutputValue" --output text)
-
   ## Delete tenant users and tenant user groups
   # Get a list of all users in the user group
   USERS=$(aws cognito-idp list-users-in-group --user-pool-id "$SAAS_APP_USERPOOL_ID" --group-name "$CDK_PARAM_TENANT_ID" --query "Users[].Username" --output text)

@@ -20,7 +20,8 @@ interface TenantData {
   prices?: Price[];
 }
 
-interface TenantRegistrationData {
+export interface TenantRegistrationData {
+  tenantRegistrationId?: string;
   registrationStatus?: string;
 }
 

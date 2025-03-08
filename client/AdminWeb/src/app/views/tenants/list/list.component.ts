@@ -15,7 +15,7 @@ export class ListComponent implements OnInit {
     'tenantName',
     'email',
     'tier',
-    'tenantStatus',
+    // 'tenantStatus',
   ];
   constructor(private tenantSvc: TenantsService) {}
 
