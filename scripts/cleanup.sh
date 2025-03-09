@@ -158,6 +158,10 @@ for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^contr
     aws s3 rb --force "s3://${i}" #delete in stack
 done
 
+# Cognito userpool delete
+# aws cognito-idp list-user-pools --max-results 60 | jq -r '.UserPools[].Id' | xargs -I {} aws cognito-idp delete-user-pool --user-pool-id {}
+
+
 #delete ecr repositories
 # SERVICE_REPOS=("user" "product" "order" "rproxy")
 # for SERVICE in "${SERVICE_REPOS[@]}"; do
