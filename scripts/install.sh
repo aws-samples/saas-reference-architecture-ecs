@@ -72,3 +72,9 @@ for SERVICE in $SERVICES; do
 done
 
 npx cdk deploy --all --require-approval=never
+
+# Get SaaS application url
+ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name shared-infra-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)
+APP_SITE_URL=$(aws cloudformation describe-stacks --stack-name shared-infra-stack --query "Stacks[0].Outputs[?OutputKey=='appSiteUrl'].OutputValue" --output text)
+echo "Admin site url: $ADMIN_SITE_URL"
+echo "Application site url: $APP_SITE_URL"
