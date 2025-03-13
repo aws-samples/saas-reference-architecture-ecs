@@ -1,16 +1,42 @@
 #!/bin/bash
 # build and push application services into ECR
 
+# Download the official certificate for AWS RDS
+download_RDS_ssl() {
+    local SSL_CERT_PATH="../server/application/microservices/product_mysql/src/SSLCA.pem"
+    echo -e "Downloading Amazon Root CA 1 certificate..."
+
+    # 디렉토리 생성
+    mkdir -p $(dirname "$SSL_CERT_PATH")
+
+    # Amazon Root CA 1 인증서 다운로드
+    curl -s -o "$SSL_CERT_PATH" https://www.amazontrust.com/repository/AmazonRootCA1.pem
+
+    if [ $? -eq 0 ]; then
+        chmod 644 "$SSL_CERT_PATH"
+        echo "Amazon Root CA 1 certificate downloaded successfully to $SSL_CERT_PATH"
+    else
+        echo "Failed to download Amazon Root CA 1 certificate"
+        exit 1
+    fi
+}
+
+
 # Prompt user for DB_TYPE selection
 select_db_type () {
     echo "Select the database type for 'product' service:"
     echo "1) DynamoDB"
-    echo "2) MySQL"
+    echo -n "2) MySQL: "
+    tput setaf 172; tput bold; tput smul 
+    echo "Scheme-per-tenant isolation in MySQL is only available for testing in Advanced Tier"
+    tput sgr0
+
     read -p "Enter the number corresponding to the database type [ default: 1) DynamoDB ]: " db_selection
 
     case $db_selection in
         2)
             DB_TYPE="mysql"
+            download_RDS_ssl
             ;;
         *)
             DB_TYPE="dynamodb"

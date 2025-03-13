@@ -1,10 +1,13 @@
 #!/bin/bash -e
 
 confirm() {
+    RED='\033[0;31m'
+    BOLD='\033[1m'
+    NC='\033[0m' # No Color
     echo ""
-    echo "=============================================="
-    echo " ** WARNING! This ACTION IS IRREVERSIBLE! **"
-    echo "=============================================="
+    echo -e "${RED}${BOLD}=============================================="
+    echo -e " ** WARNING! This ACTION IS IRREVERSIBLE! **"
+    echo -e "==============================================${NC}"
     echo ""
     echo "You are about to delete all SaaS ECS reference Architecture resources."
     echo "Do you want to continue?" 

@@ -207,6 +207,7 @@ export class TenantTemplateNag extends Construct {
   }
     // if(props.tier == 'basic'){    
 if('advanced' !== props.tier.toLocaleLowerCase() || 'ACTIVE' === props.advancedCluster ) {
+   if(process.env.CDK_USE_DB === 'dynamodb')
       NagSuppressions.addResourceSuppressionsByPath(
         cdk.Stack.of(this),
         [`${nagPath}/MyPolicy/Resource`],

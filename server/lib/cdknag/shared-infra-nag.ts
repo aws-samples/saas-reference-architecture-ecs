@@ -137,5 +137,107 @@ export class SharedInfraNag extends Construct {
       ]
     );
 
+    if(process.env.CDK_USE_DB === 'mysql') {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [`/shared-infra-stack/RdsCluster/RdsSecurityGroup/Resource`],
+        [
+          {
+            id: 'AwsSolutions-EC23',
+            reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
+          }
+        ]
+      );
+
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this), `/shared-infra-stack/RdsCluster/DbSecret/Resource`, [
+        {
+          id: 'AwsSolutions-SMG4',
+          reason: 'Reference for SBT-ECS SaaS'
+        },
+      ]);
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this), `/shared-infra-stack/RdsCluster/SbtRDSCluster/Resource`, [
+        {
+          id: 'AwsSolutions-RDS6',
+          reason: 'Reference for SBT-ECS SaaS'
+        },
+        {
+          id: 'AwsSolutions-RDS10',
+          reason: 'Reference for SBT-ECS SaaS'
+        },
+        {
+          id: 'AwsSolutions-RDS11',
+          reason: 'Reference for SBT-ECS SaaS'
+        },
+        {
+          id: 'AwsSolutions-RDS14',
+          reason: 'Reference for SBT-ECS SaaS'
+        },
+      ]);
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [`/shared-infra-stack/RdsCluster/SecretsManagerSeviceAccessPolicy/Resource`],
+        [
+          {
+            id: 'AwsSolutions-IAM5',
+            reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
+            appliesTo: ['Resource::arn:<AWS::Partition>:secretsmanager:<AWS::Region>:<AWS::AccountId>:secret:rds_proxy_multitenant/proxy_secret_for_user*']
+          }
+        ]
+      );
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [`/shared-infra-stack/RdsCluster/LambdaAddUsersRole/Resource`,],
+        [
+          {
+            id: 'AwsSolutions-IAM4',
+            reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
+            appliesTo: ['Policy::arn:<AWS::Partition>:iam::aws:policy/AWSXRayDaemonWriteAccess',
+              'Policy::arn:<AWS::Partition>:iam::aws:policy/CloudWatchLogsFullAccess',
+              'Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole'
+            ]
+          }
+        ]
+      );
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [`/shared-infra-stack/RdsCluster/LambdaAddUsersRole/DefaultPolicy/Resource`],
+        [
+          {
+            id: 'AwsSolutions-IAM5',
+            reason: 'This is not related with SaaS itself: SBT-ECS SaaS',
+            appliesTo: ['Resource::arn:aws:secretsmanager:<AWS::Region>:<AWS::AccountId>:secret:rds_proxy_multitenant/proxy_secret_for_user*',
+              'Resource::arn:aws:rds:<AWS::Region>:<AWS::AccountId>:db-proxy:*',
+              'Resource::*'
+            ]
+          }
+        ]
+      );
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this), `/shared-infra-stack/RdsCluster/MySqlDababase/Resource`, [
+        {
+          id: 'AwsSolutions-L1',
+          reason: 'Reference for SBT-ECS SaaS'
+        },
+      ]);
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this), `/shared-infra-stack/RdsCluster/STSRole/Resource`, [
+        {
+          id: 'AwsSolutions-IAM5',
+          reason: 'Reference for SBT-ECS SaaS',
+          appliesTo: ['Resource::arn:aws:rds-db:<AWS::Region>:<AWS::AccountId>:dbuser:*']
+        },
+      ]);
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this), `/shared-infra-stack/RdsCluster/sbt-ecsTaskRole/Resource`, [
+        {
+          id: 'AwsSolutions-IAM4',
+          reason: 'Reference for SBT-ECS SaaS',
+          appliesTo: ['Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role']
+        },
+      ]);
+     
+    }
   }
 }
