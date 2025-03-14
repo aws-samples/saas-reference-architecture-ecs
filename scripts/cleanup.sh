@@ -162,7 +162,7 @@ for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^contr
 done
 
 # Cognito userpool delete
-# aws cognito-idp list-user-pools --max-results 60 | jq -r '.UserPools[].Id' | xargs -I {} aws cognito-idp delete-user-pool --user-pool-id {}
+aws cognito-idp list-user-pools --max-results 60 | jq -r '.UserPools[].Id' | xargs -I {} aws cognito-idp delete-user-pool --user-pool-id {}
 
 
 #delete ecr repositories

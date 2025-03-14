@@ -27,9 +27,7 @@ select_db_type () {
     echo "Select the database type for 'product' service:"
     echo "1) DynamoDB"
     echo -n "2) MySQL: "
-    tput setaf 172; tput bold; tput smul 
-    echo "Scheme-per-tenant isolation in MySQL is only available for testing in Advanced Tier"
-    tput sgr0
+    echo -e "\033[38;5;172m\033[1m\033[4mScheme-per-tenant isolation in MySQL is only available for testing in Advanced Tier\033[0m"
 
     read -p "Enter the number corresponding to the database type [ default: 1) DynamoDB ]: " db_selection
 
