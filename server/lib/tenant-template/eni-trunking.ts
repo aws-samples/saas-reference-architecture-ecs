@@ -3,14 +3,12 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
-import { addTemplateTag } from '../utilities/helper-functions';
 
 export class CustomEniTrunking extends Construct {
   public readonly ec2Role: iam.Role;
 
   constructor(scope: Construct, id: string, props?: cdk.NestedStackProps) {
     super(scope, id);
-    addTemplateTag(this, 'EniTrunking');
     // Lambda function code
     const lambdaFunctionCode = lambda.Code.fromInline(`
       const { ECSClient, PutAccountSettingCommand } = require("@aws-sdk/client-ecs");

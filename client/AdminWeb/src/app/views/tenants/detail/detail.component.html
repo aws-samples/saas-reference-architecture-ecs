@@ -1,4 +1,93 @@
-<pre>{{ tenant$ | async | json }}</pre>
+
+<div class="container-fluid p-4">
+  <!-- 삭제 버튼 섹션 -->
+  <div class="row mb-4" *ngIf="tenant$ | async as tenant">
+    <div class="col d-flex justify-content-end">
+      <button class="btn btn-danger btn-sm d-flex align-items-center" 
+              type="button" 
+              (click)="delete()"
+              [disabled]="tenant.tenantRegistrationData.registrationStatus !== 'Created'"
+              [attr.data-tooltip]="tenant.tenantRegistrationData.registrationStatus !== 'Created' ? 'Cannot delete in current status' : null">
+        <span class="material-symbols-outlined me-2">delete</span>
+        Delete Tenant
+      </button>
+    </div>
+  </div>
+
+  <!-- Tenant  -->
+  <div *ngIf="tenant$ | async as tenant" class="row">
+    <!-- Tenant Data Section -->
+    <div class="col-12 mb-4">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="card-title mb-0">Tenant Information</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="d-flex flex-column">
+                <span class="text-muted small">Tenant ID</span>
+                <span class="fw-medium">{{ tenant.tenantId }}</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex flex-column">
+                <span class="text-muted small">Name</span>
+                <span class="fw-medium">{{ tenant.tenantData.tenantName }}</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex flex-column">
+                <span class="text-muted small">Email</span>
+                <span class="fw-medium">{{ tenant.tenantData.email }}</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex flex-column">
+                <span class="text-muted small">Tier</span>
+                <span class="fw-medium">{{ tenant.tenantData.tier }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registration Data Section -->
+    <div class="col-12">
+      <div class="card shadow-sm">
+        <div class="card-header bg-light">
+          <h5 class="card-title mb-0">Registration Information</h5>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="d-flex flex-column">
+                <span class="text-muted small">Registration ID</span>
+                <span class="fw-medium">{{ tenant.tenantRegistrationData.tenantRegistrationId }}</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex flex-column">
+                <span class="text-muted small">Status</span>
+                <span class="badge" [ngClass]="{
+                    'bg-primary': tenant.tenantRegistrationData.registrationStatus === 'In progress',
+                    'bg-warning': tenant.tenantRegistrationData.registrationStatus === 'Deleting',
+                    'bg-danger': tenant.tenantRegistrationData.registrationStatus === 'Deleted',
+                    'bg-secondary': tenant.tenantRegistrationData.registrationStatus === 'Created'}">
+                  {{ tenant.tenantRegistrationData.registrationStatus }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--  <pre>{{ tenant$ | async | json }}</pre>
+
 <div class="d-flex flex-row mb-4">
   <button color="primary" type="button" mat-raised-button (click)="delete()">
     <mat-icon mat-list-icon class="nav-icon material-symbols-outlined"
@@ -6,3 +95,4 @@
     >
   </button>
 </div>
+-->

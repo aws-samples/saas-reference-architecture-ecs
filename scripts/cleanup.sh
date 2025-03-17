@@ -1,10 +1,13 @@
 #!/bin/bash -e
 
 confirm() {
+    RED='\033[0;31m'
+    BOLD='\033[1m'
+    NC='\033[0m' # No Color
     echo ""
-    echo "=============================================="
-    echo " ** WARNING! This ACTION IS IRREVERSIBLE! **"
-    echo "=============================================="
+    echo -e "${RED}${BOLD}=============================================="
+    echo -e " ** WARNING! This ACTION IS IRREVERSIBLE! **"
+    echo -e "==============================================${NC}"
     echo ""
     echo "You are about to delete all SaaS ECS reference Architecture resources."
     echo "Do you want to continue?" 
@@ -31,9 +34,15 @@ for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^contr
     if [[ ${i} == *"accesslog"* ]]; then
         aws s3 rb --force "s3://${i}" #delete in stack
     fi
-    
 done
 
+SECRETS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::SecretsManager::Secret']" --output text | true)
+if [ -z "$SECRETS_RESOURCES" ]; then
+  :
+else
+  echo "$SECRETS_RESOURCES"
+  sh ./del-secrets.sh
+fi
 
 cd ../server
 npm install
@@ -152,15 +161,19 @@ for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^contr
     aws s3 rb --force "s3://${i}" #delete in stack
 done
 
+# Cognito userpool delete
+aws cognito-idp list-user-pools --max-results 60 | jq -r '.UserPools[].Id' | xargs -I {} aws cognito-idp delete-user-pool --user-pool-id {}
+
+
 #delete ecr repositories
-SERVICE_REPOS=("user" "product" "order" "rproxy")
-for SERVICE in "${SERVICE_REPOS[@]}"; do
-  echo "Repository [$SERVICE] checking..."
-  REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text)
-  if [ "$REPO_EXISTS" == "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE" ]; then
-    echo "Repository [$REPO_EXISTS] is deleting..."
-    aws ecr delete-repository --repository-name "$SERVICE" --force | cat
-  else
-    echo "Repository [$SERVICE] does not exist"
-  fi
-done
+# SERVICE_REPOS=("user" "product" "order" "rproxy")
+# for SERVICE in "${SERVICE_REPOS[@]}"; do
+#   echo "Repository [$SERVICE] checking..."
+#   REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text)
+#   if [ "$REPO_EXISTS" == "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE" ]; then
+#     echo "Repository [$REPO_EXISTS] is deleting..."
+#     aws ecr delete-repository --repository-name "$SERVICE" --force | cat
+#   else
+#     echo "Repository [$SERVICE] does not exist"
+#   fi
+# done

@@ -7,7 +7,6 @@ interface UsagePlansProps {
   apiKeyIdBasicTier: string
   apiKeyIdAdvancedTier: string
   apiKeyIdPremiumTier: string
-  apiKeyIdPlatinumTier: string
   isPooledDeploy: boolean
 }
 
@@ -15,7 +14,6 @@ export class UsagePlans extends Construct {
   public readonly usagePlanBasicTier: UsagePlan;
   public readonly usagePlanAdvancedTier: UsagePlan;
   public readonly usagePlanPremiumTier: UsagePlan;
-  public readonly usagePlanPlatinumTier: UsagePlan;
   public readonly usagePlanSystemAdmin: UsagePlan;
   constructor (scope: Construct, id: string, props: UsagePlansProps) {
     super(scope, id);
@@ -75,23 +73,6 @@ export class UsagePlans extends Construct {
         stage: props.apiGateway.deploymentStage
       });
     }
-    this.usagePlanPlatinumTier = props.apiGateway.addUsagePlan('UsagePlanPlatinumTier', {
-      quota: {
-        limit: 6500,
-        period: Period.DAY
-      },
-      throttle: {
-        burstLimit: 450,
-        rateLimit: 450
-      }
-    });
 
-    this.usagePlanPlatinumTier.addApiKey(
-      ApiKey.fromApiKeyId(this, 'ApiKeyPlatinum', props.apiKeyIdPlatinumTier)
-    );
-    this.usagePlanPlatinumTier.addApiStage({
-      api: props.apiGateway,
-      stage: props.apiGateway.deploymentStage
-    });
   }
 }

@@ -17,7 +17,8 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 @Injectable()
 export class OrdersService {
   constructor (private readonly clientFac: ClientFactoryService) {}
-  tableName: string = process.env.ORDER_TABLE_NAME;
+  // tableName: string = process.env.ORDER_TABLE_NAME;
+  tableName: string = process.env.TABLE_NAME;
 
   async create (createOrderDto: CreateOrderDto, tenantId: string) {
     const newOrder = {

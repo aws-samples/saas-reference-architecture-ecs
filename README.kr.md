@@ -27,7 +27,7 @@ Fig 1: ECS SaaS - High-level infrastructure
 ## 사전 요구사항
 이 솔루션은 AWS 계정의 [AWS Cloud9](https://aws.amazon.com/pm/cloud9/) 환경을 통해 배포하거나 랩탑에서 직접 배포할 수 있습니다.
 
-Cloud9를 사용하는 경우 최소 t3.large 인스턴스 크기를 사용하여 EC2에 `Amazon Linux 2023` AMI를 사용해야 합니다. 또한 `./scripts/resize-cloud9.sh` 스크립트를 사용하여 기본 EC2 인스턴스의 볼륨 크기를 50GB(기본 10GB 대신)로 늘립니다. 이는 솔루션을 빌드하는 데 충분한 컴퓨팅과 공간이 있는지 확인하기 위한 것입니다.
+Cloud9 환경에서 사용하는 경우 최소 t3.large 인스턴스 크기를 사용하고 EC2의 AMI는 `Amazon Linux 2023` 로 최정화되어 있습니다. 또한 `./scripts/resize-cloud9.sh` 스크립트를 사용하여 기본 EC2 인스턴스의 볼륨 크기를 50GB(기본 10GB 대신)로 늘립니다. 이는 솔루션을 빌드하는 데 충분한 컴퓨팅과 공간이 있는지 확인하기 위한 것입니다.
 
 - 이 레퍼런스 아키텍처는 Python을 사용합니다. Python 3.8 이상이 설치되어 있는지 확인하세요.
 - [AWS CLI 2.14](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html)의 같거나 상위버전이 설치되어 있는지 확인하세요.
@@ -43,13 +43,17 @@ Cloud9를 사용하는 경우 최소 t3.large 인스턴스 크기를 사용하�
 ```bash
 git clone this_repo_url
 cd saas-reference-architecture-ecs/scripts
-./build-application.sh 
-./install.sh admin_email 
+./build-application.sh  # Build and upload sample applications(product, order, user) to ECR
+#./install.sh admin_email 
+./init-install.sh
+./sbt-install.sh admin_email # SaaS Builder Toolkit's Control Plane, Application Plane is installed.
 ```
 
 ```build-application.sh```는 Order, Product 및 User 마이크로서비스로 샘플 SaaS 애플리케이션의 Docker 이미지를 빌드하고 Amazon ECR에 푸시합니다.
 
-그리고 ```install.sh```는 다음을 배포합니다:
+그리고 ```init-install.sh```을 이용하여 
+
+그리고 ```install.sh```을 이용하여 다음을 배포합니다:
  
 - AWS 계정에서 AWS S3 버킷을 만들고 이 레퍼런스 솔루션 코드를 버킷에 업로드합니다.
   - 업로든 된 소스는 Advanced 티어를 위한 마이크로서비스 프로비저닝 과 Premium 티어를 위한 ECS 와 마이크로서비스 프로비저닝에 사용.

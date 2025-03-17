@@ -15,6 +15,7 @@ export class CreateComponent implements OnInit {
     tenantName: new FormControl('', [Validators.required, this.lowercaseAndNumberValidator() ]),
     email: new FormControl('', [Validators.email, Validators.required]),
     tier: new FormControl('', [Validators.required]),
+    prices: new FormControl<any[]>([]) 
   });
   constructor(
     private tenantSvc: TenantsService,
@@ -25,11 +26,23 @@ export class CreateComponent implements OnInit {
 
   submit() {
     this.submitting = true;
+
     const tenant = {
-      ...this.tenantForm.value,
       tenantId: guid(),
-      tenantStatus: 'In progress',
+      tenantData: {
+        ...this.tenantForm.value,
+        prices: this.tenantForm.value.prices || [],
+      },
+      tenantRegistrationData: {
+        registrationStatus: "In progress"
+      }
     };
+
+    // const tenant = {
+    //   ...this.tenantForm.value,
+    //   tenantId: guid(),
+    //   tenantStatus: 'In progress',
+    // };
 
     this.tenantSvc.post(tenant).subscribe({
       next: () => {

@@ -34,7 +34,7 @@ export class ControlPlaneNag extends Construct {
     NagSuppressions.addResourceSuppressionsByPath(
       cdk.Stack.of(this),
       [
-        `${sbtPath}/tenantManagementServicves/tenantManagementLambda/tenantManagementExecRole/DefaultPolicy/Resource`,
+        // `${sbtPath}/tenantManagementServicves/tenantManagementLambda/tenantManagementExecRole/DefaultPolicy/Resource`,
         `${sbtPath}/tenantConfigService/tenantConfigLambda/TenantConfigServiceLambda/ServiceRole/DefaultPolicy/Resource`,
       ],
       [

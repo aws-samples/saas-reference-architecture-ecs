@@ -3,26 +3,22 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
-import * as fs from 'fs';
 import * as path from 'path';
 import { type Construct } from 'constructs';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { PythonLayerVersion } from '@aws-cdk/aws-lambda-python-alpha';
-import { ApiMethods } from './api-methods';
-import { type ContainerInfo } from '../interfaces/container-info';
-import { SharedInfraNag } from '../cdknag/shared-infra-nag';
-import { ApiGateway } from './api-gateway';
 import { type ApiKeySSMParameterNames } from '../interfaces/api-key-ssm-parameter-names';
 import { TenantApiKey } from './tenant-api-key';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from './static-site-distro';
 import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
+import { RdsCluster } from './rds-cluster';
+import { SharedInfraNag } from '../cdknag/shared-infra-nag';
+import { ApiGateway } from './api-gateway';
 
 export interface SharedInfraProps extends cdk.StackProps {
-  isPooledDeploy: boolean
   ApiKeySSMParameterNames: ApiKeySSMParameterNames
-  apiKeyPlatinumTierParameter: string
   apiKeyPremiumTierParameter: string
   apiKeyAdvancedTierParameter: string
   apiKeyBasicTierParameter: string
@@ -34,7 +30,6 @@ export class SharedInfraStack extends cdk.Stack {
   vpc: ec2.IVpc;
   alb: elbv2.ApplicationLoadBalancer;
   albSG: ec2.ISecurityGroup;
-  ecsSG: ec2.SecurityGroup;
   listener: elbv2.ApplicationListener;
   nlbListener: elbv2.NetworkListener;
   apiGateway: ApiGateway;
@@ -49,7 +44,6 @@ export class SharedInfraStack extends cdk.Stack {
     super(scope, id);
     addTemplateTag(this, 'SharedInfraStack');
     const azs = cdk.Fn.getAzs(this.region);
-    // 스택의 리전에 있는 모든 가용 영역 목록 가져오기
 
     const selectedAzs = Array(props.azCount).fill('').map(() => '');
 
@@ -167,17 +161,15 @@ export class SharedInfraStack extends cdk.Stack {
       ssmParameterApiValueName: props.ApiKeySSMParameterNames.premium.value
     });
 
-    const platinumKey = new TenantApiKey(this, 'PlatinumTierApiKey', {
-      apiKeyValue: props.apiKeyPlatinumTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.platinum.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.platinum.value
+    const vpcLink = new apigateway.VpcLink(this, 'ecs-vpc-link', {
+      targets: [nlb]
     });
 
     this.apiGateway = new ApiGateway(this, 'ApiGateway', {
-      tenantId: 'ecs-sbt',
-      isPooledDeploy: props.isPooledDeploy,
       lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
-      nlb: nlb,
+      stageName: props.stageName,
+      nlb,
+      vpcLink: vpcLink,
       apiKeyBasicTier: {
         apiKeyId: basicKey.apiKey.keyId,
         value: basicKey.apiKeyValue
@@ -189,29 +181,7 @@ export class SharedInfraStack extends cdk.Stack {
       apiKeyPremiumTier: {
         apiKeyId: premiumKey.apiKey.keyId,
         value: premiumKey.apiKeyValue
-      },
-      apiKeyPlatinumTier: {
-        apiKeyId: platinumKey.apiKey.keyId,
-        value: platinumKey.apiKeyValue
-      },
-      stageName: props.stageName
-    });
-
-    const vpcLink = new apigateway.VpcLink(this, 'ecs-vpc-link', {
-      targets: [nlb]
-    });
-
-    // Read JSON file with container info
-    const containerInfoJSON = fs.readFileSync(path.resolve(__dirname, '../service-info.json'));
-    const containerInfo: ContainerInfo[] = JSON.parse(containerInfoJSON.toString()).Containers;
-
-    containerInfo.forEach((info, _index) => {
-      new ApiMethods(this, `${info.name}-ApiMethods`, {
-        serviceName: info.name,
-        apiGateway: this.apiGateway,
-        nlb: nlb,
-        vpcLink: vpcLink
-      });
+      }
     });
 
     new cdk.CfnOutput(this, 'EcsVpcId', {
@@ -243,7 +213,6 @@ export class SharedInfraStack extends cdk.Stack {
         region: this.region
       }
     });
-
     this.adminSiteUrl = `https://${this.adminSiteDistro.cloudfrontDistribution.domainName}`;
 
     //**Tenant Application Cloudfront*/
@@ -255,13 +224,26 @@ export class SharedInfraStack extends cdk.Stack {
         region: this.region
       }
     });
-
     this.appSiteUrl = `https://${this.appSiteDistro.cloudfrontDistribution.domainName}`;
     //******/
 
     this.tenantMappingTable = new Table(this, 'TenantMappingTable', {
-      partitionKey: { name: 'tenantId', type: AttributeType.STRING }
+      partitionKey: { name: 'tenantId', type: AttributeType.STRING },
+      pointInTimeRecovery: true
     });
+
+    //=====>>MYSQL<<===========
+    if(process.env.CDK_USE_DB == 'mysql') {
+      const rdsCluster = new RdsCluster(this, 'RdsCluster', {
+        vpc: this.vpc,
+        stageName: props.stageName,
+        lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
+        env: {
+          account: this.account,
+          region: this.region
+        }
+      });
+    }
 
     //**Output */
     new cdk.CfnOutput(this, 'ALBDnsName', {

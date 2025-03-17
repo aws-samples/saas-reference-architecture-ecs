@@ -8,7 +8,7 @@ import { Observable } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { map } from 'rxjs/operators';
 
-import { Tenant } from './models/tenant';
+import { Tenant, TenantRegistrationData } from './models/tenant';
 
 @Injectable({
   providedIn: 'root',
@@ -16,11 +16,12 @@ import { Tenant } from './models/tenant';
 export class TenantsService {
   constructor(private http: HttpClient) {}
   baseUrl = `${environment.apiUrl}`;
-  tenantsApiUrl = `${this.baseUrl}/tenants`;
+  tenantsApiUrl = `${this.baseUrl}/tenant-registrations`;
+  tenantsMgmtApiUrl = `${this.baseUrl}/tenants`;
 
   fetch(): Observable<Tenant[]> {
     return this.http
-      .get<Tenant[]>(this.tenantsApiUrl)
+      .get<Tenant[]>(this.tenantsMgmtApiUrl)//.get<Tenant[]>(this.tenantsApiUrl)
       .pipe(map((response: any) => response.data));
   }
 
@@ -32,14 +33,29 @@ export class TenantsService {
     return `${this.tenantsApiUrl}/${id}`;
   };
 
-  get(id: string): Observable<Tenant> {
+  tenantMgmtUrl = (id: any) => {
+    return `${this.tenantsMgmtApiUrl}/${id}`;
+  };
+
+  get(id: string): Observable<TenantRegistrationData> {
     return this.http
       .get(this.tenantUrl(id))
       .pipe(map((response: any) => response.data));
   }
 
-  delete(tenant: Tenant): Observable<any> {
-    return this.http.delete(this.tenantUrl(tenant.tenantId), {
+  // get(id: string): Observable<Tenant> {
+  //   return this.http
+  //     .get(this.tenantMgmtUrl(id))
+  //     .pipe(map((response: any) => response.data));
+  // }
+  // delete(tenant: Tenant): Observable<any> {
+  //   return this.http.delete(this.tenantUrl(tenant.tenantId), {
+  //     body: tenant,
+  //   });
+  // }
+
+  delete(tenant: any): Observable<any> {
+    return this.http.delete(this.tenantUrl(tenant.tenantRegistrationData.tenantRegistrationId), {
       body: tenant,
     });
   }

@@ -4,7 +4,27 @@
       "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/rproxy",
       "memoryLimitMiB": 512,
       "cpu": 256,
-      "containerPort":80
+      "containerPort":80,
+      "policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Action": [ "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel","ssmmessages:OpenControlChannel","ssmmessages:OpenDataChannel"
+            ],
+            "Resource": "*"
+          }
+        ]
+      },
+      "portMappings": [{
+          "name": "rproxy", 
+          "containerPort": 80,
+          "appProtocol": "ecs.AppProtocol.http",
+          "protocol": "ecs.Protocol.TCP"
+        }],
+      "environment" : {
+        "NAMESPACE": "<NAMESPACE>"
+      }
     },
     "Containers": [
       {
@@ -13,19 +33,38 @@
         "memoryLimitMiB": 512,
         "cpu": 256,
         "containerPort": 3010,
-        "sortKey": "orderId",
-        "tableName": "ORDER_TABLE_NAME",
+        "database": {
+            "kind": "dynamodb",
+            "sortKey": "orderId"
+        },
         "policy": {
           "Version": "2012-10-17",
           "Statement": [
             {
-              "Action": [
-                "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:BatchGetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchWriteItem", "dynamodb:UpdateItem", "dynamodb:GetRecords"
+              "Effect": "Allow",
+              "Action": [ "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel","ssmmessages:OpenControlChannel","ssmmessages:OpenDataChannel"
               ],
-              "Resource": "<TABLE_ARN>",
-              "Effect": "Allow"
+              "Resource": "*"
             }
           ]
+        },
+        "portMappings": [{
+          "name": "orders", 
+          "containerPort": 3010,
+          "appProtocol": "ecs.AppProtocol.http",
+          "protocol": "ecs.Protocol.TCP"
+        }],
+        "environment" : {
+          "TABLE_NAME": "ORDER_TABLE_NAME"
+        },
+        "healthCheck": {
+            "command": [
+              "CMD-SHELL", "curl -f http://localhost:3010/orders/health || exit 1"
+            ],
+            "interval": 60,
+            "timeout": 60,
+            "retries": 10,
+            "startPeriod": 300
         }
       },
       {
@@ -34,19 +73,18 @@
         "memoryLimitMiB": 512,
         "cpu": 256,
         "containerPort": 3010,
-        "sortKey": "productId",
-        "tableName": "PRODUCT_TABLE_NAME",
-        "policy": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Action": [
-                "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:BatchGetItem", "dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchWriteItem", "dynamodb:UpdateItem", "dynamodb:GetRecords"
-              ],
-              "Resource": "<TABLE_ARN>",
-              "Effect": "Allow"
-            }
-          ]
+        "database": {
+            "kind": "dynamodb",
+            "sortKey": "productId"
+        },
+        "portMappings": [{
+          "name": "products", 
+          "containerPort": 3010,
+          "appProtocol": "ecs.AppProtocol.http",
+          "protocol": "ecs.Protocol.TCP"
+        }],
+        "environment" : {
+          "TABLE_NAME": "PRODUCT_TABLE_NAME"
         }
       },
       {
@@ -55,8 +93,6 @@
         "memoryLimitMiB": 512,
         "cpu": 256,
         "containerPort": 3010,
-        "sortKey": "",
-        "tableName": "USER_TABLE_NAME",
         "policy": {
           "Version": "2012-10-17",
           "Statement": [
@@ -70,7 +106,14 @@
               "Effect": "Allow"
             }
           ]
-        }
+        },
+        "portMappings": [{
+          "name": "users", 
+          "containerPort": 3010,
+          "appProtocol": "ecs.AppProtocol.http",
+          "protocol": "ecs.Protocol.TCP"
+        }]
+
       }
     ]
 }

@@ -8,7 +8,6 @@ import * as sbt from '@cdklabs/sbt-aws';
 import { StaticSiteDistro } from '../shared-infra/static-site-distro';
 
 interface ControlPlaneStackProps extends cdk.StackProps {
-  systemAdminRoleName: string
   systemAdminEmail: string
   accessLogsBucket: cdk.aws_s3.Bucket
   distro: StaticSiteDistro

@@ -1,0 +1,93 @@
+{
+    "Rproxy": {
+      "name": "rproxy",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/rproxy",
+      "memoryLimitMiB": 512,
+      "cpu": 256,
+      "containerPort":80,
+      "portMappings": [{
+          "name": "rproxy", 
+          "containerPort": 80,
+          "appProtocol": "ecs.AppProtocol.http",
+          "protocol": "ecs.Protocol.TCP"
+        }],
+      "environment" : {
+        "NAMESPACE": "<NAMESPACE>"
+      }
+    },
+    "Containers": [
+      {
+        "name": "orders",
+        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/order",
+        "memoryLimitMiB": 512,
+        "cpu": 256,
+        "containerPort": 3010,
+        "database": {
+            "kind": "dynamodb",
+            "sortKey": "orderId"
+        },
+        "portMappings": [{
+          "name": "orders", 
+          "containerPort": 3010,
+          "appProtocol": "ecs.AppProtocol.http",
+          "protocol": "ecs.Protocol.TCP"
+        }],
+        "environment" : {
+          "TABLE_NAME": "ORDER_TABLE_NAME"
+        }
+        
+      },
+      {
+        "name": "products",
+        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/product",
+        "memoryLimitMiB": 512,
+        "cpu": 256,
+        "containerPort": 3010,
+        "database": {
+            "kind": "mysql",
+            "sortKey": "productId"
+        },
+        "portMappings": [{
+          "name": "products", 
+          "containerPort": 3010,
+          "appProtocol": "ecs.AppProtocol.http",
+          "protocol": "ecs.Protocol.TCP"
+        }],
+        "environment" : {
+          "IAM_ARN": "<IAM_ARN>",
+          "RESOURCE": "arn:aws:rds-db:<REGION>:<ACCOUNT_ID>:dbuser:*/",
+          "PROXY_ENDPOINT": "<PROXY_ENDPOINT>",
+          "CLUSTER_ENDPOINT_RESOURCE": "<CLUSTER_ENDPOINT_RESOURCE>"
+        }
+      },
+      {
+        "name": "users",
+        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/user",
+        "memoryLimitMiB": 512,
+        "cpu": 256,
+        "containerPort": 3010,
+        "policy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": [
+                "cognito-idp:AdminDeleteUser", "cognito-idp:AdminEnableUser","cognito-idp:AdminCreateUser", "cognito-idp:CreateGroup", "cognito-idp:AdminDisableUser", "cognito-idp:AdminAddUserToGroup","cognito-idp:GetGroup", "cognito-idp:AdminUpdateUserAttributes","cognito-idp:AdminGetUser", "cognito-idp:ListUsers","cognito-idp:ListUsersInGroup", "cognito-idp:AdminListGroupsForUser"
+              ],
+              "Resource": 
+                "arn:aws:cognito-idp:<REGION>:<ACCOUNT_ID>:userpool/<USER_POOL_ID>"
+              ,
+              "Effect": "Allow"
+            }
+          ]
+        },
+        "portMappings": [{
+          "name": "users", 
+          "containerPort": 3010,
+          "appProtocol": "ecs.AppProtocol.http",
+          "protocol": "ecs.Protocol.TCP"
+        }]
+
+      }
+    ]
+}
+  

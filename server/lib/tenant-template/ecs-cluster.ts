@@ -25,7 +25,7 @@ export class EcsCluster extends cdk.NestedStack {
     let clusterName = 'advanced' === props.tier.toLocaleLowerCase() 
         ? `${props.stageName}-advanced-${cdk.Stack.of(this).account}`
         : `${props.stageName}-${props.tenantId}`;
-        
+
     this.cluster = new ecs.Cluster(this, 'EcsCluster', {
       clusterName,
       vpc: props.vpc,
@@ -78,6 +78,6 @@ export class EcsCluster extends cdk.NestedStack {
       const thisCluster = this.cluster as ecs.Cluster;
       thisCluster.addAsgCapacityProvider(capacityProvider);
     }
-   
+  
   }
 }

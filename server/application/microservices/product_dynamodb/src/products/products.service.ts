@@ -18,7 +18,8 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 @Injectable()
 export class ProductsService {
   constructor (private readonly clientFac: ClientFactoryService) {}
-  tableName: string = process.env.PRODUCT_TABLE_NAME;
+  // tableName: string = process.env.PRODUCT_TABLE_NAME;
+  tableName: string = process.env.TABLE_NAME;
 
   async create (createProductDto: CreateProductDto, tenantId: string) {
     const newProduct = {

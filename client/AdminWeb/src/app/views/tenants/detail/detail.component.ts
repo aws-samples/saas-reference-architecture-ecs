@@ -9,7 +9,20 @@ import { ActivatedRoute, Router } from '@angular/router';
   templateUrl: './detail.component.html',
 })
 export class DetailComponent implements OnInit {
-  tenant$: Observable<Tenant> = of({});
+  // tenant$: Observable<Tenant | null> = of(null);
+  tenant$: Observable<Tenant> = of({
+    tenantData: {
+      tenantName: '',
+      email: '',
+      tier: 'basic'
+    },
+    tenantRegistrationData: {
+      tenantRegistrationId: '',
+      registrationStatus: 'In progress'
+    },
+   
+  });
+  
   constructor(
     private tenantsSvc: TenantsService,
     private route: ActivatedRoute,
@@ -18,8 +31,30 @@ export class DetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.tenant$ = this.route.params.pipe(
-      map((p) => p['tenantId']),
-      switchMap((tenantId) => this.tenantsSvc.get(tenantId)),
+      switchMap(() => this.route.queryParams),
+      switchMap((queryParams) => {
+        return this.tenantsSvc.get(queryParams['tenantRegistrationId']).pipe(
+          map(registrationInfo => ({
+            tenantId: this.route.snapshot.params['tenantId'],
+            tenantRegistrationData: {
+              tenantRegistrationId: registrationInfo.tenantRegistrationId,
+              registrationStatus: registrationInfo.registrationStatus
+            },
+            tenantData: {
+              tenantName: queryParams['tenantName'],
+              email: queryParams['email'],
+              tier: queryParams['tier']
+            },
+          }))
+        );
+      })
+
+      // map((p) => p['tenantId']),
+      // switchMap((tenantId) => this.tenantsSvc.get(tenantId)),
+      // map(tenant => ({
+      //   ...tenant,
+      //   tenantRegistrationId: this.route.snapshot.queryParams['tenantRegistrationId']
+      // }))
     );
   }
 
