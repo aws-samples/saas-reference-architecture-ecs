@@ -37,6 +37,17 @@
             <option value="PREMIUM">Premium</option>
           </select>
         </mat-form-field>
+
+<!-- Federation 여부 선택 추가 -->
+<mat-form-field appearance="fill" *ngIf="tier?.value === 'ADVANCED' || tier?.value === 'PREMIUM'">
+  <mat-label>Authentication Type</mat-label>
+  <mat-select formControlName="useFederation">
+    <mat-option [value]="false">Cognito Native</mat-option>
+    <mat-option [value]="true">Use Federation (Configure Later)</mat-option>
+  </mat-select>
+</mat-form-field>
+
+
         <mat-card-footer>
           <div class="button-panel">
             <button

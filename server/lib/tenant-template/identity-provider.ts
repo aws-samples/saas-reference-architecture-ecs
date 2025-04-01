@@ -5,6 +5,7 @@ import { type IdentityDetails } from '../interfaces/identity-details';
 interface IdentityProviderStackProps extends StackProps {
   tenantId: string
   appSiteUrl: string
+  useFederation: string
 }
 
 export class IdentityProvider extends Construct {
@@ -15,7 +16,7 @@ export class IdentityProvider extends Construct {
     super(scope, id);
     this.tenantUserPool = new aws_cognito.UserPool(this, 'TenantUserPool', {
       autoVerify: { email: true },
-      selfSignUpEnabled: true,
+      selfSignUpEnabled: props.useFederation.toLowerCase() === 'true',
 
       accountRecovery: aws_cognito.AccountRecovery.EMAIL_ONLY,
       standardAttributes: {

@@ -43,7 +43,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
         ],
       }),
       script: fs.readFileSync('../scripts/provision-tenant.sh', 'utf8'),
-      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email'],
+      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email', 'useFederation'],
       environmentJSONVariablesFromIncomingEvent: ['prices'],
       environmentVariablesToOutgoingEvent: {tenantData:[
         'tenantS3Bucket',
@@ -101,7 +101,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
       provisioningScriptJobProps
     );
 
-    const deprovisioningScriptJob: sbt.ProvisioningScriptJob = new sbt.DeprovisioningScriptJob(
+    const deprovisioningScriptJob: sbt.DeprovisioningScriptJob = new sbt.DeprovisioningScriptJob(
       this,
       'deprovisioningScriptJob', 
       deprovisioningScriptJobProps

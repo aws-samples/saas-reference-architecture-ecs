@@ -50,6 +50,7 @@ export CDK_PARAM_TENANT_ID=$tenantId
 export TIER=$tier
 export TENANT_ADMIN_EMAIL=$email
 export TENANT_NAME=$tenantName
+export USE_FEDERATION=$useFederation
 
 # Define variables
 # TENANT_ADMIN_USERNAME="tenant-admin-$CDK_PARAM_TENANT_ID"
@@ -79,6 +80,7 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
     export CDK_PARAM_APPLICATION_NAME_PLANE_SOURCE="sbt-application-plane-api"
     export CDK_PARAM_TIER=$TIER
     export CDK_PARAM_TENANT_NAME=$TENANT_NAME  #Added for demonstration during the workshop
+    export CDK_PARAM_USE_FEDERATION=$USE_FEDERATION ###Federation check for selfSign
 
     cdk deploy $STACK_NAME --exclusively --require-approval never 
 fi

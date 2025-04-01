@@ -31,6 +31,7 @@ interface TenantTemplateStackProps extends cdk.StackProps {
   tier: string
   advancedCluster: string
   appSiteUrl: string
+  useFederation: string
 }
 
 export class TenantTemplateStack extends cdk.Stack {
@@ -47,6 +48,7 @@ export class TenantTemplateStack extends cdk.Stack {
     const identityProvider = new IdentityProvider(this, 'IdentityProvider', {
       tenantId: props.tenantId,
       appSiteUrl: props.appSiteUrl,
+      useFederation: props.useFederation
     });
 
     const vpc = ec2.Vpc.fromVpcAttributes(this, 'Vpc', {

@@ -29,6 +29,7 @@ if(AzCount < 2 || AzCount > 3) {
 const systemAdminEmail = process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL;
 const tenantId = process.env.CDK_PARAM_TENANT_ID || basicId;
 const tenantName = process.env.CDK_PARAM_TENANT_NAME || basicName;
+const useFederation = process.env.CDK_PARAM_USE_FEDERATION || 'true';
 
 const commitId = getEnv('CDK_PARAM_COMMIT_ID');
 const tier = getEnv('CDK_PARAM_TIER');
@@ -121,6 +122,7 @@ const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-
   tier: tier,
   advancedCluster: advancedCluster,
   appSiteUrl: sharedInfraStack.appSiteUrl,
+  useFederation: useFederation,
   env
 });
 
@@ -133,6 +135,7 @@ const advancedTierTempStack = new TenantTemplateStack(app, `tenant-template-stac
   tier: 'advanced',
   advancedCluster: 'INACTIVE',
   appSiteUrl: sharedInfraStack.appSiteUrl,
+  useFederation: useFederation,
   env
 });
 tenantTemplateStack.addDependency(sharedInfraStack);

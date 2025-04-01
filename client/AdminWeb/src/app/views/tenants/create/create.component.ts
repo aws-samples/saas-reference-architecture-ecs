@@ -15,6 +15,7 @@ export class CreateComponent implements OnInit {
     tenantName: new FormControl('', [Validators.required, this.lowercaseAndNumberValidator() ]),
     email: new FormControl('', [Validators.email, Validators.required]),
     tier: new FormControl('', [Validators.required]),
+    useFederation: new FormControl(false, [Validators.required]), // federation option added
     prices: new FormControl<any[]>([]) 
   });
   constructor(
@@ -22,7 +23,26 @@ export class CreateComponent implements OnInit {
     private router: Router,
   ) {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.tier?.valueChanges.subscribe(value => {
+      const useFederationControl = this.tenantForm.get('useFederation');
+      
+      if (value === 'ADVANCED' || value === 'PREMIUM') {
+        //  useFederation enabled when Advanced or Premium tier 
+        useFederationControl?.enable();
+      } else {
+        // In Basic tier, disable useFederation and set false,
+        useFederationControl?.setValue(false);
+        useFederationControl?.disable();
+      }
+    });
+
+    // Initial set
+    const initialTier = this.tier?.value;
+    if (initialTier !== 'ADVANCED' && initialTier !== 'PREMIUM') {
+      this.tenantForm.get('useFederation')?.disable();
+    }
+  }
 
   submit() {
     this.submitting = true;
@@ -32,6 +52,7 @@ export class CreateComponent implements OnInit {
       tenantData: {
         ...this.tenantForm.value,
         prices: this.tenantForm.value.prices || [],
+        useFederation: String(this.tenantForm.value.useFederation), // selfSignUpEnabled set as federation set  
       },
       tenantRegistrationData: {
         registrationStatus: "In progress"
@@ -76,5 +97,9 @@ export class CreateComponent implements OnInit {
 
   public get tier() {
     return this.tenantForm.get('tier');
+  }
+
+  public get useFederation() {
+    return this.tenantForm.get('useFederation');
   }
 }
