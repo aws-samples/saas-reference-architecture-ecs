@@ -24,7 +24,10 @@ export class EcsDynamoDB extends Construct {
       partitionKey: { name: props.partitionKey, type: dynamodb.AttributeType.STRING },
       sortKey: { name: props.sortKey, type: dynamodb.AttributeType.STRING },
       removalPolicy: cdk.RemovalPolicy.DESTROY,
-      pointInTimeRecovery: true
+      // pointInTimeRecovery: true
+      pointInTimeRecoverySpecification: { 
+        pointInTimeRecoveryEnabled: true 
+      }
     });
     cdk.Tags.of(this.table).add('TenantName', props.tenantName);
 

@@ -118,7 +118,7 @@ export class SharedInfraStack extends cdk.Stack {
     });
 
     const nlbTargetGroup = this.nlbListener.addTargets('nlb-targets', {
-      targets: [new targets.AlbTarget(this.alb, 80)],
+      targets: [new targets.AlbListenerTarget(this.listener)], 
       port: 80,
       healthCheck: {
         protocol: elbv2.Protocol.HTTP
@@ -229,7 +229,9 @@ export class SharedInfraStack extends cdk.Stack {
 
     this.tenantMappingTable = new Table(this, 'TenantMappingTable', {
       partitionKey: { name: 'tenantId', type: AttributeType.STRING },
-      pointInTimeRecovery: true
+      pointInTimeRecoverySpecification: { 
+        pointInTimeRecoveryEnabled: true 
+      }
     });
 
     //=====>>MYSQL<<===========
