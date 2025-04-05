@@ -27,7 +27,7 @@ export REGION=$(aws ec2 describe-availability-zones --output text --query 'Avail
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 echo "$(date) emptying out buckets..."
-for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*"); do
+for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*|^shared-infra-stack-*"); do
     echo "$(date) emptying out s3 bucket with name s3://${i}..."
     aws s3 rm --recursive "s3://${i}"
 
