@@ -68,11 +68,11 @@ for SERVICE in $SERVICES; do
 done
 
 ### export DEPLOY_ENV=true
-# npx cdk deploy shared-infra-stack --require-approval=never
+# npx cdk deploy shared-infra-stack --require-approval=any-change 
 
 
 npx cdk deploy \
     shared-infra-stack \
     tenant-template-stack-basic \
-    tenant-template-stack-advanced --require-approval=any-change
+    tenant-template-stack-advanced --require-approval never --concurrency 10 --asset-parallelism true
 # 

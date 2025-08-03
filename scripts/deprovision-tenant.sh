@@ -110,7 +110,7 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE="NA"
   
   echo "undeploying tenant template $STACK_NAME"
-  npx cdk destroy $STACK_NAME --force
+  npx cdk destroy $STACK_NAME --force --concurrency 10
 
 else
   # Read tenant details from the cloudformation stack output parameters

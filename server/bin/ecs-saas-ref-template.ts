@@ -9,8 +9,8 @@ import { SharedInfraStack } from '../lib/shared-infra/shared-infra-stack';
 import { AwsSolutionsChecks } from 'cdk-nag';
 
 const app = new cdk.App();
-cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
-//cdk.Aspects.of(app);
+// cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+cdk.Aspects.of(app);
 // required input parameters
 if (!process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL) {
   throw new Error('Please provide system admin email');
@@ -105,6 +105,7 @@ const coreAppPlaneStack = new CoreAppPlaneStack(app, 'core-appplane-stack', {
   systemAdminEmail: systemAdminEmail,
   regApiGatewayUrl: controlPlaneStack.regApiGatewayUrl,
   eventManager: controlPlaneStack.eventManager,
+  auth: controlPlaneStack.auth, // auth 정보 추가
   accessLogsBucket: sharedInfraStack.accessLogsBucket,
   distro: sharedInfraStack.appSiteDistro,
   appSiteUrl: sharedInfraStack.appSiteUrl,

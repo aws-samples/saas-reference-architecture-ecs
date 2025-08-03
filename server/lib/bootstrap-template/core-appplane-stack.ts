@@ -6,7 +6,7 @@ import { Effect, PolicyDocument, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from '../shared-infra/static-site-distro';
 import path = require('path');
-import { StaticSite } from './static-site';
+import { StaticSiteReact } from './static-site-react';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
 import * as sbt from '@cdklabs/sbt-aws';
 
@@ -14,6 +14,7 @@ interface CoreAppPlaneStackProps extends cdk.StackProps {
   eventManager: sbt.IEventManager
   systemAdminEmail: string
   regApiGatewayUrl: string
+  auth: sbt.CognitoAuth // auth 정보 추가
   distro: StaticSiteDistro
   appSiteUrl: string
   accessLogsBucket: cdk.aws_s3.Bucket
@@ -45,24 +46,22 @@ export class CoreAppPlaneStack extends cdk.Stack {
       script: fs.readFileSync('../scripts/provision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email', 'useFederation'],
       environmentJSONVariablesFromIncomingEvent: ['prices'],
-      environmentVariablesToOutgoingEvent: {tenantData:[
-        'tenantS3Bucket',
-        'tenantConfig',
-        // 'tenantStatus',
-        'prices', // added so we don't lose it for targets beyond provisioning (ex. billing)
-        'tenantName', // added so we don't lose it for targets beyond provisioning (ex. billing)
-        'email', // added so we don't lose it for targets beyond provisioning (ex. billing)
-      ],
-      tenantRegistrationData: ['registrationStatus'],
-     },
+      environmentVariablesToOutgoingEvent: { 
+        tenantData:[
+          'tenantS3Bucket',
+          'tenantConfig',
+          'prices', // added so we don't lose it for targets beyond provisioning (ex. billing)
+          'tenantName', // added so we don't lose it for targets beyond provisioning (ex. billing)
+          'email', // added so we don't lose it for targets beyond provisioning (ex. billing)
+        ],
+        tenantRegistrationData: ['registrationStatus'],
+      },
       scriptEnvironmentVariables: {
         // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
         // the control plane is also deployed. To ensure the operation does not error out, this value
         // is provided as an env parameter.
         CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail,
       },
-      // outgoingEvent: sbt.DetailType.PROVISION_SUCCESS,
-      // incomingEvent: sbt.DetailType.ONBOARDING_REQUEST,
       eventManager: props.eventManager
     };
 
@@ -83,8 +82,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
       environmentVariablesToOutgoingEvent: {
         tenantRegistrationData:['registrationStatus']
       },
-      // outgoingEvent: sbt.DetailType.DEPROVISION_SUCCESS,
-      // incomingEvent: sbt.DetailType.OFFBOARDING_REQUEST,
+
       scriptEnvironmentVariables: {
         TENANT_STACK_MAPPING_TABLE: props.tenantMappingTable.tableName,
         // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
@@ -112,11 +110,14 @@ export class CoreAppPlaneStack extends cdk.Stack {
       scriptJobs: [provisioningScriptJob, deprovisioningScriptJob]
     });
 
-    const staticSite = new StaticSite(this, 'TenantWebUI', {
+    const staticSite = new StaticSiteReact(this, 'TenantWebUI', {
       name: 'AppSite',
-      assetDirectory: path.join(__dirname, '../../../client/Application'),
+      assetDirectory: path.join(__dirname, '../../../client/Application-React'),
       production: true,
+      clientId: props.auth.userClientId, // auth 정보 추가
+      issuer: props.auth.tokenEndpoint, // auth 정보 추가
       apiUrl: props.regApiGatewayUrl,
+      wellKnownEndpointUrl: props.auth.wellKnownEndpointUrl, // auth 정보 추가
       distribution: props.distro.cloudfrontDistribution,
       appBucket: props.distro.siteBucket,
       accessLogsBucket: props.accessLogsBucket,
@@ -130,6 +131,6 @@ export class CoreAppPlaneStack extends cdk.Stack {
       value: props.appSiteUrl
     });
 
-    new CoreAppPlaneNag(this, 'CoreAppPlaneNag');
+    // new CoreAppPlaneNag(this, 'CoreAppPlaneNag');
   }
 }

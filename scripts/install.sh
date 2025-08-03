@@ -71,7 +71,7 @@ for SERVICE in $SERVICES; do
         --no-cli-pager --query 'service.serviceArn' --output text
 done
 
-npx cdk deploy --all --require-approval=never
+npx cdk deploy --all --require-approval=never --concurrency 10 --asset-parallelism true
 
 # Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name shared-infra-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)

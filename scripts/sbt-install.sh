@@ -29,10 +29,12 @@ else
 fi
 echo "DB_TYPE:$CDK_USE_DB"
 
+npm install
 #npx cdk deploy --all --require-approval=never
 npx cdk deploy \
     controlplane-stack \
-    core-appplane-stack --require-approval=any-change
+    core-appplane-stack \
+    --require-approval never #--verbose ##--concurrency 10 --asset-parallelism true
 
 # Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name shared-infra-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)

@@ -67,7 +67,7 @@ echo "Deleting Provision sourcecode Object Versions..."
 versions=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
       | jq -r '.Versions | length')
 
-if [ "$versions" -gt 0 ]; then 
+if [ ! -z "$versions" ] && [ "$versions" -gt 0 ]; then 
 	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
 		| jq '{"Objects": [.Versions[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE
 	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE --no-cli-pager
@@ -78,7 +78,7 @@ echo "Deleting Provision sourcecode Object Markers..."
 delete_markers=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
 	| jq -r '.DeleteMarkers | length') 
 
-if [ "$delete_markers" -gt 0 ]; then 
+if [ ! -z "$delete_markers" ] && [ "$delete_markers" -gt 0 ]; then 
 	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
 	    | jq '{"Objects": [.DeleteMarkers[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE
 	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE --no-cli-pager

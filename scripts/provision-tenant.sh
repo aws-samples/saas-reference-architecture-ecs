@@ -82,7 +82,7 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
     export CDK_PARAM_TENANT_NAME=$TENANT_NAME  #Added for demonstration during the workshop
     export CDK_PARAM_USE_FEDERATION=$USE_FEDERATION ###Federation check for selfSign
 
-    cdk deploy $STACK_NAME --exclusively --require-approval never 
+    cdk deploy $STACK_NAME --exclusively --require-approval never --concurrency 10 --asset-parallelism true
 fi
 
 # Read tenant details from the cloudformation stack output parameters

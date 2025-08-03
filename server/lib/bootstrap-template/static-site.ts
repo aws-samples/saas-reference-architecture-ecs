@@ -48,6 +48,7 @@ export class StaticSite extends Construct {
       destinationKeyPrefix: props.name, //'source-code',
       extract: false,
       prune: false,
+      memoryLimit: 1024, // 메모리를 1GB로 증가
     });
 
     const siteConfig = {
