@@ -1,4 +1,4 @@
-// Cognito OAuth2 인증 처리 서비스
+// Cognito OAuth2 authentication processing service
 import axios from 'axios';
 import { authConfigService } from './authConfigService';
 
@@ -23,19 +23,19 @@ interface CognitoUserInfo {
 }
 
 class CognitoAuthService {
-  // URL에서 인증 코드 확인
+  // Check authentication code from URL
   checkAuthCode(): string | null {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('code');
   }
 
-  // URL에서 에러 확인
+  // Check error from URL
   checkAuthError(): string | null {
     const urlParams = new URLSearchParams(window.location.search);
     return urlParams.get('error');
   }
 
-  // 인증 코드를 토큰으로 교환
+  // Exchange authentication code for tokens
   async exchangeCodeForTokens(code: string): Promise<CognitoTokenResponse> {
     try {
       const userPoolId = authConfigService.getUserPoolId();
@@ -72,7 +72,7 @@ class CognitoAuthService {
     }
   }
 
-  // 토큰으로 사용자 정보 가져오기
+  // Get user info with token
   async getUserInfo(accessToken: string): Promise<CognitoUserInfo> {
     try {
       const userPoolId = authConfigService.getUserPoolId();
@@ -100,7 +100,7 @@ class CognitoAuthService {
     }
   }
 
-  // 토큰을 localStorage에 저장
+  // Store tokens in localStorage
   storeTokens(tokens: CognitoTokenResponse): void {
     sessionStorage.setItem('app_access_token', tokens.access_token);
     sessionStorage.setItem('app_id_token', tokens.id_token);
@@ -108,7 +108,7 @@ class CognitoAuthService {
     sessionStorage.setItem('app_token_expires_at', (Date.now() + tokens.expires_in * 1000).toString());
   }
 
-  // sessionStorage에서 토큰 가져오기
+  // Get tokens from sessionStorage
   getStoredTokens(): { accessToken: string | null; idToken: string | null; refreshToken: string | null } {
     return {
       accessToken: sessionStorage.getItem('app_access_token'),
@@ -117,7 +117,7 @@ class CognitoAuthService {
     };
   }
 
-  // 토큰이 유효한지 확인
+  // Check if token is valid
   isTokenValid(): boolean {
     const expiresAt = sessionStorage.getItem('app_token_expires_at');
     if (!expiresAt) return false;
@@ -125,7 +125,7 @@ class CognitoAuthService {
     return Date.now() < parseInt(expiresAt);
   }
 
-  // 토큰 정리
+  // Clear tokens
   clearTokens(): void {
     sessionStorage.removeItem('app_access_token');
     sessionStorage.removeItem('app_id_token');
@@ -133,7 +133,7 @@ class CognitoAuthService {
     sessionStorage.removeItem('app_token_expires_at');
   }
 
-  // 로그아웃 URL 생성
+  // Generate logout URL
   getLogoutUrl(): string {
     const userPoolId = authConfigService.getUserPoolId();
     const appClientId = authConfigService.getAppClientId();

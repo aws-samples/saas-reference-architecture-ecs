@@ -26,7 +26,7 @@ const OrderDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
-  // Angular과 동일한 세율
+  // Same tax rate as Angular
   const taxRate = 0.0899;
 
   useEffect(() => {
@@ -39,7 +39,7 @@ const OrderDetail: React.FC = () => {
     try {
       setIsLoading(true);
       setError('');
-      console.log('Fetching order with ID:', orderId); // 디버깅용
+      console.log('Fetching order with ID:', orderId); // For debugging
       const orderData = await orderService.get(orderId);
       setOrder(orderData);
     } catch (err: any) {
@@ -50,39 +50,39 @@ const OrderDetail: React.FC = () => {
     }
   };
 
-  // Angular의 today() 함수와 동일
+  // Same as Angular's today() function
   const today = (): string => {
     return new Date().toLocaleDateString();
   };
 
-  // Angular의 sum() 함수와 동일
+  // Same as Angular's sum() function
   const sum = (op: OrderProduct): number => {
     return op.price * op.quantity;
   };
 
-  // Angular의 tax() 함수와 동일
+  // Same as Angular's tax() function
   const tax = (op: OrderProduct): number => {
     return sum(op) * taxRate;
   };
 
-  // Angular의 total() 함수와 동일
+  // Same as Angular's total() function
   const total = (op: OrderProduct): number => {
     return sum(op) + tax(op);
   };
 
-  // Angular의 subTotal() 함수와 동일
+  // Same as Angular's subTotal() function
   const subTotal = (order: Order): number => {
     return order.orderProducts
       .map((op) => op.price * op.quantity)
       .reduce((acc, curr) => acc + curr, 0);
   };
 
-  // Angular의 calcTax() 함수와 동일
+  // Same as Angular's calcTax() function
   const calcTax = (order: Order): number => {
     return subTotal(order) * taxRate;
   };
 
-  // Angular의 final() 함수와 동일
+  // Same as Angular's final() function
   const final = (order: Order): number => {
     return subTotal(order) + calcTax(order);
   };

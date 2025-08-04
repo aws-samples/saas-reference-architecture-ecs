@@ -18,7 +18,7 @@ class UserService {
     return response.data;
   }
 
-  // Angular에서는 update 메서드가 비어있으므로 구현하지 않음
+  // Not implemented as update method is empty in Angular version
   // async update(email: string, user: User): Promise<User> {
   //   // Not implemented in Angular version
   // }

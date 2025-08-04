@@ -43,7 +43,7 @@ const OrderList: React.FC = () => {
   };
 
   const handleOrderClick = (order: Order) => {
-    // Angular와 동일한 형식: tenantId:orderId
+    // Same format as Angular: tenantId:orderId
     navigate(`/orders/${order.tenantId}:${order.orderId}`);
   };
 
@@ -51,7 +51,7 @@ const OrderList: React.FC = () => {
     navigate('/orders/create');
   };
 
-  // Angular의 sum 함수와 동일
+  // Same as Angular's sum function
   const calculateTotal = (order: Order): number => {
     return order.orderProducts
       .map((p) => p.price * p.quantity)

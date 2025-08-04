@@ -6,7 +6,7 @@ import { Effect, PolicyDocument, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from '../shared-infra/static-site-distro';
 import path = require('path');
-import { StaticSiteReact } from './static-site-react';
+import { StaticSite } from './static-site';
 import { CoreAppPlaneNag } from '../cdknag/core-app-plane-nag';
 import * as sbt from '@cdklabs/sbt-aws';
 
@@ -110,9 +110,9 @@ export class CoreAppPlaneStack extends cdk.Stack {
       scriptJobs: [provisioningScriptJob, deprovisioningScriptJob]
     });
 
-    const staticSite = new StaticSiteReact(this, 'TenantWebUI', {
+    const staticSite = new StaticSite(this, 'TenantWebUI', {
       name: 'AppSite',
-      assetDirectory: path.join(__dirname, '../../../client/Application-React'),
+      assetDirectory: path.join(__dirname, '../../../client/Application'),
       production: true,
       clientId: props.auth.userClientId, // auth 정보 추가
       issuer: props.auth.tokenEndpoint, // auth 정보 추가

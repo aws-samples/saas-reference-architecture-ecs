@@ -20,7 +20,6 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Remove as RemoveIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { Product } from '../../types/Product';
 import { Order } from '../../types/Order';
 import { productService } from '../../services/productService';
 import { orderService } from '../../services/orderService';
@@ -44,10 +43,6 @@ const OrderCreate: React.FC = () => {
     getOrderData
   } = useOrderProducts();
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
   const fetchProducts = useCallback(async () => {
     try {
       setIsLoadingProducts(true);
@@ -60,6 +55,10 @@ const OrderCreate: React.FC = () => {
       setIsLoadingProducts(false);
     }
   }, [initializeProducts]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

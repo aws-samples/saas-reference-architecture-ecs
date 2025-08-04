@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
 import { Auth, Hub } from 'aws-amplify';
 import { authConfigService } from '../services/authConfigService';
-import { TENANT_DEFAULTS, createTenantId } from '../constants/tenant';
+import { createTenantId } from '../constants/tenant';
 
 interface Tenant {
   id: string;

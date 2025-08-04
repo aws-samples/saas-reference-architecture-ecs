@@ -9,11 +9,10 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Divider,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useAuth } from '../../contexts/AuthContext';
-import { decodeJWT, formatTokenForDisplay, formatTimestamp } from '../../utils/jwtUtils';
+import { decodeJWT, formatTimestamp } from '../../utils/jwtUtils';
 import "../../styles/index.css";
 
 const AuthInfo: React.FC = () => {

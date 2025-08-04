@@ -1,4 +1,4 @@
-// Angular의 AuthConfigurationService를 React로 변환
+// Convert Angular's AuthConfigurationService to React
 import axios from 'axios';
 import { environment } from '../config/environment';
 
@@ -19,7 +19,7 @@ class AuthConfigurationService {
       
       console.log('Calling tenant config API:', url);
       
-      // 로컬 테스트를 위한 임시 데이터 (실제 배포 시에는 제거)
+      // Temporary data for local testing (remove in actual deployment)
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         console.log('Using test data for local development');
         this.params = {
@@ -46,13 +46,13 @@ class AuthConfigurationService {
         console.log('Response data type:', typeof response.data);
         console.log('Response data stringified:', JSON.stringify(response.data));
         
-        // 응답 데이터 검증
+        // Validate response data
         if (!response.data) {
           console.error('Response data is falsy:', response.data);
           throw new Error('No data received from tenant config API');
         }
         
-        // 응답이 문자열인 경우 JSON 파싱 시도
+        // If response is string, attempt JSON parsing
         if (typeof response.data === 'string') {
           console.log('Response is string, attempting to parse JSON');
           try {
@@ -68,7 +68,7 @@ class AuthConfigurationService {
       
       console.log('Received tenant config:', this.params);
 
-      // 안전한 null/undefined 체크
+      // Safe null/undefined check
       if (!this.params) {
         throw new Error('Tenant config params is null');
       }
@@ -99,7 +99,7 @@ class AuthConfigurationService {
       console.log('configureCognitoAuth input params:', params);
       console.log('Original userPoolId:', params.userPoolId);
       
-      // User Pool ID 대소문자 강제 수정 (임시 해결책)
+      // Force correct User Pool ID case (temporary solution)
       let correctedUserPoolId = params.userPoolId;
       if (params.userPoolId.includes('w469bx8kf')) {
         correctedUserPoolId = params.userPoolId.replace('w469bx8kf', 'W469BX8kF');
@@ -112,8 +112,8 @@ class AuthConfigurationService {
       const redirectUri = encodeURIComponent(window.location.origin);
       console.log('Redirect URI:', redirectUri);
       
-      // Cognito OAuth2 로그인 URL 생성 (올바른 형식)
-      // User Pool ID에서 도메인 프리픽스 추출 (예: ap-northeast-2_W469BX8kF -> W469BX8kF)
+      // Generate Cognito OAuth2 login URL (correct format)
+      // Extract domain prefix from User Pool ID (e.g., ap-northeast-2_W469BX8kF -> W469BX8kF)
       const domainPrefix = correctedUserPoolId.split('_')[1].toLowerCase();
       const loginUrl = `https://${domainPrefix}.auth.${region}.amazoncognito.com/login?` +
         `client_id=${params.appClientId}&` +
@@ -140,7 +140,7 @@ class AuthConfigurationService {
     sessionStorage.removeItem('app_apiGatewayUrl');
   }
 
-  // 개발 시 Chrome extension 데이터 정리 (선택사항)
+  // Clean Chrome extension data during development (optional)
   cleanChromeExtensionData(): void {
     if (process.env.NODE_ENV === 'development') {
       Object.keys(sessionStorage).forEach(key => {

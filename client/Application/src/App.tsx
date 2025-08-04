@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { CircularProgress, Box, Typography } from "@mui/material";
 import { withAuthenticator } from "@aws-amplify/ui-react";
-import { Amplify, Auth } from "aws-amplify";
+import { Amplify } from "aws-amplify";
 import Layout from "./components/Layout/Layout";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import ProductList from "./pages/Products/ProductList";
@@ -19,7 +19,7 @@ import { useTenant } from "./contexts/TenantContext";
 import { authConfigService } from "./services/authConfigService";
 import "@aws-amplify/ui-react/styles.css";
 
-// 메인 앱 컴포넌트 (인증된 사용자용)
+// Main app component (for authenticated users)
 const AuthenticatedApp: React.FC = () => {
   return (
     <Layout>
@@ -45,7 +45,7 @@ const AuthenticatedApp: React.FC = () => {
   );
 };
 
-// withAuthenticator로 감싼 인증된 앱
+// Authenticated app wrapped with withAuthenticator
 const AuthenticatedAppWithAuth = withAuthenticator(AuthenticatedApp, {
   hideSignUp: true,
 });
@@ -54,7 +54,7 @@ function App() {
   const { tenant, loading: tenantLoading } = useTenant();
   const [amplifyConfigured, setAmplifyConfigured] = useState(false);
 
-  // Amplify 설정 (Angular의 configureAmplifyAuth와 동일)
+  // Amplify configuration (equivalent to Angular's configureAmplifyAuth)
   useEffect(() => {
     const configureAmplify = () => {
       const userPoolId = authConfigService.getUserPoolId();
@@ -98,9 +98,9 @@ function App() {
     };
 
     configureAmplify();
-  }, [tenant, tenantLoading]); // tenant가 변경될 때마다 재설정
+  }, [tenant, tenantLoading]); // Reconfigure when tenant changes
 
-  // 테넌트 로딩 중일 때
+  // While tenant is loading
   if (tenantLoading) {
     return (
       <Box
@@ -119,14 +119,14 @@ function App() {
     );
   }
 
-  // 테넌트가 설정되지 않은 경우 또는 sessionStorage에 Cognito 정보가 없는 경우
+  // If tenant is not configured or sessionStorage has no Cognito info
   const hasUserPoolConfig = sessionStorage.getItem('app_userPoolId') && sessionStorage.getItem('app_appClientId');
   
   if (!tenant || !amplifyConfigured || !hasUserPoolConfig) {
     return <UnauthorizedPage />;
   }
 
-  // 테넌트와 Amplify가 설정된 경우에만 withAuthenticator 적용된 앱 표시
+  // Show withAuthenticator app only when tenant and Amplify are configured
   return <AuthenticatedAppWithAuth />;
 }
 

@@ -19,7 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Tenant } from '../../models/tenant';
 import DeleteTenantDialog from '../../components/DeleteTenantDialog';
-import PageHeader from '../../components/common/PageHeader';
+
 import { useTenants } from '../../hooks/useTenants';
 import { TIER_COLORS, STATUS_COLORS } from '../../constants/pricing';
 import { COMMON_STYLES } from '../../constants/styles';

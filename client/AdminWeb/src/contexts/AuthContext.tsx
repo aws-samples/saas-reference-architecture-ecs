@@ -40,7 +40,7 @@ const AuthProviderInner: React.FC<AuthProviderProps> = ({ children }) => {
         oidcAuth.clearStaleState();
       }
     }
-  }, [oidcAuth.error, oidcAuth.clearStaleState]);
+  }, [oidcAuth.error, oidcAuth.clearStaleState, oidcAuth]);
 
   const login = useCallback(() => {
     try {
@@ -48,7 +48,7 @@ const AuthProviderInner: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       // Login redirect failed - error handled by OIDC context
     }
-  }, [oidcAuth.signinRedirect]);
+  }, [oidcAuth.signinRedirect, oidcAuth]);
 
   const logout = useCallback(() => {
     try {
@@ -86,7 +86,7 @@ const AuthProviderInner: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error) {
       // Clear error failed - handled silently
     }
-  }, [oidcAuth.clearStaleState]);
+  }, [oidcAuth.clearStaleState, oidcAuth]);
 
   const value = useMemo((): AuthContextType => ({
     user: oidcAuth.user,

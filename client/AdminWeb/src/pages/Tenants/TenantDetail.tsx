@@ -11,7 +11,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowBack as ArrowBackIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon } from '@mui/icons-material';
 import { TenantRegistrationData } from '../../models/tenant';
 import tenantService from '../../services/tenantService';
 import DeleteTenantDialog from '../../components/DeleteTenantDialog';
@@ -25,12 +25,6 @@ const TenantDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    if (id) {
-      fetchTenant(id);
-    }
-  }, [id]);
 
   const fetchTenant = async (tenantId: string) => {
     try {
@@ -51,18 +45,13 @@ const TenantDetail: React.FC = () => {
     }
   };
 
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'basic':
-        return 'default';
-      case 'advanced':
-        return 'primary';
-      case 'premium':
-        return 'secondary';
-      default:
-        return 'default';
+  useEffect(() => {
+    if (id) {
+      fetchTenant(id);
     }
-  };
+  }, [id]);
+
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -175,6 +164,15 @@ const TenantDetail: React.FC = () => {
                     Tenant Registration Information
                   </Typography>
                   
+                  <Box className="tenant-detail-field">
+                    <Typography variant="body2" color="text.secondary">
+                      Tenant Name
+                    </Typography>
+                    <Typography variant="body1">
+                      {location.state?.tenantName || 'N/A'}
+                    </Typography>
+                  </Box>
+
                   <Box className="tenant-detail-field">
                     <Typography variant="body2" color="text.secondary">
                       Registration ID

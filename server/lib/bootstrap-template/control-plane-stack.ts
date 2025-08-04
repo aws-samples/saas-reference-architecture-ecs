@@ -1,7 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import { type Construct } from 'constructs';
 import path = require('path');
-import { StaticSiteReact } from './static-site-react';
+import { StaticSite } from './static-site';
 import { ControlPlaneNag } from '../cdknag/control-plane-nag';
 import { addTemplateTag } from '../utilities/helper-functions';
 import * as sbt from '@cdklabs/sbt-aws';
@@ -19,7 +19,7 @@ export class ControlPlaneStack extends cdk.Stack {
   public readonly eventManager: sbt.IEventManager;
   public readonly auth: sbt.CognitoAuth;
   public readonly adminSiteUrl: string;
-  public readonly staticSite: StaticSiteReact;
+  public readonly staticSite: StaticSite;
 
   constructor (scope: Construct, id: string, props: ControlPlaneStackProps) {
     super(scope, id, props);
@@ -45,9 +45,9 @@ export class ControlPlaneStack extends cdk.Stack {
     this.regApiGatewayUrl = controlPlane.controlPlaneAPIGatewayUrl;
     this.auth = cognitoAuth;
 
-    const staticSite = new StaticSiteReact(this, 'AdminWebUi', {
+    const staticSite = new StaticSite(this, 'AdminWebUi', {
       name: 'AdminSite',
-      assetDirectory: path.join(__dirname, '../../../client/AdminWeb-React'),
+      assetDirectory: path.join(__dirname, '../../../client/AdminWeb'),
       production: true,
       clientId: this.auth.userClientId,  //.clientId,
       issuer: this.auth.tokenEndpoint,

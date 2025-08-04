@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { CircularProgress, Box, Typography, Alert } from '@mui/material';
+import { Box, Typography, Alert } from '@mui/material';
 import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard/Dashboard';
 import TenantList from './pages/Tenants/TenantList';
@@ -20,7 +20,7 @@ function App() {
     apiService.setTokenProvider(getAccessToken);
   }, [getAccessToken]);
 
-  // 에러가 발생했을 때
+  // When error occurs
   if (error) {
     return (
       <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" minHeight="100vh" gap={2}>
@@ -42,24 +42,24 @@ function App() {
     );
   }
 
-  // 로딩 중일 때
+  // While loading
   if (isLoading) {
     return <AuthCallback />;
   }
 
-  // 인증되지 않았을 때
+  // When not authenticated
   if (!isAuthenticated) {
-    // URL에 인증 관련 파라미터가 있는지 확인 (Cognito 콜백)
+    // Check if URL has authentication related parameters (Cognito callback)
     const urlParams = new URLSearchParams(window.location.search);
     const hasAuthParams = urlParams.has('code') || urlParams.has('state') || urlParams.has('error');
     
-    // 해시 프래그먼트도 확인 (일부 OIDC 플로우에서 사용)
+    // Also check hash fragment (used in some OIDC flows)
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const hasHashAuthParams = hashParams.has('code') || hashParams.has('state') || hashParams.has('access_token');
     
-    // 인증 파라미터가 없고 에러 페이지가 아닌 경우에만 로그인 리다이렉트
+    // Only redirect to login if no auth parameters and not on error page
     if (!hasAuthParams && !hasHashAuthParams && !location.pathname.includes('error')) {
-      // 약간의 지연을 두어 OIDC 라이브러리가 초기화될 시간을 줌
+      // Give OIDC library time to initialize with slight delay
       setTimeout(() => {
         if (!isAuthenticated) {
           login();
@@ -70,14 +70,14 @@ function App() {
     return <AuthCallback />;
   }
 
-  // 인증 완료 후 메인 애플리케이션
+  // Main application after authentication complete
   return (
     <Routes>
-      {/* 인증 콜백 처리 */}
+      {/* Authentication callback handling */}
       <Route path="/callback" element={<AuthCallback />} />
       <Route path="/signin-oidc" element={<AuthCallback />} />
       
-      {/* 에러 페이지 */}
+      {/* Error page */}
       <Route path="/error" element={
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
           <Alert severity="error">
@@ -87,7 +87,7 @@ function App() {
         </Box>
       } />
       
-      {/* 메인 애플리케이션 라우트 */}
+      {/* Main application routes */}
       <Route path="/*" element={
         <Layout>
           <Routes>

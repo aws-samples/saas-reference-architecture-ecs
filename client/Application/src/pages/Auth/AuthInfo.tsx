@@ -67,9 +67,7 @@ const decodeJWT = (token: string): DecodedJWT | null => {
   }
 };
 
-const formatTimestamp = (timestamp: number): string => {
-  return new Date(timestamp * 1000).toLocaleString();
-};
+
 
 const AuthInfo: React.FC = () => {
   const { user } = useAuthenticator();

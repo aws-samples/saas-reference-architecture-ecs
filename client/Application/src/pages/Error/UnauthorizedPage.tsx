@@ -46,7 +46,7 @@ const UnauthorizedPage: React.FC = () => {
     try {
       console.log('Starting tenant configuration for:', tenantName.trim());
       
-      // Angular와 동일한 방식: 테넌트 설정 후 즉시 Cognito 로그인
+      // Same approach as Angular: set tenant config then immediately login to Cognito
       await setTenantConfig(tenantName.trim());
       
       console.log('Tenant config set successfully');
