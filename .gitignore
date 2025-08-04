@@ -5,6 +5,7 @@ node_modules
 application-plane/
 
 .vscode/
+.kiro/
 # CDK asset staging directory
 .cdk.staging
 cdk.out
