@@ -17,13 +17,13 @@ export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # Download from the ecs reference solution Bucket
 export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$ACCOUNT_ID-$REGION"
-export CDK_SOURCE_NAME="source.zip"
+export CDK_SOURCE_NAME="source.tar.gz"
 
 VERSIONS=$(aws s3api list-object-versions --bucket "$CDK_PARAM_S3_BUCKET_NAME" --prefix "$CDK_SOURCE_NAME" --query 'Versions[?IsLatest==`true`].{VersionId:VersionId}' --output text 2>&1)
 CDK_PARAM_COMMIT_ID=$(echo "$VERSIONS" | awk 'NR==1{print $1}')
 
 aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAME" --version-id "$CDK_PARAM_COMMIT_ID" "$CDK_SOURCE_NAME" 2>&1 
-unzip -q $CDK_SOURCE_NAME
+tar -xzf $CDK_SOURCE_NAME
 cd ./server
 
 RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::RDS::DBInstance']" --output text)

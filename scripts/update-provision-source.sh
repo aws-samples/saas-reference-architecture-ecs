@@ -41,8 +41,36 @@ fi
 echo "Bucket exists: $CDK_PARAM_S3_BUCKET_NAME"
 
 cd ../
-zip -rq source.zip . -x ".git/*" -x "**/node_modules/*" -x "**/cdk.out/*" -x "**/.aws-sam/*" 
-export CDK_PARAM_COMMIT_ID=$(aws s3api put-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "source.zip" --body "./source.zip"  | jq -r '.VersionId')
+
+echo "Current directory: $(pwd)"
+# echo "Analyzing server folder contents..."
+# echo "Server folder size:"
+# du -sh server/ 2>/dev/null || echo "Cannot calculate size"
+# echo "File count in server folder:"
+# find server/ -type f | wc -l
+# echo "Largest files in server folder:"
+# find server/ -type f -exec ls -lh {} + 2>/dev/null | sort -k5 -hr | head -10
+
+echo "Starting TAR creation with explicit file specification..."
+echo "Timestamp: $(date)"
+
+# Create TAR with server and scripts folders
+tar -czf source.tar.gz \
+  --exclude="server/node_modules" \
+  --exclude="server/cdk.out" \
+  --exclude="server/.aws-sam" \
+  --exclude="server/application" \
+  --exclude="server/lib/**/*.js" \
+  --exclude="server/lib/**/*.d.ts" \
+  server/ \
+  scripts/ 2>/dev/null || true
+
+echo "TAR creation completed at: $(date)"
+echo "Final TAR file size:"
+ls -lh source.tar.gz
+
+echo "Uploading to S3..."
+export CDK_PARAM_COMMIT_ID=$(aws s3api put-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "source.tar.gz" --body "./source.tar.gz"  | jq -r '.VersionId')
 echo $CDK_PARAM_COMMIT_ID
-rm source.zip
+rm source.tar.gz
 cd ./scripts

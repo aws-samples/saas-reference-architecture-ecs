@@ -34,8 +34,16 @@
         }],
         "environment" : {
           "TABLE_NAME": "ORDER_TABLE_NAME"
+        },
+        "healthCheck": {
+            "command": [
+              "CMD-SHELL", "curl -f http://localhost:3010/orders/health || exit 1"
+            ],
+            "interval": 30,
+            "timeout": 30,
+            "retries": 5,
+            "startPeriod": 120
         }
-        
       },
       {
         "name": "products",

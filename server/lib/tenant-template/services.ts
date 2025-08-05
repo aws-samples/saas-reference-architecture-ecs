@@ -70,10 +70,13 @@ export class EcsService extends cdk.NestedStack {
 
     const serviceProps = {
       cluster: props.cluster,
-      desiredCount: 2,
+      desiredCount: 1, // 2 → 1로 감소 (빠른 시작)
       taskDefinition,
       securityGroups: [props.ecsSG],
       trunking: true,
+      minHealthyPercent: 0, // 100 → 0 (더 빠른 배포)
+      maxHealthyPercent: 200,
+      enableExecuteCommand: false, // 불필요한 기능 비활성화
       serviceConnectConfiguration: {
         namespace: props.namespace.namespaceArn,
         services: props.info.portMappings.map((port) => ({
@@ -120,17 +123,22 @@ export class EcsService extends cdk.NestedStack {
       service.connections.allowFrom(listener, ec2.Port.tcp(props.info.containerPort));
     } 
 
-    // Autoscaling based on memory and CPU usage
+    // Optimized autoscaling for faster startup
     const scalableTarget = service.autoScaleTaskCount({
-      minCapacity: 2, maxCapacity: 5
+      minCapacity: 1, // 2 → 1로 감소
+      maxCapacity: 3  // 5 → 3으로 감소
     });
 
     scalableTarget.scaleOnMemoryUtilization('ScaleUpMem', {
-      targetUtilizationPercent: 75
+      targetUtilizationPercent: 80, // 75 → 80 (덜 민감하게)
+      scaleInCooldown: cdk.Duration.seconds(60), // 빠른 스케일 인
+      scaleOutCooldown: cdk.Duration.seconds(60) // 빠른 스케일 아웃
     });
 
     scalableTarget.scaleOnCpuUtilization('ScaleUpCPU', {
-      targetUtilizationPercent: 75
+      targetUtilizationPercent: 80, // 75 → 80 (덜 민감하게)
+      scaleInCooldown: cdk.Duration.seconds(60),
+      scaleOutCooldown: cdk.Duration.seconds(60)
     });
 
   }

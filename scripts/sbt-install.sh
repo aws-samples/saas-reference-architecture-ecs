@@ -11,7 +11,7 @@ REGION=$(aws ec2 describe-availability-zones --output text --query 'Availability
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$ACCOUNT_ID-$REGION"
-CDK_SOURCE_NAME="source.zip"
+CDK_SOURCE_NAME="source.tar.gz"
 
 VERSIONS=$(aws s3api list-object-versions --bucket "$CDK_PARAM_S3_BUCKET_NAME" --prefix "$CDK_SOURCE_NAME" --query 'Versions[?IsLatest==`true`].{VersionId:VersionId}' --output text 2>&1)
 export CDK_PARAM_COMMIT_ID=$(echo "$VERSIONS" | awk 'NR==1{print $1}')

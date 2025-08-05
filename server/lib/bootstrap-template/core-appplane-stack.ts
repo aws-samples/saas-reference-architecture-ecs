@@ -110,22 +110,30 @@ export class CoreAppPlaneStack extends cdk.Stack {
       scriptJobs: [provisioningScriptJob, deprovisioningScriptJob]
     });
 
-    const staticSite = new StaticSite(this, 'TenantWebUI', {
-      name: 'AppSite',
-      assetDirectory: path.join(__dirname, '../../../client/Application'),
-      production: true,
-      clientId: props.auth.userClientId, // auth 정보 추가
-      issuer: props.auth.tokenEndpoint, // auth 정보 추가
-      apiUrl: props.regApiGatewayUrl,
-      wellKnownEndpointUrl: props.auth.wellKnownEndpointUrl, // auth 정보 추가
-      distribution: props.distro.cloudfrontDistribution,
-      appBucket: props.distro.siteBucket,
-      accessLogsBucket: props.accessLogsBucket,
-      env: {
-        account: this.account,
-        region: this.region
-      }
-    });
+    // Check if Application directory exists before creating StaticSite
+    const applicationPath = path.join(__dirname, '../../../client/Application');
+    
+    let staticSite;
+    if (fs.existsSync(applicationPath)) {
+      staticSite = new StaticSite(this, 'TenantWebUI', {
+        name: 'AppSite',
+        assetDirectory: applicationPath,
+        production: true,
+        clientId: props.auth.userClientId, // auth 정보 추가
+        issuer: props.auth.tokenEndpoint, // auth 정보 추가
+        apiUrl: props.regApiGatewayUrl,
+        wellKnownEndpointUrl: props.auth.wellKnownEndpointUrl, // auth 정보 추가
+        distribution: props.distro.cloudfrontDistribution,
+        appBucket: props.distro.siteBucket,
+        accessLogsBucket: props.accessLogsBucket,
+        env: {
+          account: this.account,
+          region: this.region
+        }
+      });
+    } else {
+      console.log('Application directory not found, skipping StaticSite creation');
+    }
 
     new cdk.CfnOutput(this, 'appSiteUrl', {
       value: props.appSiteUrl

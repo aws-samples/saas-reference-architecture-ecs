@@ -117,7 +117,9 @@ export class TenantTemplateStack extends cdk.Stack {
       const serviceInfo = JSON.parse(updateData);
       const containerInfo: ContainerInfo[] = serviceInfo.Containers;
 
-      let previousNestedStack: EcsService | undefined;
+      // Deploy core services (orders, products, users) in parallel first
+      const coreServices: EcsService[] = [];
+      
       containerInfo.forEach((info, index) => {
         let policy = JSON.stringify(info.policy);
         let taskRole = undefined;
@@ -169,11 +171,9 @@ export class TenantTemplateStack extends cdk.Stack {
         
         ecsService.node.addDependency(this.cluster);
         ecsService.node.addDependency(vpc);
-        if(previousNestedStack) {
-          ecsService.node.addDependency(previousNestedStack);
-        }
-        previousNestedStack = ecsService;
-
+        
+        // Store core services for rproxy dependency
+        coreServices.push(ecsService);
       });
 
       if (isRProxy ) {
@@ -198,9 +198,10 @@ export class TenantTemplateStack extends cdk.Stack {
           // env: { account: this.account, region: this.region }
         });
        
-        if(previousNestedStack) {
-          rproxyService.node.addDependency(previousNestedStack);
-        }
+        // rproxy depends on ALL core services (orders, products, users)
+        coreServices.forEach(coreService => {
+          rproxyService.node.addDependency(coreService);
+        });
       } 
     }
     //=====================================================================

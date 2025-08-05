@@ -87,11 +87,11 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   echo "Stack name from $TENANT_STACK_MAPPING_TABLE is  $STACK_NAME"
   # Copy to S3 Bucket
   export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$ACCOUNT_ID-$REGION"
-  export CDK_SOURCE_NAME="source.zip"
+  export CDK_SOURCE_NAME="source.tar.gz"
   CDK_PARAM_COMMIT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='S3SourceVersion'].OutputValue" --output text)
 
   aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAME" --version-id "$CDK_PARAM_COMMIT_ID" "$CDK_SOURCE_NAME" 2>&1 
-  unzip $CDK_SOURCE_NAME
+  tar -xzf $CDK_SOURCE_NAME
   cd ./server
 
   sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json

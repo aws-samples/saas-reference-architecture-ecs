@@ -61,10 +61,10 @@
             "command": [
               "CMD-SHELL", "curl -f http://localhost:3010/orders/health || exit 1"
             ],
-            "interval": 60,
-            "timeout": 60,
-            "retries": 10,
-            "startPeriod": 300
+            "interval": 30,
+            "timeout": 30,
+            "retries": 5,
+            "startPeriod": 120
         }
       },
       {
