@@ -1,13 +1,16 @@
 #!/bin/bash -e
 
-# Install dependencies
-sudo yum update -y
-sudo yum install -y nodejs
-sudo yum install -y npm
+# Install only necessary dependencies (most tools already in STANDARD_7_0)
+echo "Using pre-installed tools from CodeBuild STANDARD_7_0 image"
+node --version
+npm --version
+aws --version
+
+# Only install CDK (not pre-installed)
 sudo npm install -g aws-cdk
-sudo yum install -y jq
-sudo yum install -y python3-pip
-sudo python3 -m pip install --upgrade --ignore-installed setuptools
+
+# Upgrade setuptools if needed
+python3 -m pip install --upgrade setuptools --user
 
 # Enable nocasematch option
 shopt -s nocasematch
