@@ -123,23 +123,26 @@ export class EcsService extends cdk.NestedStack {
       service.connections.allowFrom(listener, ec2.Port.tcp(props.info.containerPort));
     } 
 
-    // Optimized autoscaling for faster startup
-    const scalableTarget = service.autoScaleTaskCount({
-      minCapacity: 1, // 2 → 1로 감소
-      maxCapacity: 3  // 5 → 3으로 감소
-    });
+    // Skip auto scaling setup during initial deployment for faster startup
+    // Auto scaling can be added later via separate deployment if needed
+    if (process.env.SKIP_AUTOSCALING !== 'true') {
+      const scalableTarget = service.autoScaleTaskCount({
+        minCapacity: 1,
+        maxCapacity: 3
+      });
 
-    scalableTarget.scaleOnMemoryUtilization('ScaleUpMem', {
-      targetUtilizationPercent: 80, // 75 → 80 (덜 민감하게)
-      scaleInCooldown: cdk.Duration.seconds(60), // 빠른 스케일 인
-      scaleOutCooldown: cdk.Duration.seconds(60) // 빠른 스케일 아웃
-    });
+      scalableTarget.scaleOnMemoryUtilization('ScaleUpMem', {
+        targetUtilizationPercent: 80,
+        scaleInCooldown: cdk.Duration.seconds(60),
+        scaleOutCooldown: cdk.Duration.seconds(60)
+      });
 
-    scalableTarget.scaleOnCpuUtilization('ScaleUpCPU', {
-      targetUtilizationPercent: 80, // 75 → 80 (덜 민감하게)
-      scaleInCooldown: cdk.Duration.seconds(60),
-      scaleOutCooldown: cdk.Duration.seconds(60)
-    });
+      scalableTarget.scaleOnCpuUtilization('ScaleUpCPU', {
+        targetUtilizationPercent: 80,
+        scaleInCooldown: cdk.Duration.seconds(60),
+        scaleOutCooldown: cdk.Duration.seconds(60)
+      });
+    }
 
   }
 }
