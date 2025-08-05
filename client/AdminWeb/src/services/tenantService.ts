@@ -10,8 +10,43 @@ class TenantService {
 
   async fetchTenants(): Promise<Tenant[]> {
     try {
-      const response = await api.get<{ data: Tenant[] }>(this.tenantsMgmtApiUrl);
-      return response.data.data || [];
+      let allTenants: Tenant[] = [];
+      let nextToken: string | undefined;
+      const limit = 100;
+      
+      do {
+        const url = nextToken 
+          ? `${this.tenantsMgmtApiUrl}?limit=${limit}&next_token=${nextToken}`
+          : `${this.tenantsMgmtApiUrl}?limit=${limit}`;
+          
+        const response = await api.get<{ data: Tenant[], next_token?: string }>(url);
+        
+        if (response.data.data) {
+          allTenants = allTenants.concat(response.data.data);
+        }
+        
+        nextToken = response.data.next_token;
+      } while (nextToken);
+      
+      return allTenants;
+    } catch (error: any) {
+      throw new Error(handleApiError(error));
+    }
+  }
+
+  async fetchTenantsPage(nextToken?: string): Promise<{ data: Tenant[], nextToken?: string }> {
+    try {
+      const limit = 20;
+      const url = nextToken 
+        ? `${this.tenantsMgmtApiUrl}?limit=${limit}&next_token=${nextToken}`
+        : `${this.tenantsMgmtApiUrl}?limit=${limit}`;
+        
+      const response = await api.get<{ data: Tenant[], next_token?: string }>(url);
+      
+      return {
+        data: response.data.data || [],
+        nextToken: response.data.next_token
+      };
     } catch (error: any) {
       throw new Error(handleApiError(error));
     }

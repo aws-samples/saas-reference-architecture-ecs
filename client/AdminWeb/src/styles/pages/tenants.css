@@ -66,3 +66,15 @@
   margin-bottom: var(--spacing-xs);
   font-size: 0.75rem;
 }
+
+/* Sticky header styles */
+.tenant-header-sticky {
+  position: sticky !important;
+  top: 64px !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  z-index: 10 !important;
+  padding: 16px 0 !important;
+  margin-bottom: 24px !important;
+}

@@ -26,7 +26,7 @@ import { COMMON_STYLES } from '../../constants/styles';
 import "../../styles/index.css";
 
 const TenantList: React.FC = () => {
-  const { tenants, loading, error, loadTenants, deleteTenant } = useTenants();
+  const { tenants, loading, loadingMore, error, hasMore, loadTenants, loadMoreTenants, deleteTenant } = useTenants();
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; tenant: Tenant | null }>({
     open: false,
     tenant: null,
@@ -36,6 +36,19 @@ const TenantList: React.FC = () => {
   useEffect(() => {
     loadTenants();
   }, [loadTenants]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loadingMore || !hasMore) return;
+      
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
+        loadMoreTenants();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loadMoreTenants, loadingMore, hasMore]);
 
   const getTierColor = useCallback((tier: string) => {
     return TIER_COLORS[tier.toLowerCase() as keyof typeof TIER_COLORS] || 'default';
@@ -71,7 +84,7 @@ const TenantList: React.FC = () => {
   return (
     <div className="page-container">
       <div className="container">
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', ...COMMON_STYLES.marginBottom4 }}>
+        <Box className="tenant-header-sticky" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <Typography variant="h4" className="page-title">
               Tenants
@@ -90,11 +103,11 @@ const TenantList: React.FC = () => {
           </Button>
         </Box>
 
-      {error && (
-        <Alert severity="error" className="error-alert" sx={COMMON_STYLES.marginBottom3}>
-          {error}
-        </Alert>
-      )}
+        {error && (
+          <Alert severity="error" className="error-alert" sx={{ marginBottom: '24px' }}>
+            {error}
+          </Alert>
+        )}
 
       <Grid container spacing={3}>
         {tenants.map((tenant: Tenant & Record<string, any>, index) => {
@@ -170,6 +183,20 @@ const TenantList: React.FC = () => {
           );
         })}
       </Grid>
+
+      {loadingMore && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {!hasMore && tenants.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Typography variant="body2" color="text.secondary">
+            All tenants have been loaded.
+          </Typography>
+        </Box>
+      )}
 
         <DeleteTenantDialog
           open={deleteDialog.open}

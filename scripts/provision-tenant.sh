@@ -89,7 +89,19 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
     export SKIP_AUTOSCALING=true
     export CDK_DISABLE_VERSION_CHECK=true
 
-    cdk deploy $STACK_NAME --exclusively --require-approval never --concurrency 10 --asset-parallelism true
+    # cdk deploy $STACK_NAME --exclusively --require-approval never --concurrency 10 --asset-parallelism true
+
+    # buildspec.yml에 추가
+export CDK_ASSET_PARALLELISM=true
+export CDK_DISABLE_STACK_TRACE=true
+
+cdk deploy $STACK_NAME \
+  --exclusively \
+  --require-approval never \
+  --concurrency 10 \
+  --asset-parallelism true \
+  --no-rollback
+
 fi
 
 # Read tenant details from the cloudformation stack output parameters

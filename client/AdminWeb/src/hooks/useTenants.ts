@@ -6,20 +6,60 @@ import { handleApiError } from '../types/errors';
 export const useTenants = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextToken, setNextToken] = useState<string | undefined>();
+  const [hasMore, setHasMore] = useState(true);
 
-  const loadTenants = useCallback(async () => {
+  const loadTenants = useCallback(async (reset = false, token?: string) => {
     try {
-      setLoading(true);
+      if (reset) {
+        setLoading(true);
+        setTenants([]);
+        setNextToken(undefined);
+        setHasMore(true);
+      } else {
+        setLoadingMore(true);
+      }
       setError(null);
-      const fetchedTenants = await tenantService.fetchTenants();
-      setTenants(fetchedTenants);
+      
+      const result = await tenantService.fetchTenantsPage(reset ? undefined : token);
+      
+      if (reset) {
+        setTenants(result.data);
+      } else {
+        setTenants(prev => [...prev, ...result.data]);
+      }
+      
+      setNextToken(result.nextToken);
+      setHasMore(!!result.nextToken);
     } catch (error: any) {
       setError(handleApiError(error));
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
+
+  const loadMoreTenants = useCallback(() => {
+    if (loadingMore || !hasMore || !nextToken) return;
+    
+    setLoadingMore(true);
+    setError(null);
+    
+    tenantService.fetchTenantsPage(nextToken)
+      .then(result => {
+        setTenants(prev => [...prev, ...result.data]);
+        setNextToken(result.nextToken);
+        setHasMore(!!result.nextToken);
+      })
+      .catch(error => {
+        setError(handleApiError(error));
+      })
+      .finally(() => {
+        setLoadingMore(false);
+      });
+  }, [loadingMore, hasMore, nextToken]);
 
   const deleteTenant = useCallback(async (tenant: Tenant) => {
     try {
@@ -31,11 +71,18 @@ export const useTenants = () => {
     }
   }, []);
 
+  const initialLoad = useCallback(() => {
+    loadTenants(true);
+  }, [loadTenants]);
+
   return {
     tenants,
     loading,
+    loadingMore,
     error,
-    loadTenants,
+    hasMore,
+    loadTenants: initialLoad,
+    loadMoreTenants,
     deleteTenant
   };
 };
