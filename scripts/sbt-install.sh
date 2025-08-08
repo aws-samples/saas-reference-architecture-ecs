@@ -7,6 +7,22 @@ if [[ -z "$CDK_PARAM_SYSTEM_ADMIN_EMAIL" ]]; then
   exit 1
 fi
 
+# Generate API keys if not provided
+if [[ -z "$CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER" ]]; then
+  export CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"
+  echo "Generated Premium API Key: $CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER"
+fi
+
+if [[ -z "$CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER" ]]; then
+  export CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"
+  echo "Generated Advanced API Key: $CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER"
+fi
+
+if [[ -z "$CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER" ]]; then
+  export CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"
+  echo "Generated Basic API Key: $CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER"
+fi
+
 REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')  # Region setting
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 

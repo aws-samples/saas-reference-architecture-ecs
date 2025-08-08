@@ -1,5 +1,5 @@
 {
-  "name": "ecs-saas-ref-template",
+  "name": "@aws-samples/ecs-saas-ref-template",
   "version": "0.1.0",
   "bin": {
     "ecs-saas-ref-template": "bin/ecs-saas-ref-template.js"

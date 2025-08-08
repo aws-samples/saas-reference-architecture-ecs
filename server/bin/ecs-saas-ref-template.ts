@@ -9,8 +9,12 @@ import { SharedInfraStack } from '../lib/shared-infra/shared-infra-stack';
 import { AwsSolutionsChecks } from 'cdk-nag';
 
 const app = new cdk.App();
-// cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
-cdk.Aspects.of(app);
+
+// CDK Nag 활성화 (환경변수로 제어)
+if (process.env.CDK_NAG_ENABLED === 'true') {
+  cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
+  console.log('CDK Nag enabled - AWS Solutions Checks will be performed');
+}
 // required input parameters
 if (!process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL) {
   throw new Error('Please provide system admin email');
@@ -23,7 +27,7 @@ const basicId = 'basic';
 const AzCount = 3;
 const basicName = 'basic';
 if(AzCount < 2 || AzCount > 3) {
-  throw new Error('Please Availability Zones count must be 2 or 3');
+  throw new Error('Availability Zones count must be between 2 and 3 (inclusive). Current value: ' + AzCount);
 }
 // required input parameters
 const systemAdminEmail = process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL;
@@ -39,9 +43,6 @@ if (!process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME) {
 }
 // default values for optional input parameters
 const defaultStageName = 'prod';
-const defaultApiKeyPremiumTierParameter = '508d335c-a768-4cfb-aaff-45a89129853c-sbt';
-const defaultApiKeyAdvancedTierParameter = '49cbd97a-7499-4939-bc3d-b116ca479dda-sbt';
-const defaultApiKeyBasicTierParameter = 'a6e257c3-a19d-4461-90a3-c998665a0d6b-sbt';
 const defaultSystemAdminRoleName = 'SystemAdmin';
 
 // optional input parameters
@@ -50,12 +51,24 @@ const systemAdminRoleName =
 const stageName = process.env.CDK_PARAM_STAGE || defaultStageName;
 
 
-const apiKeyPremiumTierParameter =
-  process.env.CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER || defaultApiKeyPremiumTierParameter;
-const apiKeyAdvancedTierParameter =
-  process.env.CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER || defaultApiKeyAdvancedTierParameter;
-const apiKeyBasicTierParameter =
-  process.env.CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER || defaultApiKeyBasicTierParameter;
+// API Key parameters - generate defaults if not provided (for tenant onboarding)
+const apiKeyPremiumTierParameter = process.env.CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER || 
+  `${require('crypto').randomUUID()}-sbt`;
+const apiKeyAdvancedTierParameter = process.env.CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER || 
+  `${require('crypto').randomUUID()}-sbt`;
+const apiKeyBasicTierParameter = process.env.CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER || 
+  `${require('crypto').randomUUID()}-sbt`;
+
+// Log if API keys were auto-generated
+if (!process.env.CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER) {
+  console.log('Generated Premium API Key:', apiKeyPremiumTierParameter);
+}
+if (!process.env.CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER) {
+  console.log('Generated Advanced API Key:', apiKeyAdvancedTierParameter);
+}
+if (!process.env.CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER) {
+  console.log('Generated Basic API Key:', apiKeyBasicTierParameter);
+}
 const isPooledDeploy = tenantId == basicId;
 //A flag to check whether the Advanced cluster is exist.
 //If not exist, value is INACTIVE.

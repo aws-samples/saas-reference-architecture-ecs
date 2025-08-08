@@ -1,5 +1,31 @@
 #!/bin/bash -e
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Find project root by looking for characteristic files
+find_project_root() {
+    local current_dir="$1"
+    while [ "$current_dir" != "/" ]; do
+        if [ -f "$current_dir/README.md" ] && [ -d "$current_dir/server" ] && [ -d "$current_dir/scripts" ]; then
+            echo "$current_dir"
+            return 0
+        fi
+        current_dir="$(dirname "$current_dir")"
+    done
+    echo ""
+    return 1
+}
+
+# Get the project root directory
+PROJECT_ROOT="$(find_project_root "$SCRIPT_DIR")"
+if [ -z "$PROJECT_ROOT" ]; then
+    echo "Error: Could not find project root directory"
+    exit 1
+fi
+
+echo "Project root found at: $PROJECT_ROOT"
+
 confirm() {
     RED='\033[0;31m'
     BOLD='\033[1m'
@@ -26,6 +52,19 @@ fi
 export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
+echo "$(date) disabling access logging to prevent new logs during cleanup..."
+# Disable access logging on all buckets first
+for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*|^shared-infra-stack-*"); do
+    if [[ ${i} != *"accesslog"* ]]; then
+        echo "$(date) disabling access logging for bucket s3://${i}..."
+        aws s3api put-bucket-logging --bucket "$i" --bucket-logging-status '{}' 2>/dev/null || true
+    fi
+done
+
+# Wait a moment for logging to stop
+echo "$(date) waiting 10 seconds for access logging to stop..."
+sleep 10
+
 echo "$(date) emptying out buckets..."
 for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*|^shared-infra-stack-*"); do
     echo "$(date) emptying out s3 bucket with name s3://${i}..."
@@ -41,10 +80,10 @@ if [ -z "$SECRETS_RESOURCES" ]; then
   :
 else
   echo "$SECRETS_RESOURCES"
-  sh ./del-secrets.sh
+  sh "$PROJECT_ROOT/scripts/cleanup/cleanup-secrets.sh"
 fi
 
-cd ../server
+cd "$PROJECT_ROOT/server"
 npm install
 
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="NA"
@@ -119,7 +158,9 @@ while true; do
     fi
 done
 
-npx cdk destroy --all --force
+
+# Destroy stacks
+npx cdk destroy --all --force || echo "$(date) stack destroy failed, continuing..."
 
 echo "$(date) cleaning up user pools..."
 next_token=""
@@ -158,22 +199,50 @@ echo "$(date) removing buckets..."
 for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*"); do
     echo "$(date) removing s3 bucket with name s3://${i}..."
     aws s3 rm --recursive "s3://${i}"
-    aws s3 rb --force "s3://${i}" #delete in stack
+    
+    # Handle versioned objects and delete markers
+    TEMP_FILE_BUCKET=$(mktemp)
+    echo "Deleting object versions for bucket ${i}..."
+    versions=$(aws s3api list-object-versions --bucket "$i" --output json 2>/dev/null | jq -r '.Versions | length' 2>/dev/null || echo "0")
+    
+    if [ "$versions" -gt 0 ]; then 
+        aws s3api list-object-versions --bucket "$i" --output json \
+            | jq '{"Objects": [.Versions[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE_BUCKET
+        aws s3api delete-objects --bucket "$i" --delete file://$TEMP_FILE_BUCKET --no-cli-pager 2>/dev/null || true
+    fi 
+    
+    echo "Deleting delete markers for bucket ${i}..."
+    delete_markers=$(aws s3api list-object-versions --bucket "$i" --output json 2>/dev/null | jq -r '.DeleteMarkers | length' 2>/dev/null || echo "0")
+    
+    if [ "$delete_markers" -gt 0 ]; then 
+        aws s3api list-object-versions --bucket "$i" --output json \
+            | jq '{"Objects": [.DeleteMarkers[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE_BUCKET
+        aws s3api delete-objects --bucket "$i" --delete file://$TEMP_FILE_BUCKET --no-cli-pager 2>/dev/null || true
+    fi
+    
+    # Force delete bucket
+    aws s3 rb --force "s3://${i}" 2>/dev/null || echo "$(date) Failed to delete bucket ${i}, may require manual cleanup"
+    rm -f $TEMP_FILE_BUCKET
 done
 
-# Cognito userpool delete
-aws cognito-idp list-user-pools --max-results 60 | jq -r '.UserPools[].Id' | xargs -I {} aws cognito-idp delete-user-pool --user-pool-id {}
+# Clean up CloudFront distributions
+echo "$(date) running CloudFront cleanup..."
+"$PROJECT_ROOT/scripts/cleanup/cleanup-cloudfront.sh" || echo "$(date) CloudFront cleanup failed, continuing..."
+
+# Clean up Cognito User Pools
+echo "$(date) running Cognito User Pool cleanup..."
+"$PROJECT_ROOT/scripts/cleanup/cleanup-cognito.sh" || echo "$(date) Cognito cleanup failed, continuing..."
 
 
 #delete ecr repositories
-# SERVICE_REPOS=("user" "product" "order" "rproxy")
-# for SERVICE in "${SERVICE_REPOS[@]}"; do
-#   echo "Repository [$SERVICE] checking..."
-#   REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text)
-#   if [ "$REPO_EXISTS" == "${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE" ]; then
-#     echo "Repository [$REPO_EXISTS] is deleting..."
-#     aws ecr delete-repository --repository-name "$SERVICE" --force | cat
-#   else
-#     echo "Repository [$SERVICE] does not exist"
-#   fi
-# done
+SERVICE_REPOS=("user" "product" "order" "rproxy")
+for SERVICE in "${SERVICE_REPOS[@]}"; do
+  echo "Repository [$SERVICE] checking..."
+  REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "NOT_FOUND")
+  if [ "$REPO_EXISTS" != "NOT_FOUND" ] && [ "$REPO_EXISTS" != "None" ]; then
+    echo "Repository [$REPO_EXISTS] is deleting..."
+    aws ecr delete-repository --repository-name "$SERVICE" --force 2>/dev/null || echo "Failed to delete repository [$SERVICE]"
+  else
+    echo "Repository [$SERVICE] does not exist"
+  fi
+done

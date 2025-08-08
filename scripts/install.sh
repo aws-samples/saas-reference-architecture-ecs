@@ -7,11 +7,27 @@ if [[ -z "$CDK_PARAM_SYSTEM_ADMIN_EMAIL" ]]; then
   exit 1
 fi
 
+# Generate API keys if not provided
+if [[ -z "$CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER" ]]; then
+  export CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"
+  echo "Generated Premium API Key: $CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER"
+fi
+
+if [[ -z "$CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER" ]]; then
+  export CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"
+  echo "Generated Advanced API Key: $CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER"
+fi
+
+if [[ -z "$CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER" ]]; then
+  export CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"
+  echo "Generated Basic API Key: $CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER"
+fi
+
 export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')  # Region setting
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # Create S3 Bucket for provision source.
-source ./update-provision-source.sh
+source ./utils/update-provision-source.sh
 
 echo "CDK_PARAM_COMMIT_ID exists: $CDK_PARAM_COMMIT_ID"
 
@@ -54,6 +70,7 @@ export CDK_PARAM_OFFBOARDING_DETAIL_TYPE='Offboarding'
 export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
 export CDK_PARAM_TIER='basic'
 export CDK_PARAM_STAGE='prod'
+export CDK_ADV_CLUSTER='INACTIV'
 export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
 export CDK_USE_DB=$DB_TYPE
 
@@ -70,6 +87,25 @@ for SERVICE in $SERVICES; do
         --service-connect-configuration 'enabled=false' \
         --no-cli-pager --query 'service.serviceArn' --output text
 done
+
+# Detect OS type and skip ARM64 setup on Mac
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "Detected macOS - skipping ARM64 emulation setup"
+else
+    # Make the script executable
+    chmod +x ../scripts/setup_multiarch.sh
+
+    # Run the setup_multiarch.sh script
+    echo "Running setup_multiarch.sh to configure ARM64 emulation..."
+    ../scripts/setup_multiarch.sh
+
+    # Create a symlink in /usr/local/bin for global access
+    sudo ln -sf ../scripts/setup_multiarch.sh /usr/local/bin/setup_multiarch
+
+    echo "ARM64 emulation setup complete!"
+    echo "You can run 'setup_multiarch' command anytime to refresh the configuration"
+fi
+# End Multi Architecture Setting
 
 npx cdk deploy --all --require-approval=never --concurrency 10 --asset-parallelism true
 

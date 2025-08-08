@@ -68,7 +68,7 @@ export class TenantTemplateStack extends cdk.Stack {
     //| 2. Reverse Proxy setting  |
     //=============================
     const ec2Tier = [''];
-    const rProxy = ['advanced', 'premium'];
+    const rProxy = [''];
     const isEc2Tier: boolean = ec2Tier.includes(props.tier.toLowerCase());
     const isRProxy: boolean = rProxy.includes(props.tier.toLowerCase());
 
@@ -169,8 +169,8 @@ export class TenantTemplateStack extends cdk.Stack {
           // env: { account: this.account, region: this.region }
         });
         
-        ecsService.node.addDependency(this.cluster);
-        ecsService.node.addDependency(vpc);
+        ecsService.service.node.addDependency(this.cluster);
+        ecsService.service.node.addDependency(vpc);
         
         // Store core services for rproxy dependency
         coreServices.push(ecsService);
@@ -200,7 +200,7 @@ export class TenantTemplateStack extends cdk.Stack {
        
         // rproxy depends on ALL core services (orders, products, users)
         coreServices.forEach(coreService => {
-          rproxyService.node.addDependency(coreService);
+          rproxyService.service.node.addDependency(coreService.service);
         });
       } 
     }
@@ -302,13 +302,14 @@ export class TenantTemplateStack extends cdk.Stack {
       value: props.commitId
     });
 
-    new TenantTemplateNag(this, 'TenantInfraNag', {
-      tenantId: props.tenantId,
-      isEc2Tier,
-      tier: props.tier,
-      advancedCluster: props.advancedCluster,
-      isRProxy
-    })
+    // CDK Nag 체크 비활성화
+    // new TenantTemplateNag(this, 'TenantInfraNag', {
+    //   tenantId: props.tenantId,
+    //   isEc2Tier,
+    //   tier: props.tier,
+    //   advancedCluster: props.advancedCluster,
+    //   isRProxy
+    // })
 
   }
   

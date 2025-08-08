@@ -71,6 +71,9 @@ export class StaticSiteDistro extends Construct {
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021
     });
 
+    // Add tags for cleanup identification
+    cdk.Tags.of(distribution).add('SaaSFactory', 'ECS-SaaS-Ref');
+
     appBucket.addToResourcePolicy(new iam.PolicyStatement({
       actions: ['s3:GetObject'],
       resources: [appBucket.arnForObjects('*')],

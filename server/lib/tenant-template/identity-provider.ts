@@ -1,4 +1,4 @@
-import { aws_cognito, type StackProps } from 'aws-cdk-lib';
+import { aws_cognito, type StackProps, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { type IdentityDetails } from '../interfaces/identity-details';
 
@@ -61,6 +61,9 @@ export class IdentityProvider extends Construct {
           'Login: ${props.appSiteUrl}, tenant: ${tenantName}, username:{username}, temp P.W:{####}',
       }
     });
+
+    // Add tags for cleanup identification
+    Tags.of(this.tenantUserPool).add('SaaSFactory', 'ECS-SaaS-Ref');
 
     const writeAttributes = new aws_cognito.ClientAttributes()
       .withStandardAttributes({ email: true })

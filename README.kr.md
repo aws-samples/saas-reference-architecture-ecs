@@ -46,14 +46,14 @@ cd saas-reference-architecture-ecs/scripts
 ./build-application.sh  # Build and upload sample applications(product, order, user) to ECR
 #./install.sh admin_email 
 ./init-install.sh
-./sbt-install.sh admin_email # SaaS Builder Toolkit's Control Plane, Application Plane is installed.
+./sbt-install.sh <admin_email> # SaaS Builder Toolkit's Control Plane, Application Plane is installed.
 ```
 
 ```build-application.sh```는 Order, Product 및 User 마이크로서비스로 샘플 SaaS 애플리케이션의 Docker 이미지를 빌드하고 Amazon ECR에 푸시합니다.
 
-그리고 ```init-install.sh```을 이용하여 
+그리고 ```init-install.sh```을 이용하여 ECS SaaS 서비스를 위한 클라우드 인프라 환경을 구성합니다.
 
-그리고 ```install.sh```을 이용하여 다음을 배포합니다:
+그리고 ```sbt-install.sh <admin_email>```을 이용하여 다음을 배포합니다:
  
 - AWS 계정에서 AWS S3 버킷을 만들고 이 레퍼런스 솔루션 코드를 버킷에 업로드합니다.
   - 업로든 된 소스는 Advanced 티어를 위한 마이크로서비스 프로비저닝 과 Premium 티어를 위한 ECS 와 마이크로서비스 프로비저닝에 사용.
@@ -74,7 +74,7 @@ cd saas-reference-architecture-ecs/scripts
 
 ```bash
 cd scripts
-./cleanup.sh
+./cleanup/cleanup.sh
 ```
 ## 라이선스
 

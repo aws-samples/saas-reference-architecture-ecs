@@ -70,7 +70,7 @@ export class StaticSite extends Construct {
           phases: {
             install: {
               "runtime-versions": {
-                nodejs: "18",
+                nodejs: "22",
               },
               commands: [
                 "echo 'Node.js version:'",

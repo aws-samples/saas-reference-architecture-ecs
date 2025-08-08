@@ -43,7 +43,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
           }),
         ],
       }),
-      script: fs.readFileSync('../scripts/provision-tenant.sh', 'utf8'),
+      script: fs.readFileSync('./lib/provision-scripts/provision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email', 'useFederation'],
       environmentJSONVariablesFromIncomingEvent: ['prices'],
       environmentVariablesToOutgoingEvent: { 
@@ -77,7 +77,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
           }),
         ],
       }),
-      script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
+      script: fs.readFileSync('./lib/provision-scripts/deprovision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
       environmentVariablesToOutgoingEvent: {
         tenantRegistrationData:['registrationStatus']

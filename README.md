@@ -54,7 +54,7 @@ To deploy this ECS SaaS reference solution, you can run the below commands. Repl
 git clone this_repo_url
 cd saas-reference-architecture-ecs/scripts
 ./build-application.sh 
-./install.sh admin_email 
+./install.sh <admin_email>
 ```
 
 Note that, ```build-application.sh``` builds docker images of sample SaaS application with order, product & user microservices and pushes to Amazon ECR.
@@ -80,7 +80,7 @@ Run the following script to clean up reference solution resources from your AWS 
 
 ```bash
 cd scripts
-./cleanup.sh
+./cleanup/cleanup.sh
 ```
 ## License
 

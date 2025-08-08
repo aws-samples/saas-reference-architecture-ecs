@@ -4,14 +4,14 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { HttpNamespace } from 'aws-cdk-lib/aws-servicediscovery';
-import { type Construct } from 'constructs';
+import { Construct } from 'constructs';
 import { getHashCode } from '../utilities/helper-functions';
 import { type ContainerInfo } from '../interfaces/container-info';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { getServiceName, createTaskDefinition, getContainerDefinitionOptions } from '../utilities/ecs-utils';
 import { IdentityDetails } from '../interfaces/identity-details';
 
-export interface EcsServiceProps extends cdk.NestedStackProps {
+export interface EcsServiceProps {
   tenantId: string
   tenantName: string
   isEc2Tier: boolean
@@ -25,14 +25,13 @@ export interface EcsServiceProps extends cdk.NestedStackProps {
   namespace: HttpNamespace
   info: ContainerInfo
   identityDetails: IdentityDetails
-  // env: cdk.Environment
 }
 
-export class EcsService extends cdk.NestedStack {
+export class EcsService extends Construct {
+  public readonly service: ecs.FargateService | ecs.Ec2Service;
 
   constructor (scope: Construct, id: string, props: EcsServiceProps) {
-    super(scope, id, props);
-    addTemplateTag(this, 'EcsClusterStack');
+    super(scope, id);
 
     const albSGId = cdk.Fn.importValue('AlbSgId'); // ALB Security Group ID
     const albSG = ec2.SecurityGroup.fromSecurityGroupId(this, 'albSG', albSGId);  // ALB Security Group
@@ -57,8 +56,9 @@ export class EcsService extends cdk.NestedStack {
       ]
     })
 
-    const containerDef = getContainerDefinitionOptions(this, props.info, props.identityDetails);
-    const taskDefinition = createTaskDefinition(this, props.isEc2Tier, taskExecutionRole, props.taskRole, containerDef);
+    const stack = cdk.Stack.of(scope);
+    const containerDef = getContainerDefinitionOptions(stack, props.info, props.identityDetails);
+    const taskDefinition = createTaskDefinition(stack, props.isEc2Tier, taskExecutionRole, props.taskRole, containerDef);
     taskDefinition.addContainer( `${props.info.name}-container`, containerDef);
 
     // const portDns = props.info.portMappings.map((port) => ({
@@ -76,7 +76,7 @@ export class EcsService extends cdk.NestedStack {
       trunking: true,
       minHealthyPercent: 0, // 100 → 0 (더 빠른 배포)
       maxHealthyPercent: 200,
-      enableExecuteCommand: false, // 불필요한 기능 비활성화
+      enableExecuteCommand: true, // 불필요한 기능 비활성화
       serviceConnectConfiguration: {
         namespace: props.namespace.namespaceArn,
         services: props.info.portMappings.map((port) => ({
@@ -89,11 +89,11 @@ export class EcsService extends cdk.NestedStack {
       }
     };
 
-    const service = props.isEc2Tier
+    this.service = props.isEc2Tier
       ? new ecs.Ec2Service(this, `${props.info.name}-service`, serviceProps)
       : new ecs.FargateService(this, `${props.info.name}-service`, serviceProps);
 
-    getServiceName(service.node.defaultChild as ecs.CfnService, props.tenantName, props.info.name);
+    getServiceName(this.service.node.defaultChild as ecs.CfnService, props.tenantName, props.info.name);
 
     if( props.isTarget ) {
       const targetGroupHttp = new elbv2.ApplicationTargetGroup( this, `target-group-${props.info.name}-${props.tenantId}`, {
@@ -103,7 +103,8 @@ export class EcsService extends cdk.NestedStack {
           targetType: elbv2.TargetType.IP,
           healthCheck: { 
             path: props.isRProxy? '/health': `/${props.info.name}/health`,
-            protocol: elbv2.Protocol.HTTP 
+            protocol: elbv2.Protocol.HTTP,
+// matcher 제거 - health check가 항상 200 반환하므로 불필요
           }
         }
       );
@@ -119,14 +120,14 @@ export class EcsService extends cdk.NestedStack {
           elbv2.ListenerCondition.pathPatterns([`/${props.info.name}*`])
         ]
       });
-      service.attachToApplicationTargetGroup(targetGroupHttp);
-      service.connections.allowFrom(listener, ec2.Port.tcp(props.info.containerPort));
+      this.service.attachToApplicationTargetGroup(targetGroupHttp);
+      this.service.connections.allowFrom(listener, ec2.Port.tcp(props.info.containerPort));
     } 
 
     // Skip auto scaling setup during initial deployment for faster startup
     // Auto scaling can be added later via separate deployment if needed
     if (process.env.SKIP_AUTOSCALING !== 'true') {
-      const scalableTarget = service.autoScaleTaskCount({
+      const scalableTarget = this.service.autoScaleTaskCount({
         minCapacity: 1,
         maxCapacity: 3
       });
