@@ -44,7 +44,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
         ],
       }),
       script: fs.readFileSync('./lib/provision-scripts/provision-tenant.sh', 'utf8'),
-      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email', 'useFederation'],
+      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email', 'useFederation', 'useEc2', 'useRProxy'],
       environmentJSONVariablesFromIncomingEvent: ['prices'],
       environmentVariablesToOutgoingEvent: { 
         tenantData:[
@@ -139,6 +139,9 @@ export class CoreAppPlaneStack extends cdk.Stack {
       value: props.appSiteUrl
     });
 
-    // new CoreAppPlaneNag(this, 'CoreAppPlaneNag');
+    // CDK Nag 체크 (환경변수로 제어)
+    if (process.env.CDK_NAG_ENABLED === 'true') {
+      new CoreAppPlaneNag(this, 'CoreAppPlaneNag');
+    }
   }
 }

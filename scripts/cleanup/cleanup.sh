@@ -147,7 +147,7 @@ while true; do
         #npx cdk destroy "$i" --force
         aws cloudformation delete-stack --stack-name "$i"
         echo "$(date) waiting for stack delete operation to complete..."
-        aws cloudformation wait stack-delete-complete --stack-name "$i"        
+        aws cloudformation wait stack-delete-complete --stack-name "$i" || echo "$(date) stack delete failed for $i, continuing..."        
     done
 
     next_token=$(echo "$response" | jq '.NextToken')
@@ -238,10 +238,10 @@ echo "$(date) running Cognito User Pool cleanup..."
 SERVICE_REPOS=("user" "product" "order" "rproxy")
 for SERVICE in "${SERVICE_REPOS[@]}"; do
   echo "Repository [$SERVICE] checking..."
-  REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "NOT_FOUND")
+  REPO_EXISTS=$(aws ecr describe-repositories --repository-names "$SERVICE" --query 'repositories[0].repositoryUri' --output text --no-cli-pager 2>/dev/null || echo "NOT_FOUND")
   if [ "$REPO_EXISTS" != "NOT_FOUND" ] && [ "$REPO_EXISTS" != "None" ]; then
     echo "Repository [$REPO_EXISTS] is deleting..."
-    aws ecr delete-repository --repository-name "$SERVICE" --force 2>/dev/null || echo "Failed to delete repository [$SERVICE]"
+    aws ecr delete-repository --repository-name "$SERVICE" --force --no-cli-pager 2>/dev/null || echo "Failed to delete repository [$SERVICE]"
   else
     echo "Repository [$SERVICE] does not exist"
   fi

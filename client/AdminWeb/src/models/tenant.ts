@@ -9,6 +9,8 @@ interface TenantData {
   tier?: string | undefined | null;
   prices?: Price[];
   useFederation?: string;
+  useEc2?: string;
+  useRProxy?: string;
 }
 
 export interface TenantRegistrationData {

@@ -31,6 +31,8 @@ interface FormData {
   email: string;
   tier: string;
   useFederation: boolean;
+  useEc2: boolean;
+  useRProxy: boolean;
 }
 
 const TenantCreate: React.FC = () => {
@@ -39,6 +41,8 @@ const TenantCreate: React.FC = () => {
     email: "",
     tier: "ADVANCED",
     useFederation: false,
+    useEc2: false,
+    useRProxy: true,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -80,7 +84,7 @@ const TenantCreate: React.FC = () => {
 
   const handleChange = useCallback((field: keyof FormData) => (event: React.ChangeEvent<HTMLInputElement> | { target: { value: string; checked?: boolean } }) => {
     const value =
-      field === "useFederation" ? event.target.checked : event.target.value;
+      field === "useFederation" || field === "useEc2" || field === "useRProxy" ? event.target.checked : event.target.value;
 
     setFormData((prev) => ({
       ...prev,
@@ -95,12 +99,18 @@ const TenantCreate: React.FC = () => {
       }));
     }
 
-    // Handle federation control based on tier
+    // Handle federation and EC2 control based on tier
     if (field === "tier") {
       if (value !== "ADVANCED" && value !== "PREMIUM") {
         setFormData((prev) => ({
           ...prev,
           useFederation: false,
+        }));
+      }
+      if (value !== "PREMIUM") {
+        setFormData((prev) => ({
+          ...prev,
+          useEc2: false,
         }));
       }
     }
@@ -146,6 +156,8 @@ const TenantCreate: React.FC = () => {
           tier: formData.tier,
           prices: [],
           useFederation: String(formData.useFederation),
+          useEc2: String(formData.useEc2),
+          useRProxy: String(formData.useRProxy),
         },
         tenantRegistrationData: {
           registrationStatus: TENANT_DEFAULTS.REGISTRATION_STATUS,
@@ -196,14 +208,14 @@ const TenantCreate: React.FC = () => {
                 )}
 
                 <form onSubmit={handleSubmit}>
-                  {/* Company Name */}
+                  {/* Tenant Name */}
                   <div className="form-section">
                     <label className="form-label">
-                      Company Name <span className="required-asterisk">*</span>
+                      Tenant Name <span className="required-asterisk">*</span>
                     </label>
                     <TextField
                       fullWidth
-                      placeholder="Enter company name"
+                      placeholder="Enter tenant name"
                       value={formData.tenantName}
                       onChange={handleChange("tenantName")}
                       error={!!validationErrors.tenantName}
@@ -298,32 +310,81 @@ const TenantCreate: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Federation Switch */}
-                  <div className="federation-section">
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={formData.useFederation}
-                          onChange={handleChange("useFederation")}
-                          disabled={
-                            formData.tier !== "ADVANCED" &&
-                            formData.tier !== "PREMIUM"
+                  {/* Configuration Options */}
+                  <div className="form-section">
+                    <label className="form-label">
+                      Configuration Options
+                    </label>
+                    
+                    <div className="config-switches-row">
+                      <div className="config-switch-item">
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={formData.useFederation}
+                              onChange={handleChange("useFederation")}
+                              disabled={
+                                formData.tier !== "ADVANCED" &&
+                                formData.tier !== "PREMIUM"
+                              }
+                            />
                           }
+                          label="Use Federation"
                         />
-                      }
-                      label="Use Federation"
-                    />
-                    {formData.tier !== "ADVANCED" &&
-                      formData.tier !== "PREMIUM" && (
                         <Typography
                           variant="caption"
                           color="text.secondary"
-                          className="federation-help-text"
+                          className="config-description"
                         >
-                          Federation is only available for Advanced and Premium
-                          tiers
+                          {formData.tier !== "ADVANCED" && formData.tier !== "PREMIUM" 
+                            ? "Advanced/Premium only"
+                            : "Enable SSO integration"
+                          }
                         </Typography>
-                      )}
+                      </div>
+                      
+                      <div className="config-switch-item">
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={formData.useRProxy}
+                              onChange={handleChange("useRProxy")}
+                            />
+                          }
+                          label="Use Reverse Proxy"
+                        />
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          className="config-description"
+                        >
+                          Enable request routing proxy
+                        </Typography>
+                      </div>
+                      
+                      <div 
+                        className="config-switch-item"
+                        style={{ visibility: formData.tier === "PREMIUM" ? 'visible' : 'hidden' }}
+                      >
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={formData.useEc2}
+                              onChange={handleChange("useEc2")}
+                            />
+                          }
+                          label="Use EC2"
+                        />
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          className="config-description"
+                        >
+                          Use EC2 instead of Fargate
+                        </Typography>
+                      </div>
+                    </div>
+
                   </div>
 
                   {/* Submit Button */}

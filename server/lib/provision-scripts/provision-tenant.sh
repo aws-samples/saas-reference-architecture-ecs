@@ -55,6 +55,10 @@ export TENANT_ADMIN_EMAIL=$email
 export TENANT_NAME=$tenantName
 export USE_FEDERATION=$useFederation
 
+# 동적 설정 처리 (기본값: Fargate + rProxy)
+export CDK_PARAM_USE_EC2="${useEc2:-false}"
+export CDK_PARAM_USE_RPROXY="${useRProxy:-true}"
+
 # Define variables
 # TENANT_ADMIN_USERNAME="tenant-admin-$CDK_PARAM_TENANT_ID"
 TENANT_ADMIN_USERNAME="$TENANT_NAME-$CDK_PARAM_TENANT_ID"
@@ -84,6 +88,7 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
     export CDK_PARAM_TIER=$TIER
     export CDK_PARAM_TENANT_NAME=$TENANT_NAME  #Added for demonstration during the workshop
     export CDK_PARAM_USE_FEDERATION=$USE_FEDERATION ###Federation check for selfSign
+
     
     # Optimization flags for faster deployment
     export SKIP_AUTOSCALING=true
@@ -92,15 +97,15 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
     # cdk deploy $STACK_NAME --exclusively --require-approval never --concurrency 10 --asset-parallelism true
 
     # buildspec.yml에 추가
-export CDK_ASSET_PARALLELISM=true
-export CDK_DISABLE_STACK_TRACE=true
+    export CDK_ASSET_PARALLELISM=true
+    export CDK_DISABLE_STACK_TRACE=true
 
-cdk deploy $STACK_NAME \
-  --exclusively \
-  --require-approval never \
-  --concurrency 10 \
-  --asset-parallelism true \
-  --no-rollback
+    cdk deploy $STACK_NAME \
+      --exclusively \
+      --require-approval never \
+      --concurrency 10 \
+      --asset-parallelism true \
+      --no-rollback
 
 fi
 

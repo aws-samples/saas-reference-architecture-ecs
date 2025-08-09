@@ -279,7 +279,10 @@ export class SharedInfraStack extends cdk.Stack {
       value: this.appSiteUrl
     });
 
-    new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
+    // CDK Nag 체크 (환경변수로 제어)
+    if (process.env.CDK_NAG_ENABLED === 'true') {
+      new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
+    }
   }
 
   ssmLookup (parameterName: string) {

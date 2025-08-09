@@ -75,6 +75,9 @@ export class ControlPlaneStack extends cdk.Stack {
       value: props.adminSiteUrl
     });
 
-    // new ControlPlaneNag(this, 'controlplane-nag');
+    // CDK Nag 체크 (환경변수로 제어)
+    if (process.env.CDK_NAG_ENABLED === 'true') {
+      new ControlPlaneNag(this, 'controlplane-nag');
+    }
   }
 }

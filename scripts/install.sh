@@ -48,6 +48,14 @@ fi
 # Preprovision basic infrastructure
 cd ../server
 
+# Copy .env.example to .env
+if [ ! -f ".env.example" ]; then
+    echo "Error: .env.example file not found"
+    exit 1
+fi
+cp .env.example .env
+echo "Created .env file from .env.example"
+
 FILE="/tmp/db_type.env"
 
 if [ -f "$FILE" ]; then

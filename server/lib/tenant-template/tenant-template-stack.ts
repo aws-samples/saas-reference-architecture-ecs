@@ -32,6 +32,8 @@ interface TenantTemplateStackProps extends cdk.StackProps {
   advancedCluster: string
   appSiteUrl: string
   useFederation: string
+  useEc2?: boolean
+  useRProxy?: boolean
 }
 
 export class TenantTemplateStack extends cdk.Stack {
@@ -67,10 +69,10 @@ export class TenantTemplateStack extends cdk.Stack {
     //| 1. EC2 or Fargate setting |
     //| 2. Reverse Proxy setting  |
     //=============================
-    const ec2Tier = [''];
-    const rProxy = [''];
-    const isEc2Tier: boolean = ec2Tier.includes(props.tier.toLowerCase());
-    const isRProxy: boolean = rProxy.includes(props.tier.toLowerCase());
+    
+    // props에서 설정값 가져오기 (기본값: Fargate + rProxy)
+    const isEc2Tier: boolean = props.useEc2 ?? false;
+    const isRProxy: boolean = props.useRProxy ?? true;
 
     //=====================================================================
     if('advanced' === props.tier.toLocaleLowerCase() && 'ACTIVE' === props.advancedCluster ) {
@@ -302,14 +304,16 @@ export class TenantTemplateStack extends cdk.Stack {
       value: props.commitId
     });
 
-    // CDK Nag 체크 비활성화
-    // new TenantTemplateNag(this, 'TenantInfraNag', {
-    //   tenantId: props.tenantId,
-    //   isEc2Tier,
-    //   tier: props.tier,
-    //   advancedCluster: props.advancedCluster,
-    //   isRProxy
-    // })
+    // CDK Nag 체크 (환경변수로 제어)
+    if (process.env.CDK_NAG_ENABLED === 'true') {
+      new TenantTemplateNag(this, 'TenantInfraNag', {
+        tenantId: props.tenantId,
+        isEc2Tier,
+        tier: props.tier,
+        advancedCluster: props.advancedCluster,
+        isRProxy
+      });
+    }
 
   }
   

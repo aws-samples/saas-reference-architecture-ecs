@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import 'dotenv/config';
 import * as cdk from 'aws-cdk-lib';
 import { TenantTemplateStack } from '../lib/tenant-template/tenant-template-stack';
 import { DestroyPolicySetter } from '../lib/utilities/destroy-policy-setter';
@@ -10,10 +11,12 @@ import { AwsSolutionsChecks } from 'cdk-nag';
 
 const app = new cdk.App();
 
-// CDK Nag 활성화 (환경변수로 제어)
+// Enable CDK Nag (controlled by environment variable)
 if (process.env.CDK_NAG_ENABLED === 'true') {
   cdk.Aspects.of(app).add(new AwsSolutionsChecks({ verbose: true }));
-  console.log('CDK Nag enabled - AWS Solutions Checks will be performed');
+  console.log('CDK NAG: true');
+} else {
+  console.log('CDK NAG: false');
 }
 // required input parameters
 if (!process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL) {
@@ -37,6 +40,11 @@ const useFederation = process.env.CDK_PARAM_USE_FEDERATION || 'true';
 
 const commitId = getEnv('CDK_PARAM_COMMIT_ID');
 const tier = getEnv('CDK_PARAM_TIER');
+
+const useEc2 = process.env.CDK_PARAM_USE_EC2 === 'true';
+const useRProxy = process.env.CDK_PARAM_USE_RPROXY !== 'false';
+
+
 
 if (!process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME) {
   process.env.CDK_PARAM_SYSTEM_ADMIN_ROLE_NAME = 'SystemAdmin';
@@ -118,7 +126,7 @@ const coreAppPlaneStack = new CoreAppPlaneStack(app, 'core-appplane-stack', {
   systemAdminEmail: systemAdminEmail,
   regApiGatewayUrl: controlPlaneStack.regApiGatewayUrl,
   eventManager: controlPlaneStack.eventManager,
-  auth: controlPlaneStack.auth, // auth 정보 추가
+  auth: controlPlaneStack.auth, // Add auth information
   accessLogsBucket: sharedInfraStack.accessLogsBucket,
   distro: sharedInfraStack.appSiteDistro,
   appSiteUrl: sharedInfraStack.appSiteUrl,
@@ -137,6 +145,8 @@ const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-
   advancedCluster: advancedCluster,
   appSiteUrl: sharedInfraStack.appSiteUrl,
   useFederation: useFederation,
+  useEc2: useEc2,
+  useRProxy: useRProxy,
   env
 });
 
@@ -150,6 +160,8 @@ const advancedTierTempStack = new TenantTemplateStack(app, `tenant-template-stac
   advancedCluster: 'INACTIVE',
   appSiteUrl: sharedInfraStack.appSiteUrl,
   useFederation: useFederation,
+  useEc2: useEc2,
+  useRProxy: false, // Advanced initial infrastructure does not use rProxy
   env
 });
 tenantTemplateStack.addDependency(sharedInfraStack);
