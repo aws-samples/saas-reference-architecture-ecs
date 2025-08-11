@@ -145,10 +145,8 @@ export class TenantTemplateStack extends cdk.Stack {
               }));
             }
 
-            info.environment.TABLE_NAME =  storage.table.tableName;  
-          } else { //MySQL database per TENANT
-            taskRole = iam.Role.fromRoleArn(this, `${info.name}-ecsTaskRole`, cdk.Fn.importValue('TaskRoleArn'), {mutable: true,})
-          } 
+            info.environment.TABLE_NAME =  storage.table.tableName; 
+          }
         } else {
           policy = policy.replace(/<USER_POOL_ID>/g, `${identityProvider.identityDetails.details.userPoolId}`);
           taskRole = new iam.Role(this, `${info.name}-ecsTaskRole`, {
@@ -254,43 +252,7 @@ export class TenantTemplateStack extends cdk.Stack {
       })
     });
 
-    // CDK CustomResource condition setting (based on Environment)
-    if(process.env.CDK_USE_DB =='mysql') {
-      const shouldExecuteCustomResource = new cdk.CfnCondition(this, 'ShouldExecuteCustomResource', {
-        expression: cdk.Fn.conditionEquals(process.env.CDK_USE_DB, 'mysql'),
-      });
-      const schemeLambdaArn = process.env.CDK_USE_DB =='mysql'? cdk.Fn.importValue('SchemeLambdaArn'):"";
 
-      const mysqlCustomResource = new AwsCustomResource(this, 'InvokeLambdaCustomResource', {
-        installLatestAwsSdk: true,
-        onCreate: {
-          service: 'Lambda',
-          action: 'invoke',
-          physicalResourceId: PhysicalResourceId.of('InvokeLambdaCustomResource'),
-          parameters: {
-            FunctionName:  schemeLambdaArn,
-            InvocationType: 'Event',
-            Payload: JSON.stringify({
-              tenantName: props.tenantName,
-              stackName: cdk.Stack.of(this).stackName,
-            })
-          }
-        },
-      
-        policy: AwsCustomResourcePolicy.fromStatements([
-          new cdk.aws_iam.PolicyStatement({
-            actions: ['lambda:InvokeFunction'],
-            resources: [schemeLambdaArn],
-          }),
-        ]),
-      });
-      
-      if (mysqlCustomResource.node.defaultChild && mysqlCustomResource.node.defaultChild instanceof cdk.CfnResource) {
-        (mysqlCustomResource.node.defaultChild as cdk.CfnResource).cfnOptions.condition = shouldExecuteCustomResource;
-      } else {
-        console.warn('mysqlCustomResource.node.defaultChild is not a CfnResource');
-      }
-    }
 
     new cdk.CfnOutput(this, 'TenantUserpoolId', {
       value: identityProvider.tenantUserPool.userPoolId

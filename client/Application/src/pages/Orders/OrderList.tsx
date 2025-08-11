@@ -12,50 +12,86 @@ import {
   Paper,
   CircularProgress,
   Alert,
+  IconButton,
 } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { Order } from '../../types/Order';
 import { orderService } from '../../services/orderService';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
-const OrderList: React.FC = () => {
+const OrderListContent: React.FC = () => {
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (isRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       setError('');
       const data = await orderService.fetch();
-      setOrders(data);
+      
+      console.log('Raw order data:', data);
+      
+      // Absolutely safe processing
+      if (data && Array.isArray(data)) {
+        setOrders(data);
+      } else {
+        setOrders([]);
+      }
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to fetch orders');
+      setError('Failed to fetch orders');
       console.error('Error fetching orders:', err);
+      setOrders([]);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  const handleOrderClick = (order: Order) => {
-    // Same format as Angular: tenantId:orderId
-    navigate(`/orders/${order.tenantId}:${order.orderId}`);
+  const handleOrderClick = (order: any) => {
+    const tenantId = order?.tenantId || 'unknown';
+    const orderId = order?.orderId || 'unknown';
+    navigate(`/orders/${tenantId}:${orderId}`);
   };
 
   const handleCreateOrder = () => {
     navigate('/orders/create');
   };
 
-  // Same as Angular's sum function
-  const calculateTotal = (order: Order): number => {
-    return order.orderProducts
-      .map((p) => p.price * p.quantity)
-      .reduce((acc, curr) => acc + curr, 0);
+  const getOrderName = (order: any): string => {
+    return order?.orderName || 'Unnamed Order';
+  };
+
+  const getLineItemsCount = (order: any): number => {
+    if (!order || !order.orderProducts) return 0;
+    if (!Array.isArray(order.orderProducts)) return 0;
+    return order.orderProducts.length;
+  };
+
+  const calculateTotal = (order: any): number => {
+    if (!order || !order.orderProducts) return 0;
+    if (!Array.isArray(order.orderProducts)) return 0;
+    
+    let total = 0;
+    for (let i = 0; i < order.orderProducts.length; i++) {
+      const product = order.orderProducts[i];
+      if (product) {
+        const price = typeof product.price === 'number' ? product.price : 0;
+        const quantity = typeof product.quantity === 'number' ? product.quantity : 0;
+        total += price * quantity;
+      }
+    }
+    return total;
   };
 
   if (isLoading) {
@@ -83,6 +119,16 @@ const OrderList: React.FC = () => {
         </Alert>
       )}
 
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+        <IconButton
+          onClick={() => fetchOrders(true)}
+          disabled={isLoading || isRefreshing}
+          size="small"
+        >
+          <RefreshIcon />
+        </IconButton>
+      </Box>
+
       <TableContainer 
         component={Paper} 
         sx={{ 
@@ -109,16 +155,16 @@ const OrderList: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {orders.length === 0 ? (
+            {!orders || orders.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3} align="center" sx={{ py: 4, color: '#6c757d' }}>
                   No orders found
                 </TableCell>
               </TableRow>
             ) : (
-              orders.map((order) => (
+              orders.filter(order => order != null).slice(0, 10).map((order, index) => (
                 <TableRow 
-                  key={order.key || `${order.tenantId}:${order.orderId}`}
+                  key={`safe-order-${index}`}
                   sx={{ 
                     '&:nth-of-type(even)': { backgroundColor: '#f8f9fa' },
                     '&:hover': { backgroundColor: '#e3f2fd' },
@@ -141,11 +187,15 @@ const OrderList: React.FC = () => {
                         '&:hover': { backgroundColor: 'transparent', textDecoration: 'underline' }
                       }}
                     >
-                      {order.orderName}
+                      {getOrderName(order)}
                     </Button>
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 500 }}>{order.orderProducts?.length || 0}</TableCell>
-                  <TableCell sx={{ fontWeight: 600, color: '#2e7d32' }}>${calculateTotal(order).toFixed(2)}</TableCell>
+                  <TableCell sx={{ fontWeight: 500 }}>
+                    {getLineItemsCount(order)}
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 600, color: '#2e7d32' }}>
+                    ${calculateTotal(order).toFixed(2)}
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -163,6 +213,14 @@ const OrderList: React.FC = () => {
         </Button>
       </Box>
     </Box>
+  );
+};
+
+const OrderList: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <OrderListContent />
+    </ErrorBoundary>
   );
 };
 

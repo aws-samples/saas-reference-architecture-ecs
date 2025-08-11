@@ -36,14 +36,7 @@ cd ../server
 
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
-RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::RDS::DBInstance']" --output text)
-if [ -z "$RDS_RESOURCES" ] 
-then
-  export CDK_USE_DB='dynamodb'
-else
-  export CDK_USE_DB='mysql'
-fi
-echo "DB_TYPE:$CDK_USE_DB"
+
 
 npm install
 #npx cdk deploy --all --require-approval=never

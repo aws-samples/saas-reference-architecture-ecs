@@ -23,7 +23,7 @@ const ProductEdit: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string>('');
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -53,10 +53,10 @@ const ProductEdit: React.FC = () => {
       const productData = await productService.get(productId);
       setProduct(productData);
       setFormData({
-        name: productData.name,
-        price: productData.price.toString(),
-        sku: productData.sku,
-        category: productData.category,
+        name: productData?.name || '',
+        price: (productData?.price || 0).toString(),
+        sku: productData?.sku ? String(productData.sku) : '',
+        category: productData?.category || '',
       });
     } catch (err: any) {
 
@@ -113,7 +113,7 @@ const ProductEdit: React.FC = () => {
       setIsSaving(true);
       setError('');
 
-      const updatedProduct: Product = {
+      const updatedProduct: any = {
         ...product,
         name: formData.name.trim(),
         price: Number(formData.price),

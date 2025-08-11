@@ -17,13 +17,15 @@ import AuthInfo from "./pages/Auth/AuthInfo";
 import UnauthorizedPage from "./pages/Error/UnauthorizedPage";
 import { useTenant } from "./contexts/TenantContext";
 import { authConfigService } from "./services/authConfigService";
+import ErrorBoundary from "./components/ErrorBoundary";
 import "@aws-amplify/ui-react/styles.css";
 
 // Main app component (for authenticated users)
 const AuthenticatedApp: React.FC = () => {
   return (
-    <Layout>
-      <Routes>
+    <ErrorBoundary>
+      <Layout>
+        <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
@@ -40,8 +42,9 @@ const AuthenticatedApp: React.FC = () => {
 
         <Route path="/auth/info" element={<AuthInfo />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
-      </Routes>
-    </Layout>
+        </Routes>
+      </Layout>
+    </ErrorBoundary>
   );
 };
 

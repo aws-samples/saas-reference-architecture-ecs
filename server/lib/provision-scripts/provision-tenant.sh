@@ -29,20 +29,8 @@ aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAM
 tar -xzf $CDK_SOURCE_NAME
 cd ./server
 
-RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::RDS::DBInstance']" --output text)
-if [ -z "$RDS_RESOURCES" ] 
-then
-  export CDK_USE_DB='dynamodb'
-else
-  export CDK_USE_DB='mysql'
-fi
-echo "CDK_USE_DB:$CDK_USE_DB"
-
-if [ "$CDK_USE_DB" == 'mysql' ]; then 
-    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
-else
-    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
-fi
+# Use DynamoDB only
+sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
 
 cat ./lib/service-info.json
 

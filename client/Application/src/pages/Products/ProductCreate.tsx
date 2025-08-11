@@ -81,7 +81,7 @@ const ProductCreate: React.FC = () => {
       setIsLoading(true);
       setError('');
 
-      const productData = {
+      const productData: any = {
         name: formData.name.trim(),
         price: Number(formData.price),
         sku: formData.sku.trim(),

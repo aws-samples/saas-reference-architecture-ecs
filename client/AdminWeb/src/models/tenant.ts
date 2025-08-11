@@ -22,6 +22,7 @@ export interface Tenant {
   tenantId?: string;
   tenantData: TenantData;
   tenantRegistrationData: TenantRegistrationData;
+  sbtaws_active?: boolean;
 }
 
 export interface CreateTenantRequest {

@@ -13,38 +13,53 @@ import {
   CircularProgress,
   Alert,
   Chip,
+  IconButton,
 } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Add as AddIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { User } from '../../types/User';
 import { userService } from '../../services/userService';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
-const UserList: React.FC = () => {
+const UserListContent: React.FC = () => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (isRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       setError('');
       const data = await userService.fetch();
       console.log('User data received:', data);
-      if (data.length > 0) {
-        console.log('First user object:', data[0]);
-        console.log('Available keys:', Object.keys(data[0]));
+      
+      // Just set the data as-is, handle safety in rendering
+      if (data && Array.isArray(data)) {
+        if (data.length > 0) {
+          console.log('First user object:', data[0]);
+          console.log('Available keys:', Object.keys(data[0]));
+        }
+        setUsers(data);
+      } else {
+        setUsers([]);
       }
-      setUsers(data);
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to fetch users');
       console.error('Error fetching users:', err);
+      setUsers([]); // Set empty array on error
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -92,7 +107,17 @@ const UserList: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : (
-        <TableContainer component={Paper} className="unified-table-container">
+        <>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+            <IconButton
+              onClick={() => fetchUsers(true)}
+              disabled={isLoading || isRefreshing}
+              size="small"
+            >
+              <RefreshIcon />
+            </IconButton>
+          </Box>
+          <TableContainer component={Paper} className="unified-table-container">
           <Table>
             <TableHead className="unified-table-head">
               <TableRow>
@@ -111,47 +136,48 @@ const UserList: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                users.map((user, index) => (
-                  <TableRow key={user.email || index} className="unified-table-row">
-                    <TableCell className="unified-table-email">{user.email}</TableCell>
-                    <TableCell>
-                      {(user as any).user_role ? (
+                users.filter(user => user != null).map((user, index) => {
+                  const email = user?.email || user?.username || 'unknown@example.com';
+                  const userRole = user?.user_role || user?.role || 'User';
+                  const status = user?.status || 'Unknown';
+                  const enabled = typeof user?.enabled === 'boolean' ? user.enabled : true;
+                  const modified = user?.modified || new Date().toISOString();
+                  
+                  return (
+                    <TableRow key={email || index} className="unified-table-row">
+                      <TableCell className="unified-table-email">{email}</TableCell>
+                      <TableCell>
                         <Chip 
-                          label={(user as any).user_role} 
+                          label={userRole} 
                           size="small"
                           className="user-role-chip"
                         />
-                      ) : (
-                        <span className="unified-table-secondary">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="unified-table-secondary">{formatDate(user.modified)}</TableCell>
-                    <TableCell>
-                      {user.status ? (
+                      </TableCell>
+                      <TableCell className="unified-table-secondary">{formatDate(modified)}</TableCell>
+                      <TableCell>
                         <Chip 
-                          label={user.status} 
-                          color={getStatusColor(user.status)}
+                          label={status} 
+                          color={getStatusColor(status)}
                           size="small"
                           className="user-chip"
                         />
-                      ) : (
-                        <span className="unified-table-secondary">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={user.enabled ? 'Yes' : 'No'} 
-                        color={user.enabled ? 'success' : 'error'}
-                        size="small"
-                        className="user-chip"
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={enabled ? 'Yes' : 'No'} 
+                          color={enabled ? 'success' : 'error'}
+                          size="small"
+                          className="user-chip"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
-        </TableContainer>
+          </TableContainer>
+        </>
       )}
 
       <Box sx={{ mt: 2 }}>
@@ -164,6 +190,14 @@ const UserList: React.FC = () => {
         </Button>
       </Box>
     </Box>
+  );
+};
+
+const UserList: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <UserListContent />
+    </ErrorBoundary>
   );
 };
 

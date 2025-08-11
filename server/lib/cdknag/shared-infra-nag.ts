@@ -78,32 +78,6 @@ export class SharedInfraNag extends Construct {
       }
     ]);
     
-    // Additional MySQL-related suppressions (conditional)
 
-    if(process.env.CDK_USE_DB === 'mysql') {
-      // Additional MySQL-related suppressions
-      NagSuppressions.addStackSuppressions(cdk.Stack.of(this), [
-        {
-          id: 'AwsSolutions-RDS6',
-          reason: 'SaaS reference architecture - RDS IAM authentication not required for demo'
-        },
-        {
-          id: 'AwsSolutions-RDS10',
-          reason: 'SaaS reference architecture - RDS deletion protection not required for demo'
-        },
-        {
-          id: 'AwsSolutions-RDS11',
-          reason: 'SaaS reference architecture - RDS default port is acceptable for demo'
-        },
-        {
-          id: 'AwsSolutions-RDS14',
-          reason: 'SaaS reference architecture - RDS backtrack not required for demo'
-        },
-        {
-          id: 'AwsSolutions-SMG4',
-          reason: 'SaaS reference architecture - Secrets Manager rotation not required for demo'
-        }
-      ]);
-    }
   }
 }

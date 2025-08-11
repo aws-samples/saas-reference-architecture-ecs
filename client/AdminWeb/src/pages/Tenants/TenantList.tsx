@@ -124,9 +124,18 @@ const TenantList: React.FC = () => {
                         tenant.tenantStatus ||
                         'complete'; // Default value changed to 'complete'
           
+          const isActive = tenant.sbtaws_active !== false; // true if undefined or true
+          
           return (
             <Grid item xs={12} sm={6} md={4} key={tenantId}>
-              <Card className="glass-card tenant-card">
+              <Card 
+                className="glass-card tenant-card"
+                sx={{
+                  backgroundColor: isActive ? 'inherit' : '#f5f5f5',
+                  color: isActive ? 'inherit' : '#9e9e9e',
+                  opacity: isActive ? 1 : 0.6
+                }}
+              >
                 <CardContent>
                   <div className="tenant-card-header">
                     <Typography variant="h6" component="div" className="tenant-card-title">
