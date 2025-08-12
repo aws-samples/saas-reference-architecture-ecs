@@ -11,3 +11,10 @@ tmp/
 temp/
 build-local.sh
 bin/
+# Go specific ignores
+*.test
+*.out
+coverage.txt
+# Docker specific
+Dockerfile*
+.dockerignore

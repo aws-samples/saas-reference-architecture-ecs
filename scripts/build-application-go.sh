@@ -39,15 +39,19 @@ deploy_service() {
     local SERVICEECR="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/$SERVICE_NAME"
 
     echo "Building Go service: $SERVICE_NAME"
+    echo "Build started at: $(date)"
     
-    # Docker Image Build with optimizations
-    echo "Building with BuildKit optimizations..."
-    docker build \
+    # Docker Image Build with cache enabled for speed
+    echo "Building with BuildKit and cache enabled..."
+    time DOCKER_BUILDKIT=1 docker build \
         --build-arg GOPROXY=direct \
         --build-arg GOSUMDB=off \
-        --progress=auto --no-cache \
+        --progress=auto \
+        --platform=linux/amd64 \
         -t $SERVICEECR \
         -f Dockerfile.$SERVICE_NAME .
+    
+    echo "Build completed at: $(date)"
     
     # Docker Image Tag
     docker tag "$SERVICEECR" "$SERVICEECR:$VERSION"
