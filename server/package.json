@@ -18,14 +18,11 @@
   "dependencies": {
     "@aws-cdk/aws-lambda-python-alpha": "2.195.0-alpha.0",
     "@aws-sdk/client-dynamodb": "^3.651.1",
-    "@aws-sdk/client-rds": "^3.654.0",
-    "@aws-sdk/client-secrets-manager": "^3.654.0",
     "@cdklabs/sbt-aws": "0.9.1",
     "aws-cdk-lib": "2.195.0",
     "aws-lambda": "^1.0.7",
     "constructs": "^10.4.2",
     "dotenv": "^16.0.0",
-    "esbuild": "^0.23.1",
-    "mysql2": "^3.11.3"
+    "esbuild": "^0.23.1"
   }
 }

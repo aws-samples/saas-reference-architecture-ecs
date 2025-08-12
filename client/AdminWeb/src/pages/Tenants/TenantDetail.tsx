@@ -54,11 +54,16 @@ const TenantDetail: React.FC = () => {
 
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'success';
-      case 'inactive':
+    switch (status?.toLowerCase()) {
+      case 'deleted':
         return 'error';
+      case 'created':
+      case 'complete':
+        return 'success';
+      case 'in progress':
+      case 'inprogress':
+      case 'provisioning':
+        return 'info';
       case 'pending':
         return 'warning';
       default:
@@ -149,7 +154,7 @@ const TenantDetail: React.FC = () => {
               variant="contained"
               startIcon={<DeleteIcon />}
               onClick={() => setDeleteDialogOpen(true)}
-              disabled={deleting}
+              disabled={deleting || (location.state?.sbtaws_active === false)}
               className="delete-tenant-button"
             >
               Delete Tenant

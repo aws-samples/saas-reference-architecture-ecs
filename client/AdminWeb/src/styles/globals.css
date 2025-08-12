@@ -13,8 +13,8 @@
   --info-color: #2196f3;
   
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #1976d2 0%, #7b1fa2 100%);
-  --gradient-primary-hover: linear-gradient(135deg, #1565c0 0%, #6a1b9a 100%);
+  --gradient-primary: #1976d2;
+  --gradient-primary-hover: #1565c0;
   --gradient-background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 50%, #e8eaf6 100%);
   
   /* Glass morphism */
@@ -115,10 +115,10 @@ body {
 }
 
 .page-title {
-  font-weight: 800 !important;
+  font-weight: 500 !important;
   font-size: 1.75rem !important;
   color: #1a1a1a !important;
-  letter-spacing: -0.02em !important;
+  letter-spacing: 0.02em !important;
   line-height: 1.2 !important;
   margin: 0 !important;
   text-align: left !important;

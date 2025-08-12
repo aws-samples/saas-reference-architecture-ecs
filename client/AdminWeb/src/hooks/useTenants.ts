@@ -64,7 +64,12 @@ export const useTenants = () => {
   const deleteTenant = useCallback(async (tenant: Tenant) => {
     try {
       await tenantService.deleteTenant(tenant);
-      setTenants(prev => prev.filter(t => t.tenantId !== tenant.tenantId));
+      // Mark tenant as inactive instead of removing from list
+      setTenants(prev => prev.map(t => 
+        t.tenantId === tenant.tenantId 
+          ? { ...t, sbtaws_active: false }
+          : t
+      ));
     } catch (error: any) {
       setError(handleApiError(error));
       throw error;

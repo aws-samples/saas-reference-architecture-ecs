@@ -1,39 +1,24 @@
-# Binaries for programs and plugins
+# Go build artifacts
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
 *.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+go.work
 
 # Dependency directories
 vendor/
 
-# Go workspace file
-go.work
-
-# Built binaries
-/bin/
-/dist/
-/build/
-
-# Service binaries
-user
-product
-order
-rproxy
+# Go module cache
+go.sum
 
 # IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
 # OS generated files
 .DS_Store
@@ -44,14 +29,6 @@ rproxy
 ehthumbs.db
 Thumbs.db
 
-# Environment files
-.env
-.env.local
-.env.*.local
-
-# Log files
-*.log
-
-# Temporary files
-*.tmp
-*.temp
+# Study guides (local only)
+*_STUDY_GUIDE.md
+GO_MICROSERVICES_STUDY_GUIDE.md

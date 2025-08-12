@@ -41,7 +41,7 @@ const TenantList: React.FC = () => {
     const handleScroll = () => {
       if (loadingMore || !hasMore) return;
       
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 1000) {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 50) {
         loadMoreTenants();
       }
     };
@@ -149,7 +149,8 @@ const TenantList: React.FC = () => {
                             tenantName,
                             email,
                             tier,
-                            tenantRegistrationId: tenant.tenantRegistrationData?.tenantRegistrationId || tenant.tenantRegistrationId || tenant.id
+                            tenantRegistrationId: tenant.tenantRegistrationData?.tenantRegistrationId || tenant.tenantRegistrationId || tenant.id,
+                            sbtaws_active: tenant.sbtaws_active
                           }
                         })}
                         sx={{ color: '#e9710c', mr: 0 }}
@@ -159,7 +160,11 @@ const TenantList: React.FC = () => {
                       <IconButton
                         size="small"
                         onClick={() => handleDeleteTenant(tenant)}
-                        sx={{ color: '#6b7280' }}
+                        disabled={!isActive}
+                        sx={{ 
+                          color: isActive ? '#6b7280' : '#d1d5db',
+                          cursor: isActive ? 'pointer' : 'not-allowed'
+                        }}
                       >
                         <DeleteOutlinedIcon />
                       </IconButton>

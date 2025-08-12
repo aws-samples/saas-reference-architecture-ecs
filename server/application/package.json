@@ -48,7 +48,6 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/uuid": "^10.0.0",
     "aws-sdk": "^2.840.0",
-    "mysql2": "^2.2.5",
     "ts-loader": "^8.0.18",
     "ts-node": "^9.1.1",
     "tsconfig-paths": "^3.9.0",
