@@ -3,14 +3,18 @@
 .glass-card {
   border: 0 !important;
   background-color: var(--glass-background) !important;
-  backdrop-filter: var(--glass-backdrop) !important;
+  /* backdrop-filter 제거로 성능 향상 */
   border-radius: var(--border-radius-lg) !important;
   box-shadow: var(--glass-shadow) !important;
-  transition: all var(--transition-normal) !important;
+  /* transition을 transform과 box-shadow만으로 제한 */
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal) !important;
+  /* GPU 가속 활성화 */
+  transform: translateZ(0) !important;
+  will-change: transform !important;
 }
 
 .glass-card:hover {
-  transform: translateY(-2px) !important;
+  transform: translateY(-2px) translateZ(0) !important;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
 }
 
@@ -64,6 +68,10 @@
   height: 240px !important;
   display: flex !important;
   flex-direction: column !important;
+  /* 성능 최적화 */
+  contain: layout style paint !important;
+  /* GPU 레이어 생성 */
+  transform: translateZ(0) !important;
 }
 
 .tenant-card .MuiCardContent-root {
@@ -71,6 +79,8 @@
   display: flex !important;
   flex-direction: column !important;
   height: 100% !important;
+  /* 텍스트 렌더링 최적화 */
+  text-rendering: optimizeSpeed !important;
 }
 
 .tenant-card-header {

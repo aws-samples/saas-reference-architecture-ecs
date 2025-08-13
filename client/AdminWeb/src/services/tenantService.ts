@@ -36,7 +36,7 @@ class TenantService {
 
   async fetchTenantsPage(nextToken?: string): Promise<{ data: Tenant[], nextToken?: string }> {
     try {
-      const limit = 20;
+      const limit = 18; // 3열 그리드에 맞춰 6행 × 3열 = 18개
       const url = nextToken 
         ? `${this.tenantsMgmtApiUrl}?limit=${limit}&next_token=${nextToken}`
         : `${this.tenantsMgmtApiUrl}?limit=${limit}`;

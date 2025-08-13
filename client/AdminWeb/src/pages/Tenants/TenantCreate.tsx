@@ -82,39 +82,51 @@ const TenantCreate: React.FC = () => {
     }
   };
 
-  const handleChange = useCallback((field: keyof FormData) => (event: React.ChangeEvent<HTMLInputElement> | { target: { value: string; checked?: boolean } }) => {
-    const value =
-      field === "useFederation" || field === "useEc2" || field === "useRProxy" ? event.target.checked : event.target.value;
+  const handleChange = useCallback(
+    (field: keyof FormData) =>
+      (
+        event:
+          | React.ChangeEvent<HTMLInputElement>
+          | { target: { value: string; checked?: boolean } }
+      ) => {
+        const value =
+          field === "useFederation" ||
+          field === "useEc2" ||
+          field === "useRProxy"
+            ? event.target.checked
+            : event.target.value;
 
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Clear validation error when user starts typing
-    if (validationErrors[field]) {
-      setValidationErrors((prev) => ({
-        ...prev,
-        [field]: "",
-      }));
-    }
-
-    // Handle federation and EC2 control based on tier
-    if (field === "tier") {
-      if (value !== "ADVANCED" && value !== "PREMIUM") {
         setFormData((prev) => ({
           ...prev,
-          useFederation: false,
+          [field]: value,
         }));
-      }
-      if (value !== "PREMIUM") {
-        setFormData((prev) => ({
-          ...prev,
-          useEc2: false,
-        }));
-      }
-    }
-  }, [validationErrors]);
+
+        // Clear validation error when user starts typing
+        if (validationErrors[field]) {
+          setValidationErrors((prev) => ({
+            ...prev,
+            [field]: "",
+          }));
+        }
+
+        // Handle federation and EC2 control based on tier
+        if (field === "tier") {
+          if (value !== "ADVANCED" && value !== "PREMIUM") {
+            setFormData((prev) => ({
+              ...prev,
+              useFederation: false,
+            }));
+          }
+          if (value !== "PREMIUM") {
+            setFormData((prev) => ({
+              ...prev,
+              useEc2: false,
+            }));
+          }
+        }
+      },
+    [validationErrors]
+  );
 
   const validateForm = useCallback((): boolean => {
     const errors: { [key: string]: string } = {};
@@ -277,14 +289,19 @@ const TenantCreate: React.FC = () => {
                               formData.tier === plan.id ? "selected" : ""
                             }`}
                             onClick={() =>
-                              handleChange("tier")({ target: { value: plan.id } })
+                              handleChange("tier")({
+                                target: { value: plan.id },
+                              })
                             }
                           >
                             <div className="plan-header">
                               <Typography variant="h6" className="plan-title">
                                 {plan.name}
                               </Typography>
-                              <Typography variant="body2" className="plan-price">
+                              <Typography
+                                variant="body2"
+                                className="plan-price"
+                              >
                                 ${plan.price}/month
                               </Typography>
                             </div>
@@ -312,10 +329,8 @@ const TenantCreate: React.FC = () => {
 
                   {/* Configuration Options */}
                   <div className="form-section">
-                    <label className="form-label">
-                      Configuration Options
-                    </label>
-                    
+                    <label className="form-label">Configuration Options</label>
+
                     <div className="config-switches-row">
                       <div className="config-switch-item">
                         <FormControlLabel
@@ -336,19 +351,20 @@ const TenantCreate: React.FC = () => {
                           color="text.secondary"
                           className="config-description"
                         >
-                          {formData.tier !== "ADVANCED" && formData.tier !== "PREMIUM" 
+                          {formData.tier !== "ADVANCED" &&
+                          formData.tier !== "PREMIUM"
                             ? "Advanced/Premium only"
-                            : "Enable SSO integration"
-                          }
+                            : "Enable SSO integration"}
                         </Typography>
                       </div>
-                      
+
                       <div className="config-switch-item">
                         <FormControlLabel
                           control={
                             <Switch
                               checked={formData.useRProxy}
                               onChange={handleChange("useRProxy")}
+                              disabled={formData.tier === "BASIC"}
                             />
                           }
                           label="Use Reverse Proxy"
@@ -361,16 +377,14 @@ const TenantCreate: React.FC = () => {
                           Enable request routing proxy
                         </Typography>
                       </div>
-                      
-                      <div 
-                        className="config-switch-item"
-                        style={{ visibility: formData.tier === "PREMIUM" ? 'visible' : 'hidden' }}
-                      >
+
+                      <div className="config-switch-item">
                         <FormControlLabel
                           control={
                             <Switch
                               checked={formData.useEc2}
                               onChange={handleChange("useEc2")}
+                              disabled={formData.tier !== "PREMIUM"}
                             />
                           }
                           label="Use EC2"
@@ -384,7 +398,6 @@ const TenantCreate: React.FC = () => {
                         </Typography>
                       </div>
                     </div>
-
                   </div>
 
                   {/* Submit Button */}
