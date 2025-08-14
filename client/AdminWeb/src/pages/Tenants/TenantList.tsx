@@ -23,10 +23,14 @@ import DeleteTenantDialog from "../../components/DeleteTenantDialog";
 
 import { useTenants } from "../../hooks/useTenants";
 import { TIER_COLORS, STATUS_COLORS } from "../../constants/pricing";
-import { COMMON_STYLES } from "../../constants/styles";
 import "../../styles/index.css";
 
-// 스켈레톤 카드 컴포넌트
+// Constants definition
+const SCROLL_THRESHOLD = 800; // Scroll threshold in pixels
+const DEBOUNCE_DELAY = 100; // Debounce delay in milliseconds
+const SKELETON_CARD_COUNT = 6; // Number of skeleton cards to show during loading
+
+// Skeleton card component
 const SkeletonCard: React.FC = () => (
   <Grid item xs={12} sm={6} md={4}>
     <Card className="glass-card tenant-card">
@@ -50,7 +54,7 @@ const SkeletonCard: React.FC = () => (
   </Grid>
 );
 
-// 디바운스 훅
+// Debounce hook
 const useDebounce = (callback: () => void, delay: number, deps: any[]) => {
   const debouncedCallback = useCallback(debounce(callback, delay), [
     callback,
@@ -68,7 +72,7 @@ const debounce = (func: () => void, wait: number) => {
   };
 };
 
-// 테넌트 카드 컴포넌트를 메모이제이션
+// Memoized tenant card component
 const TenantCard = React.memo<{
   tenant: Tenant & Record<string, any>;
   index: number;
@@ -77,7 +81,7 @@ const TenantCard = React.memo<{
   getTierColor: (tier: string) => string;
   getStatusColor: (status: string) => string;
 }>(({ tenant, index, onDelete, onNavigate, getTierColor, getStatusColor }) => {
-  // 데이터 추출 로직을 메모이제이션
+  // Memoize data extraction logic
   const tenantData = useMemo(() => {
     const tenantId = tenant.tenantId || `tenant-${index}`;
     const tenantName =
@@ -210,35 +214,33 @@ const TenantList: React.FC = () => {
     loadTenants();
   }, [loadTenants]);
 
-  // 스크롤 이벤트 최적화 - 더 이른 시점에 로드하고 디바운싱 적용
+  // Optimize scroll event - load earlier and apply debouncing
   const handleScroll = useCallback(() => {
     if (loadingMore || !hasMore) return;
 
-    // 스크롤 임계값을 크게 늘려서 미리 로드 (50px → 800px)
-    const scrollThreshold = 800;
     const scrollPosition =
       window.innerHeight + document.documentElement.scrollTop;
     const documentHeight = document.documentElement.offsetHeight;
 
-    if (scrollPosition >= documentHeight - scrollThreshold) {
+    if (scrollPosition >= documentHeight - SCROLL_THRESHOLD) {
       loadMoreTenants();
     }
   }, [loadMoreTenants, loadingMore, hasMore]);
 
-  // 디바운싱 적용 (100ms)
-  const debouncedHandleScroll = useDebounce(handleScroll, 100, [
+  // Apply debouncing
+  const debouncedHandleScroll = useDebounce(handleScroll, DEBOUNCE_DELAY, [
     loadMoreTenants,
     loadingMore,
     hasMore,
   ]);
 
   useEffect(() => {
-    // passive 옵션으로 성능 향상
+    // Improve performance with passive option
     window.addEventListener("scroll", debouncedHandleScroll, { passive: true });
     return () => window.removeEventListener("scroll", debouncedHandleScroll);
   }, [debouncedHandleScroll]);
 
-  // 색상 함수들을 메모이제이션
+  // Memoize color functions
   const getTierColor = useCallback((tier: string) => {
     return (
       TIER_COLORS[tier.toLowerCase() as keyof typeof TIER_COLORS] || "default"
@@ -276,7 +278,14 @@ const TenantList: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={COMMON_STYLES.loadingContainer}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "200px",
+        }}
+      >
         <CircularProgress />
       </Box>
     );
@@ -337,9 +346,9 @@ const TenantList: React.FC = () => {
             );
           })}
 
-          {/* 로딩 중일 때 스켈레톤 카드 표시 */}
+          {/* Show skeleton cards during loading */}
           {loadingMore &&
-            Array.from({ length: 6 }, (_, index) => (
+            Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
               <SkeletonCard key={`skeleton-${index}`} />
             ))}
         </Grid>

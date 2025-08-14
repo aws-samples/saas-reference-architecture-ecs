@@ -3,12 +3,13 @@
 .glass-card {
   border: 0 !important;
   background-color: var(--glass-background) !important;
-  /* backdrop-filter 제거로 성능 향상 */
+  /* Remove backdrop-filter for performance improvement */
   border-radius: var(--border-radius-lg) !important;
   box-shadow: var(--glass-shadow) !important;
-  /* transition을 transform과 box-shadow만으로 제한 */
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal) !important;
-  /* GPU 가속 활성화 */
+  /* Limit transition to transform and box-shadow only */
+  transition: transform var(--transition-normal),
+    box-shadow var(--transition-normal) !important;
+  /* Enable GPU acceleration */
   transform: translateZ(0) !important;
   will-change: transform !important;
 }
@@ -68,9 +69,9 @@
   height: 240px !important;
   display: flex !important;
   flex-direction: column !important;
-  /* 성능 최적화 */
+  /* Performance optimization */
   contain: layout style paint !important;
-  /* GPU 레이어 생성 */
+  /* Create GPU layer */
   transform: translateZ(0) !important;
 }
 
@@ -79,7 +80,7 @@
   display: flex !important;
   flex-direction: column !important;
   height: 100% !important;
-  /* 텍스트 렌더링 최적화 */
+  /* Optimize text rendering */
   text-rendering: optimizeSpeed !important;
 }
 
