@@ -127,6 +127,7 @@ EOF`,
     const pipeline = new codepipeline.Pipeline(this, `${id}CodePipeline`, {
       crossAccountKeys: false,
       restartExecutionOnUpdate: true,
+      pipelineType: codepipeline.PipelineType.V2,
     });
 
     // Source Stage - 기존 StaticSite와 완전히 동일한 방식
