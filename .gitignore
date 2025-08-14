@@ -18,3 +18,8 @@ cdk.context.json
 .idea/
 # RDS SSL certification
 *.pem
+
+# Analysis and documentation files (local only)
+ECS_SAAS_CDK_ARCHITECTURE_ANALYSIS.md
+SERVICE_CONNECT_COMPREHENSIVE_GUIDE.md
+TENANT_ONBOARDING_PROCESS_ANALYSIS.md
