@@ -246,3 +246,15 @@ for SERVICE in "${SERVICE_REPOS[@]}"; do
     echo "Repository [$SERVICE] does not exist"
   fi
 done
+
+# Clean up API keys file
+API_KEYS_FILE="$PROJECT_ROOT/scripts/.api-keys.env"
+if [ -f "$API_KEYS_FILE" ]; then
+    echo "$(date) removing API keys file: $API_KEYS_FILE"
+    rm -f "$API_KEYS_FILE"
+    echo "$(date) API keys file removed successfully"
+else
+    echo "$(date) API keys file not found, skipping removal"
+fi
+
+echo "$(date) cleanup completed!"

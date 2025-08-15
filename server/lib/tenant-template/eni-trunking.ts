@@ -73,7 +73,7 @@ export class CustomEniTrunking extends Construct {
     const customEniTrunkingFunction = new lambda.Function(this, 'CustomEniTrunkingFunction', {
         code: lambdaFunctionCode,
         handler: 'index.handler',
-        runtime: Runtime.NODEJS_20_X,
+        runtime: Runtime.NODEJS_22_X,
         timeout: cdk.Duration.seconds(30),
         role: customEniTrunkingRole
       });
