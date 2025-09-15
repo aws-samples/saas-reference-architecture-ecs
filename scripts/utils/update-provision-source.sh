@@ -70,7 +70,7 @@ echo "Final TAR file size:"
 ls -lh source.tar.gz
 
 echo "Uploading to S3..."
-export CDK_PARAM_COMMIT_ID=$(aws s3api put-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "source.tar.gz" --body "./source.tar.gz"  | jq -r '.VersionId')
+export CDK_PARAM_COMMIT_ID=$(aws s3api put-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "source.tar.gz" --body "./source.tar.gz" --query 'VersionId' --output text)
 echo $CDK_PARAM_COMMIT_ID
 rm source.tar.gz
 cd ./scripts

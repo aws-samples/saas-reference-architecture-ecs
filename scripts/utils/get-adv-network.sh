@@ -10,7 +10,7 @@ fi
 
 SERVICE_NAME="${IMAGE_NAME}${TENANT}"
 
-CLUSTER_NAME=$(aws ecs list-clusters --query 'clusterArns[*]' --output json | jq -r '.[] | select(contains("/prod-advanced-")) | split("/") | .[1]') 
+CLUSTER_NAME=$(aws ecs list-clusters --query 'clusterArns[?contains(@, `/prod-advanced-`)]' --output text | cut -d'/' -f2) 
 
 # Step 1: Get the Task ARN
 TASK_ARN=$(aws ecs list-tasks --cluster $CLUSTER_NAME --service-name $SERVICE_NAME --query 'taskArns[0]' --output text)

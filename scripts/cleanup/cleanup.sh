@@ -103,23 +103,19 @@ export CDK_PARAM_TIER='basic'
 TEMP_FILE=$(mktemp)
 # Deleting object version..." 
 echo "Deleting Provision sourcecode Object Versions..."
-versions=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
-      | jq -r '.Versions | length')
+versions=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --query 'length(Versions)' --output text 2>/dev/null || echo "0")
 
 if [ ! -z "$versions" ] && [ "$versions" -gt 0 ]; then 
-	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
-		| jq '{"Objects": [.Versions[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE
+	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --query '{Objects: Versions[].{Key: Key, VersionId: VersionId}}' --output json > $TEMP_FILE
 	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE --no-cli-pager
 fi 
 
 # Deleting object markers 
 echo "Deleting Provision sourcecode Object Markers..." 
-delete_markers=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
-	| jq -r '.DeleteMarkers | length') 
+delete_markers=$(aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --query 'length(DeleteMarkers)' --output text 2>/dev/null || echo "0") 
 
 if [ ! -z "$delete_markers" ] && [ "$delete_markers" -gt 0 ]; then 
-	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --output json \
-	    | jq '{"Objects": [.DeleteMarkers[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE
+	aws s3api list-object-versions --bucket $CDK_PARAM_S3_BUCKET_NAME --query '{Objects: DeleteMarkers[].{Key: Key, VersionId: VersionId}}' --output json > $TEMP_FILE
 	aws s3api delete-objects --bucket $CDK_PARAM_S3_BUCKET_NAME --delete file://$TEMP_FILE --no-cli-pager
 fi
 
@@ -140,7 +136,7 @@ while true; do
         response=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --starting-token "$next_token"| sed 's/\\n//')
     fi
 
-    tenant_stacks=$(echo "$response" | jq -r '.StackSummaries[].StackName | select(. | test("^tenant-template-stack-*"))')
+    tenant_stacks=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --query 'StackSummaries[?starts_with(StackName, `tenant-template-stack`)].StackName' --output text)
 
     for i in $tenant_stacks; do
         export CDK_PARAM_TENANT_ID=$(echo "$i" | cut -d '-' -f5-)
@@ -150,7 +146,7 @@ while true; do
         aws cloudformation wait stack-delete-complete --stack-name "$i" || echo "$(date) stack delete failed for $i, continuing..."        
     done
 
-    next_token=$(echo "$response" | jq '.NextToken')
+    next_token=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --query 'NextToken' --output text 2>/dev/null || echo "null")
     if [[ "${next_token}" == "null" ]]; then
         echo "$(date) no more tenants left."
         # no more results left. Exit loop...
@@ -172,11 +168,11 @@ while true; do
         response=$( aws cognito-idp list-user-pools --max-results 1 --next-token "$next_token")
     fi
 
-    pool_ids=$(echo "$response" | jq -r '.UserPools[] | select(.Name | test("^SaaSControlPlaneUserPool$")) |.Id')
+    pool_ids=$(aws cognito-idp list-user-pools --max-results 1 --query 'UserPools[?Name==`SaaSControlPlaneUserPool`].Id' --output text)
     for i in $pool_ids; do
         echo "$(date) deleting user pool with name $i..."
         echo "getting pool domain..."
-        pool_domain=$(aws cognito-idp describe-user-pool --user-pool-id "$i" | jq -r '.UserPool.Domain')
+        pool_domain=$(aws cognito-idp describe-user-pool --user-pool-id "$i" --query 'UserPool.Domain' --output text)
 
         echo "deleting pool domain $pool_domain..."
         aws cognito-idp delete-user-pool-domain \
@@ -187,7 +183,7 @@ while true; do
         aws cognito-idp delete-user-pool --user-pool-id "$i"
     done
 
-    next_token=$(echo "$response" | jq -r '.NextToken')
+    next_token=$(aws cognito-idp list-user-pools --max-results 1 --query 'NextToken' --output text 2>/dev/null || echo "null")
     if [[ "${next_token}" == "null" ]]; then
         # no more results left. Exit loop...
         break
@@ -203,20 +199,18 @@ for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^contr
     # Handle versioned objects and delete markers
     TEMP_FILE_BUCKET=$(mktemp)
     echo "Deleting object versions for bucket ${i}..."
-    versions=$(aws s3api list-object-versions --bucket "$i" --output json 2>/dev/null | jq -r '.Versions | length' 2>/dev/null || echo "0")
+    versions=$(aws s3api list-object-versions --bucket "$i" --query 'length(Versions)' --output text 2>/dev/null || echo "0")
     
     if [ "$versions" -gt 0 ]; then 
-        aws s3api list-object-versions --bucket "$i" --output json \
-            | jq '{"Objects": [.Versions[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE_BUCKET
+        aws s3api list-object-versions --bucket "$i" --query '{Objects: Versions[].{Key: Key, VersionId: VersionId}}' --output json > $TEMP_FILE_BUCKET
         aws s3api delete-objects --bucket "$i" --delete file://$TEMP_FILE_BUCKET --no-cli-pager 2>/dev/null || true
     fi 
     
     echo "Deleting delete markers for bucket ${i}..."
-    delete_markers=$(aws s3api list-object-versions --bucket "$i" --output json 2>/dev/null | jq -r '.DeleteMarkers | length' 2>/dev/null || echo "0")
+    delete_markers=$(aws s3api list-object-versions --bucket "$i" --query 'length(DeleteMarkers)' --output text 2>/dev/null || echo "0")
     
     if [ "$delete_markers" -gt 0 ]; then 
-        aws s3api list-object-versions --bucket "$i" --output json \
-            | jq '{"Objects": [.DeleteMarkers[] | {Key: .Key, VersionId: .VersionId}]}' > $TEMP_FILE_BUCKET
+        aws s3api list-object-versions --bucket "$i" --query '{Objects: DeleteMarkers[].{Key: Key, VersionId: VersionId}}' --output json > $TEMP_FILE_BUCKET
         aws s3api delete-objects --bucket "$i" --delete file://$TEMP_FILE_BUCKET --no-cli-pager 2>/dev/null || true
     fi
     
