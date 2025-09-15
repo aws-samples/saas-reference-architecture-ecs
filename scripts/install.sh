@@ -64,8 +64,8 @@ export CDK_ADV_CLUSTER='INACTIV'
 export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
 
 
-yarn install
-yarn cdk bootstrap
+npm install
+npx cdk bootstrap
 
 SERVICES=$(aws ecs list-services --cluster $CDK_BASIC_CLUSTER --query 'serviceArns[*]' --output text || true)
 for SERVICE in $SERVICES; do
@@ -97,7 +97,7 @@ else
 fi
 # End Multi Architecture Setting
 
-yarn cdk deploy --all --require-approval=never --concurrency 10 --asset-parallelism true
+npx cdk deploy --all --require-approval=never --concurrency 10 --asset-parallelism true
 
 # Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name shared-infra-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)

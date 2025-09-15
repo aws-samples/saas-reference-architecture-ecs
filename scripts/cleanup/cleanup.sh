@@ -84,7 +84,7 @@ else
 fi
 
 cd "$PROJECT_ROOT/server"
-yarn install
+npm install
 
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="NA"
 export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$ACCOUNT_ID-$REGION"
@@ -156,7 +156,7 @@ done
 
 
 # Destroy stacks
-yarn cdk destroy --all --force || echo "$(date) stack destroy failed, continuing..."
+npx cdk destroy --all --force || echo "$(date) stack destroy failed, continuing..."
 
 echo "$(date) cleaning up user pools..."
 next_token=""
