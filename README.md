@@ -24,13 +24,6 @@ Fig 1: ECS SaaS - High-level infrastructure
 
 This reference architecture adopts the latest [AWS SaaS Builder Toolkit](https://github.com/awslabs/sbt-aws) (SBT) that [AWS SaaS Factory](https://aws.amazon.com/partners/programs/saas-factory) has developed. SBT helps to extend the SaaS control plane services such as tenant onboarding, off-boarding, tenant and user management, billing, etc seamlessly into the solution. It also provides an event-based integration to the ECS application plane that enables bi-directional communication for SaaS operations. Read more about AWS SBT [here](https://github.com/awslabs/sbt-aws/blob/main/docs/public/README.md).
 
-## Parallel Service Deployment
-This solution now supports parallel deployment of services during tenant onboarding. Services without dependencies can be deployed simultaneously, significantly reducing onboarding time. To use this feature, deploy using the parallel deployment script:
-
-```bash
-cd server
-npm run cdk -- deploy -a "bin/ecs-saas-ref-template-parallel.js" tenant-template-<tier>-<tenantId>
-```
 
 ## Pre-requisites
 This solution can be deployed via an [AWS Cloud9](https://aws.amazon.com/pm/cloud9/) environment on your AWS account, or directly from your laptop.
