@@ -72,13 +72,13 @@ const apiKeyBasicTierParameter = process.env.CDK_PARAM_API_KEY_BASIC_TIER_PARAME
 
 // Log if API keys were auto-generated (should not happen when using installation scripts)
 if (!process.env.CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER) {
-  console.log('Generated Premium API Key:', apiKeyPremiumTierParameter);
+  console.log('Generated Premium API Key (value not shown for security reasons)');
 }
 if (!process.env.CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER) {
-  console.log('Generated Advanced API Key:', apiKeyAdvancedTierParameter);
+  console.log('Generated Advanced API Key (value not shown for security reasons)');
 }
 if (!process.env.CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER) {
-  console.log('Generated Basic API Key:', apiKeyBasicTierParameter);
+  console.log('Generated Basic API Key (value not shown for security reasons)');
 }
 const isPooledDeploy = tenantId == basicId;
 //A flag to check whether the Advanced cluster is exist.
