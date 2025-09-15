@@ -34,33 +34,47 @@ export class TenantTemplateNag extends Construct {
   }
 
   private addCognitoSuppressions(props: TenantInfraNagProps, nagPath: string) {
-    try {
-      NagSuppressions.addResourceSuppressionsByPath(
-        cdk.Stack.of(this),
-        `${nagPath}/IdentityProvider/TenantUserPool/Resource`,
-        [
-          {
-            id: "AwsSolutions-COG1",
-            reason:
-              "SaaS reference architecture - Password policy is configured appropriately",
-          },
-          {
-            id: "AwsSolutions-COG3",
-            reason:
-              "SaaS reference architecture - Advanced security features not required for demo",
-          },
-          {
-            id: "AwsSolutions-COG2",
-            reason:
-              "SaaS reference architecture - MFA not required for demo purposes",
-          },
-        ]
-      );
-    } catch (error) {
-      console.log(
-        "Cognito User Pool resource not found, skipping suppressions"
-      );
-    }
+    // Try multiple possible paths for Cognito UserPool
+    const possiblePaths = [
+      `${nagPath}/IdentityProvider/${props.tenantId}/Resource`,
+      `${nagPath}/IdentityProvider/TenantUserPool/Resource`
+    ];
+
+    // Also try paths with overrideLogicalId (currently used paths)
+    const overrideLogicalIdPaths = [
+      `${nagPath}/IdentityProvider/${props.tier}UserPooL${props.tenantId}`,
+      `${nagPath}/${props.tier}UserPooL${props.tenantId}`
+    ];
+
+    const allPaths = [...possiblePaths, ...overrideLogicalIdPaths];
+
+    allPaths.forEach(path => {
+      try {
+        NagSuppressions.addResourceSuppressionsByPath(
+          cdk.Stack.of(this),
+          path,
+          [
+            {
+              id: "AwsSolutions-COG1",
+              reason:
+                "SaaS reference architecture - Password policy is configured appropriately",
+            },
+            {
+              id: "AwsSolutions-COG3",
+              reason:
+                "SaaS reference architecture - Advanced security features not required for demo",
+            },
+            {
+              id: "AwsSolutions-COG2",
+              reason:
+                "SaaS reference architecture - MFA not required for demo purposes",
+            },
+          ]
+        );
+      } catch (error) {
+        // Silently continue to next path
+      }
+    });
   }
 
   private addLambdaSuppressions(props: TenantInfraNagProps, nagPath: string) {
@@ -104,154 +118,190 @@ export class TenantTemplateNag extends Construct {
 
   private addEc2Suppressions(props: TenantInfraNagProps, nagEcsPath: string) {
     // ENI Trunking suppressions
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [
-        `${nagEcsPath}/EniTrunking/CustomEniTrunkingRole/Resource`,
-        `${nagEcsPath}/EniTrunking/EC2Role/Resource`,
-      ],
-      [
-        {
-          id: "AwsSolutions-IAM4",
-          reason:
-            "SaaS reference architecture - AWS managed policies acceptable for demo",
-          appliesTo: [
-            "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
-          ],
-        },
-      ]
-    );
+    try {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [
+          `${nagEcsPath}/EniTrunking/CustomEniTrunkingRole/Resource`,
+          `${nagEcsPath}/EniTrunking/EC2Role/Resource`,
+        ],
+        [
+          {
+            id: "AwsSolutions-IAM4",
+            reason:
+              "SaaS reference architecture - AWS managed policies acceptable for demo",
+            appliesTo: [
+              "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
+            ],
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("ENI Trunking resources not found, skipping suppressions");
+    }
 
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [`${nagEcsPath}/EniTrunking/CustomEniTrunkingRole/Resource`],
-      [
-        {
-          id: "AwsSolutions-IAM4",
-          reason:
-            "SaaS reference architecture - AWS managed policies acceptable for demo",
-          appliesTo: [
-            "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-          ],
-        },
-      ]
-    );
+    try {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [`${nagEcsPath}/EniTrunking/CustomEniTrunkingRole/Resource`],
+        [
+          {
+            id: "AwsSolutions-IAM4",
+            reason:
+              "SaaS reference architecture - AWS managed policies acceptable for demo",
+            appliesTo: [
+              "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+            ],
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("CustomEniTrunkingRole resource not found, skipping suppression");
+    }
 
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [`${nagEcsPath}/EniTrunking/EC2Role/DefaultPolicy/Resource`],
-      [
-        {
-          id: "AwsSolutions-IAM5",
-          reason:
-            "SaaS reference architecture - Wildcard permissions acceptable for demo",
-          appliesTo: ["Action::ecs:Submit*", "Resource::*"],
-        },
-      ]
-    );
+    try {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [`${nagEcsPath}/EniTrunking/EC2Role/DefaultPolicy/Resource`],
+        [
+          {
+            id: "AwsSolutions-IAM5",
+            reason:
+              "SaaS reference architecture - Wildcard permissions acceptable for demo",
+            appliesTo: ["Action::ecs:Submit*", "Resource::*"],
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("EC2Role DefaultPolicy resource not found, skipping suppression");
+    }
 
     // Launch Template Role suppression
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [`${nagEcsPath}/EcsCluster/launchTemplateRole/Resource`],
-      [
-        {
-          id: "AwsSolutions-IAM4",
-          reason:
-            "SaaS reference architecture - AWS managed policies acceptable for demo",
-          appliesTo: [
-            "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
-          ],
-        },
-      ]
-    );
+    try {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [`${nagEcsPath}/EcsCluster/launchTemplateRole/Resource`],
+        [
+          {
+            id: "AwsSolutions-IAM4",
+            reason:
+              "SaaS reference architecture - AWS managed policies acceptable for demo",
+            appliesTo: [
+              "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role",
+            ],
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("Launch Template Role resource not found, skipping suppression");
+    }
 
     // Auto Scaling Group suppressions
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [
-        `${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/ServiceRole/Resource`,
-      ],
-      [
-        {
-          id: "AwsSolutions-IAM4",
-          reason:
-            "SaaS reference architecture - AWS managed policies acceptable for demo",
-          appliesTo: [
-            "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
-          ],
-        },
-      ]
-    );
+    try {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [
+          `${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/ServiceRole/Resource`,
+        ],
+        [
+          {
+            id: "AwsSolutions-IAM4",
+            reason:
+              "SaaS reference architecture - AWS managed policies acceptable for demo",
+            appliesTo: [
+              "Policy::arn:<AWS::Partition>:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+            ],
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("Auto Scaling Group DrainECSHook ServiceRole not found, skipping suppression");
+    }
 
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [
-        `${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/Resource`,
-      ],
-      [
-        {
-          id: "AwsSolutions-L1",
-          reason:
-            "SaaS reference architecture - Lambda runtime acceptable for demo",
-        },
-      ]
-    );
+    try {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [
+          `${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/Resource`,
+        ],
+        [
+          {
+            id: "AwsSolutions-L1",
+            reason:
+              "SaaS reference architecture - Lambda runtime acceptable for demo",
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("Auto Scaling Group DrainECSHook Function not found, skipping suppression");
+    }
 
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [`${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/ASG`],
-      [
-        {
-          id: "AwsSolutions-EC26",
-          reason:
-            "SaaS reference architecture - EBS encryption not required for demo",
-        },
-        {
-          id: "AwsSolutions-AS3",
-          reason:
-            "SaaS reference architecture - Auto Scaling notifications not required for demo",
-        },
-      ]
-    );
+    try {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [`${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/ASG`],
+        [
+          {
+            id: "AwsSolutions-EC26",
+            reason:
+              "SaaS reference architecture - EBS encryption not required for demo",
+          },
+          {
+            id: "AwsSolutions-AS3",
+            reason:
+              "SaaS reference architecture - Auto Scaling notifications not required for demo",
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("Auto Scaling Group ASG not found, skipping suppression");
+    }
 
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [
-        `${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/ServiceRole/DefaultPolicy/Resource`,
-      ],
-      [
-        {
-          id: "AwsSolutions-IAM5",
-          reason:
-            "SaaS reference architecture - Wildcard permissions acceptable for demo",
-          appliesTo: [
-            {
-              regex: "/^Resource::arn:(.*):autoscaling:(.*):(.*)*$/g",
-            },
-            "Resource::*",
-          ],
-        },
-      ]
-    );
+    try {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [
+          `${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/DrainECSHook/Function/ServiceRole/DefaultPolicy/Resource`,
+        ],
+        [
+          {
+            id: "AwsSolutions-IAM5",
+            reason:
+              "SaaS reference architecture - Wildcard permissions acceptable for demo",
+            appliesTo: [
+              {
+                regex: "/^Resource::arn:(.*):autoscaling:(.*):(.*)*$/g",
+              },
+              "Resource::*",
+            ],
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("Auto Scaling Group DefaultPolicy not found, skipping suppression");
+    }
 
-    NagSuppressions.addResourceSuppressionsByPath(
-      cdk.Stack.of(this),
-      [
-        `${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/LifecycleHookDrainHook/Topic/Resource`,
-      ],
-      [
-        {
-          id: "AwsSolutions-SNS2",
-          reason:
-            "SaaS reference architecture - SNS encryption not required for demo",
-        },
-        {
-          id: "AwsSolutions-SNS3",
-          reason: "SaaS reference architecture - SNS SSL not required for demo",
-        },
-      ]
-    );
+    try {
+      NagSuppressions.addResourceSuppressionsByPath(
+        cdk.Stack.of(this),
+        [
+          `${nagEcsPath}/ecs-autoscaleG-${props.tenantId}/LifecycleHookDrainHook/Topic/Resource`,
+        ],
+        [
+          {
+            id: "AwsSolutions-SNS2",
+            reason:
+              "SaaS reference architecture - SNS encryption not required for demo",
+          },
+          {
+            id: "AwsSolutions-SNS3",
+            reason: "SaaS reference architecture - SNS SSL not required for demo",
+          },
+        ]
+      );
+    } catch (error) {
+      console.log("Auto Scaling Group SNS Topic not found, skipping suppression");
+    }
   }
 
   private addServiceSuppressions(props: TenantInfraNagProps, nagPath: string) {

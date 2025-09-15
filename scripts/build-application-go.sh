@@ -4,7 +4,7 @@
 # Example: ./build-application-go.sh latest
 
 # Get version from parameter or use default
-VERSION_TAG="${1:-go-latest}"
+VERSION_TAG="${1:-latest}"
 echo "Using version tag: $VERSION_TAG"
 
 # Force enable BuildKit for faster builds

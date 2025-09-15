@@ -60,19 +60,22 @@ export class EcsCluster extends cdk.NestedStack {
       const autoScalingGroup = new AutoScalingGroup(this, `ecs-autoscaleG-${props.tenantId}`, {
         vpc: props.vpc,
         launchTemplate: launchTemplate,
-        desiredCapacity: 3, minCapacity: 2, maxCapacity: 5,
+        desiredCapacity: 2, // Initial capacity
+        minCapacity: 1,     // Allow scale down to 1 instance
+        maxCapacity: 10,    // Maximum 10 instances
       });
 
-      autoScalingGroup.role.addManagedPolicy(
-        iam.ManagedPolicy.fromAwsManagedPolicyName( 'service-role/AmazonEC2ContainerServiceforEC2Role' )
-      );
-      autoScalingGroup.scaleOnCpuUtilization('autoscaleCPU', {
-        targetUtilizationPercent: 70,
-      });
+      // autoScalingGroup.role.addManagedPolicy(
+      //   iam.ManagedPolicy.fromAwsManagedPolicyName( 'service-role/AmazonEC2ContainerServiceforEC2Role' )
+      // );
+
       const capacityProvider = new ecs.AsgCapacityProvider(this, `AsgCapacityProvider-${props.tenantId}`, {
           autoScalingGroup,
           enableManagedScaling: true,
-          enableManagedTerminationProtection: false // important for offboarding.
+          targetCapacityPercent: 85, // Scale when 80% capacity is reached (less aggressive)
+          minimumScalingStepSize: 1, // Scale one instance at a time
+          maximumScalingStepSize: 1, // Prevent scaling multiple instances at once
+          enableManagedTerminationProtection: false // Allow scale in
         }
       );
       const thisCluster = this.cluster as ecs.Cluster;

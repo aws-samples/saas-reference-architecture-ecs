@@ -44,8 +44,12 @@ cd ../server
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
 
-
-npm install
+if [[ -f "package-lock.json" ]]; then
+  npm ci --silent
+else
+  npm install --silent
+fi
+# npm install
 #npx cdk deploy --all --require-approval=never
 npx cdk deploy \
     controlplane-stack \

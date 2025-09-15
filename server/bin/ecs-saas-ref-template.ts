@@ -41,7 +41,10 @@ const useFederation = process.env.CDK_PARAM_USE_FEDERATION || 'true';
 const commitId = getEnv('CDK_PARAM_COMMIT_ID');
 const tier = getEnv('CDK_PARAM_TIER');
 
-const useEc2 = process.env.CDK_PARAM_USE_EC2 === 'true';
+// Determine useEc2 based on tier using environment variables directly
+const useEc2 = tier === 'PREMIUM' ? process.env.CDK_PARAM_USE_EC2_PREMIUM === 'true' :
+              tier === 'ADVANCED' ? process.env.CDK_PARAM_USE_EC2_ADVANCED === 'true' :
+              process.env.CDK_PARAM_USE_EC2_BASIC === 'true';
 const useRProxy = process.env.CDK_PARAM_USE_RPROXY !== 'false';
 
 
@@ -145,7 +148,7 @@ const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-
   advancedCluster: advancedCluster,
   appSiteUrl: sharedInfraStack.appSiteUrl,
   useFederation: useFederation,
-  useEc2: useEc2,
+  useEc2: useEc2, // Use tier-specific setting
   useRProxy: useRProxy,
   env
 });
@@ -157,10 +160,10 @@ const advancedTierTempStack = new TenantTemplateStack(app, `tenant-template-stac
   tenantMappingTable: sharedInfraStack.tenantMappingTable,
   commitId: commitId,
   tier: 'advanced',
-  advancedCluster: 'INACTIVE',
+  advancedCluster: 'INACTIVE', // Keep INACTIVE for initial deployment
   appSiteUrl: sharedInfraStack.appSiteUrl,
   useFederation: useFederation,
-  useEc2: useEc2,
+  useEc2: process.env.CDK_PARAM_USE_EC2_ADVANCED === 'true', // Use dedicated setting for Advanced Tier
   useRProxy: false, // Advanced initial infrastructure does not use rProxy
   env
 });

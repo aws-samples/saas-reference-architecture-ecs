@@ -70,13 +70,17 @@ export class EcsService extends Construct {
 
     const serviceProps = {
       cluster: props.cluster,
-      desiredCount: 1, // 2 → 1로 감소 (빠른 시작)
+      desiredCount: 1, // Reduced from 2 to 1 for faster startup
       taskDefinition,
       securityGroups: [props.ecsSG],
       trunking: true,
-      minHealthyPercent: 0, // 100 → 0 (더 빠른 배포)
+      minHealthyPercent: 0, // Reduced from 100 to 0 for faster deployment
       maxHealthyPercent: 200,
-      enableExecuteCommand: true, // 불필요한 기능 비활성화
+      enableExecuteCommand: true, // Disable unnecessary features
+      placementStrategy: props.isEc2Tier ? [
+        ecs.PlacementStrategy.spreadAcrossInstances(),
+        ecs.PlacementStrategy.packedByCpu()
+      ] : undefined,
       serviceConnectConfiguration: {
         namespace: props.namespace.namespaceArn,
         services: props.info.portMappings.map((port) => ({
@@ -88,6 +92,8 @@ export class EcsService extends Construct {
         logDriver: ecs.LogDrivers.awsLogs({ streamPrefix: `${props.info.name}-sc-traffic-`}),
       }
     };
+
+
 
     this.service = props.isEc2Tier
       ? new ecs.Ec2Service(this, `${props.info.name}-service`, serviceProps)
@@ -104,7 +110,7 @@ export class EcsService extends Construct {
           healthCheck: { 
             path: props.isRProxy? '/health': `/${props.info.name}/health`,
             protocol: elbv2.Protocol.HTTP,
-// matcher 제거 - health check가 항상 200 반환하므로 불필요
+// matcher removed - unnecessary as health check always returns 200
           }
         }
       );
@@ -124,26 +130,26 @@ export class EcsService extends Construct {
       this.service.connections.allowFrom(listener, ec2.Port.tcp(props.info.containerPort));
     } 
 
-    // Skip auto scaling setup during initial deployment for faster startup
-    // Auto scaling can be added later via separate deployment if needed
-    if (process.env.SKIP_AUTOSCALING !== 'true') {
-      const scalableTarget = this.service.autoScaleTaskCount({
-        minCapacity: 1,
-        maxCapacity: 3
-      });
-
-      scalableTarget.scaleOnMemoryUtilization('ScaleUpMem', {
-        targetUtilizationPercent: 80,
-        scaleInCooldown: cdk.Duration.seconds(60),
-        scaleOutCooldown: cdk.Duration.seconds(60)
-      });
-
-      scalableTarget.scaleOnCpuUtilization('ScaleUpCPU', {
-        targetUtilizationPercent: 80,
-        scaleInCooldown: cdk.Duration.seconds(60),
-        scaleOutCooldown: cdk.Duration.seconds(60)
-      });
-    }
+    // Disable service-level auto scaling to prevent conflicts with ECS Managed Scaling
+    // ECS Managed Scaling at cluster level handles capacity management
+    // if (process.env.ENABLE_SERVICE_AUTOSCALING === 'true') {
+    //   const scalableTarget = this.service.autoScaleTaskCount({
+    //     minCapacity: 1,
+    //     maxCapacity: 3
+    //   });
+    //
+    //   scalableTarget.scaleOnMemoryUtilization('ScaleUpMem', {
+    //     targetUtilizationPercent: 80,
+    //     scaleInCooldown: cdk.Duration.seconds(60),
+    //     scaleOutCooldown: cdk.Duration.seconds(60)
+    //   });
+    //
+    //   scalableTarget.scaleOnCpuUtilization('ScaleUpCPU', {
+    //     targetUtilizationPercent: 80,
+    //     scaleInCooldown: cdk.Duration.seconds(60),
+    //     scaleOutCooldown: cdk.Duration.seconds(60)
+    //   });
+    // }
 
   }
 }

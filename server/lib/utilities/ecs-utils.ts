@@ -41,13 +41,13 @@ export function createTaskDefinition (
   }
 };
 
-// 매핑 함수 정의
+// Mapping function definition
 export function getContainerDefinitionOptions(
   stack: cdk.Stack,
   jsonConfig: any,
   idpDetails: IdentityDetails
 ): ecs.ContainerDefinitionOptions {
-  // 기본 environment 값 설정 (region과 account)
+  // Set default environment values (region and account)
   const defaultEnvironmentVariables = {
     AWS_REGION: cdk.Stack.of(stack).region,
     AWS_ACCOUNT_ID: cdk.Stack.of(stack).account,
@@ -56,10 +56,10 @@ export function getContainerDefinitionOptions(
     COGNITO_REGION: cdk.Stack.of(stack).region,
   };
 
-  // 동적으로 environment 값 추가
+  // Dynamically add environment values
   const environmentVariables = {
-    ...defaultEnvironmentVariables, // 기본 값 먼저 적용
-    ...(jsonConfig.environment || {}), // JSON에서 추가한 값 적용
+    ...defaultEnvironmentVariables, // Apply default values first
+    ...(jsonConfig.environment || {}), // Apply additional values from JSON
   };
 
   const appProtocolMap: { [key: string]: ecs.AppProtocol } = {

@@ -48,6 +48,7 @@ export class TenantTemplateStack extends cdk.Stack {
 
     const identityProvider = new IdentityProvider(this, "IdentityProvider", {
       tenantId: props.tenantId,
+      tier: props.tier,
       appSiteUrl: props.appSiteUrl,
       useFederation: props.useFederation,
     });

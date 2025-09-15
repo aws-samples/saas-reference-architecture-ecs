@@ -26,7 +26,7 @@ VERSIONS=$(aws s3api list-object-versions --bucket "$CDK_PARAM_S3_BUCKET_NAME" -
 CDK_PARAM_COMMIT_ID=$(echo "$VERSIONS" | awk 'NR==1{print $1}')
 
 aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAME" --version-id "$CDK_PARAM_COMMIT_ID" "$CDK_SOURCE_NAME" 2>&1 
-tar -xzf $CDK_SOURCE_NAME
+tar --warning=no-unknown-keyword -xzf $CDK_SOURCE_NAME 2>/dev/null || tar -xzf $CDK_SOURCE_NAME
 cd ./server
 
 # Use DynamoDB only
@@ -43,8 +43,11 @@ export TENANT_ADMIN_EMAIL=$email
 export TENANT_NAME=$tenantName
 export USE_FEDERATION=$useFederation
 
-# 동적 설정 처리 (기본값: Fargate + rProxy)
-export CDK_PARAM_USE_EC2="${useEc2:-false}"
+# Dynamic configuration processing (Premium only)
+if [[ $TIER == "PREMIUM" ]]; then
+    export CDK_PARAM_USE_EC2_PREMIUM="${useEc2:-true}"  # Premium: dynamic from onboarding
+fi
+# Advanced and Basic use fixed settings from .env file
 export CDK_PARAM_USE_RPROXY="${useRProxy:-true}"
 
 # Define variables
@@ -84,7 +87,7 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
 
     # cdk deploy $STACK_NAME --exclusively --require-approval never --concurrency 10 --asset-parallelism true
 
-    # buildspec.yml에 추가
+    # Added to buildspec.yml
     export CDK_ASSET_PARALLELISM=true
     export CDK_DISABLE_STACK_TRACE=true
 
