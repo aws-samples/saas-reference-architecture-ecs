@@ -44,14 +44,14 @@ cd ../server
 # npx cdk bootstrap
 export CDK_PARAM_TIER='basic'
 
-if [[ -f "package-lock.json" ]]; then
-  npm ci --silent
+if [[ -f "yarn.lock" ]]; then
+  yarn install --frozen-lockfile --silent
 else
-  npm install --silent
+  yarn install --silent
 fi
-# npm install
-#npx cdk deploy --all --require-approval=never
-npx cdk deploy \
+# yarn install
+#yarn cdk deploy --all --require-approval=never
+yarn cdk deploy \
     controlplane-stack \
     core-appplane-stack \
     --require-approval never #--verbose ##--concurrency 10 --asset-parallelism true

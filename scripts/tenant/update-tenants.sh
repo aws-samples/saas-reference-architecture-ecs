@@ -10,7 +10,7 @@ export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
 export CDK_PARAM_PROVISIONING_EVENT_SOURCE="sbt-application-plane-api"
 
 cd server
-npm install
+yarn install
 
 # Define the DynamoDB table name and initial parameters
 page_size=10
@@ -31,7 +31,7 @@ while true; do
     else
         STACK_NAME=$(echo "$item" | jq -r '.stackName.S')
         export CDK_PARAM_TENANT_ID=$(echo "$item" | jq -r '.tenantId.S')
-        npx cdk deploy $STACK_NAME --require-approval never
+        yarn cdk deploy $STACK_NAME --require-approval never
     fi
 
   done
