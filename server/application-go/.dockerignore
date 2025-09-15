@@ -1,0 +1,20 @@
+# Ignore unnecessary files to reduce build context
+.git
+.gitignore
+README.md
+*.md
+.DS_Store
+.vscode
+.idea
+*.log
+tmp/
+temp/
+build-local.sh
+bin/
+# Go specific ignores
+*.test
+*.out
+coverage.txt
+# Docker specific
+Dockerfile*
+.dockerignore

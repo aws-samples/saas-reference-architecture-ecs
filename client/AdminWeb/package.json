@@ -1,42 +1,56 @@
 {
-  "name": "dashboard",
-  "version": "0.0.0",
-  "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "upgrade": "ng update",
-    "watch": "ng build --watch --configuration development"
-  },
+  "name": "admin-web",
+  "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@angular/animations": "^15.2.9",
-    "@angular/cdk": "14.2.7",
-    "@angular/common": "^15.2.9",
-    "@angular/compiler": "^15.2.9",
-    "@angular/core": "^15.2.9",
-    "@angular/flex-layout": "^14.0.0-beta.41",
-    "@angular/forms": "^15.2.9",
-    "@angular/material": "14.2.7",
-    "@angular/platform-browser": "^15.2.9",
-    "@angular/platform-browser-dynamic": "^15.2.9",
-    "@angular/router": "^15.2.9",
-    "angular-auth-oidc-client": "^16.0.0",
-    "bootstrap": "5.3.1",
-    "chart.js": "^3.9.1",
-    "chartjs-plugin-datalabels": "^2.2.0",
-    "ng2-charts": "^4.1.1",
-    "rxjs": "~7.8.1",
-    "tslib": "^2.6.1",
+    "@aws-amplify/ui-react": "^6.11.2",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.0",
+    "@mui/material": "^5.15.0",
+    "@mui/x-data-grid": "^6.19.0",
+    "@mui/x-date-pickers": "^6.19.0",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "ajv": "^8.17.1",
+    "aws-amplify": "^6.15.4",
+    "axios": "^1.6.0",
+    "oidc-client-ts": "^3.0.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-oidc-context": "^3.1.0",
+    "react-router-dom": "^6.20.0",
+    "react-scripts": "5.0.1",
+    "typescript": "^5.3.0",
     "uuid": "^9.0.0",
-    "zone.js": "~0.13.1"
+    "web-vitals": "^3.5.0"
+  },
+  "scripts": {
+    "start": "node node_modules/react-scripts/scripts/start.js",
+    "build": "node node_modules/react-scripts/scripts/build.js",
+    "test": "node node_modules/react-scripts/scripts/test.js",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^15.2.9",
-    "@angular/cli": "~15.2.9",
-    "@angular/compiler-cli": "^15.2.9",
-    "@types/jasmine": "~4.3.5",
-    "@types/uuid": "^9.0.2",
-    "typescript": "~4.9.5"
+    "@types/uuid": "^9.0.0"
   }
 }

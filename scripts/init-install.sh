@@ -2,11 +2,38 @@
 
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="dummy"
 
+# Generate API keys if not provided and save to file for persistence
+API_KEYS_FILE=".api-keys.env"
+
+if [[ -z "$CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER" ]]; then
+  export CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"
+  echo "Generated Premium API Key: $CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER"
+fi
+
+if [[ -z "$CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER" ]]; then
+  export CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"
+  echo "Generated Advanced API Key: $CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER"
+fi
+
+if [[ -z "$CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER" ]]; then
+  export CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"
+  echo "Generated Basic API Key: $CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER"
+fi
+
+# Save API keys to file for use by other scripts
+cat > "$API_KEYS_FILE" << EOF
+export CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER="$CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER"
+export CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER="$CDK_PARAM_API_KEY_ADVANCED_TIER_PARAMETER"
+export CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER="$CDK_PARAM_API_KEY_BASIC_TIER_PARAMETER"
+EOF
+
+echo "API keys saved to $API_KEYS_FILE"
+
 export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')  # Region setting
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 # Create S3 Bucket for provision source.
-source ./update-provision-source.sh
+source ./utils/update-provision-source.sh
 
 echo "CDK_PARAM_COMMIT_ID exists: $CDK_PARAM_COMMIT_ID"
 
@@ -17,30 +44,24 @@ if [ -z "$ECS_ROLE" ]; then
 else
     echo "ECS Service linked role exists: $ECS_ROLE"
 fi
-# Create RDS service linked role.
-RDS_ROLE=$(aws iam list-roles --query 'Roles[?contains(RoleName, `AWSServiceRoleForRDS`)].Arn' --output text)
-if [ -z "$RDS_ROLE" ]; then
-    aws iam create-service-linked-role --aws-service-name rds.amazonaws.com | cat
-else
-    echo "RDS Service linked role exists: $RDS_ROLE"
-fi
+
 # Preprovision basic infrastructure
 cd ../server
 
-FILE="/tmp/db_type.env"
-
-if [ -f "$FILE" ]; then
-    source /tmp/db_type.env
-    echo "DB_TYPE: $DB_TYPE"
+# Copy .env.example to .env only if .env doesn't exist
+if [ ! -f ".env" ]; then
+    if [ ! -f ".env.example" ]; then
+        echo "Error: .env.example file not found"
+        exit 1
+    fi
+    cp .env.example .env
+    echo "Created .env file from .env.example"
 else
-    DB_TYPE="dynamodb"
+    echo "Using existing .env file"
 fi
 
-if [ "$DB_TYPE" == 'mysql' ]; then 
-    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
-else
-    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
-fi
+# Use DynamoDB only
+sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
 
 # npx cdk bootstrap
 export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'
@@ -51,7 +72,7 @@ export CDK_PARAM_TIER='basic'
 export CDK_PARAM_STAGE='prod'
 export CDK_ADV_CLUSTER='INACTIV'
 export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
-export CDK_USE_DB=$DB_TYPE
+
 
 npm install
 npx cdk bootstrap
@@ -68,11 +89,29 @@ for SERVICE in $SERVICES; do
 done
 
 ### export DEPLOY_ENV=true
-# npx cdk deploy shared-infra-stack --require-approval=never
+# npx cdk deploy shared-infra-stack --require-approval=any-change 
 
+# Detect OS type and skip ARM64 setup on Mac
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo "Detected macOS - skipping ARM64 emulation setup"
+else
+    # Make the script executable
+    chmod +x ../scripts/utils/setup_multiarch.sh
+
+    # Run the setup_multiarch.sh script
+    echo "Running setup_multiarch.sh to configure ARM64 emulation..."
+    ../scripts/utils/setup_multiarch.sh
+
+    # Create a symlink in /usr/local/bin for global access
+    sudo ln -sf ../scripts/utils/setup_multiarch.sh /usr/local/bin/setup_multiarch
+
+    echo "ARM64 emulation setup complete!"
+    echo "You can run 'setup_multiarch' command anytime to refresh the configuration"
+fi
+# End Multi Architecture Setting
 
 npx cdk deploy \
     shared-infra-stack \
     tenant-template-stack-basic \
-    tenant-template-stack-advanced --require-approval=any-change
+    tenant-template-stack-advanced --require-approval never --concurrency 10 --asset-parallelism true
 # 

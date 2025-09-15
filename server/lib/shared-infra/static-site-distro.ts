@@ -31,10 +31,6 @@ export class StaticSiteDistro extends Construct {
   }
 
   private createStaticSite (id: string, allowedMethods: string[], accessLogsBucket: s3.Bucket, env: cdk.Environment) {
-    const oai = new cloudfront.OriginAccessIdentity(this, `${id}OriginAccessIdentity`, {
-      comment: 'Special CloudFront user to fetch S3 contents'
-    });
-
     const domainNamesToUse: string[] = [];
 
     const appBucket = new s3.Bucket(this, `${id}Bucket`, {
@@ -45,20 +41,15 @@ export class StaticSiteDistro extends Construct {
       removalPolicy: RemovalPolicy.DESTROY
     });
 
-    appBucket.addToResourcePolicy(
-      new iam.PolicyStatement({
-        resources: [appBucket.arnForObjects('*')],
-        actions: ['s3:GetObject'],
-        principals: [
-          new iam.CanonicalUserPrincipal(oai.cloudFrontOriginAccessIdentityS3CanonicalUserId)
-        ]
-      })
-    );
+    // S3OriginAccessControl 
+    const oac = new cloudfront.S3OriginAccessControl(this, 'S3OriginAccessControl', {
+      description: 'ECS SaaS Access Control for CloudFront'
+    });
 
     const distribution = new cloudfront.Distribution(this, `${id}Distribution`, {
       defaultBehavior: {
-        origin: new origins.S3Origin(appBucket, {
-          originAccessIdentity: oai
+        origin: origins.S3BucketOrigin.withOriginAccessControl(appBucket, {
+          originAccessControl: oac,
         }),
         allowedMethods: { methods: allowedMethods },
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS,
@@ -80,6 +71,20 @@ export class StaticSiteDistro extends Construct {
       minimumProtocolVersion: cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021
     });
 
+    // Add tags for cleanup identification
+    cdk.Tags.of(distribution).add('SaaSFactory', 'ECS-SaaS-Ref');
+
+    appBucket.addToResourcePolicy(new iam.PolicyStatement({
+      actions: ['s3:GetObject'],
+      resources: [appBucket.arnForObjects('*')],
+      principals: [new iam.ServicePrincipal('cloudfront.amazonaws.com')],
+      conditions: {
+        StringEquals: {
+          'AWS:SourceArn': `arn:aws:cloudfront::${cdk.Stack.of(this).account}:distribution/${distribution.distributionId}`
+        }
+      }
+    }));
+    
     return { distribution, appBucket };
   }
 }

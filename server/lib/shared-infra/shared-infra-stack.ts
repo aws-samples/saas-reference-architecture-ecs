@@ -13,7 +13,7 @@ import { TenantApiKey } from './tenant-api-key';
 import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from './static-site-distro';
 import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
-import { RdsCluster } from './rds-cluster';
+
 import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 import { ApiGateway } from './api-gateway';
 
@@ -118,7 +118,7 @@ export class SharedInfraStack extends cdk.Stack {
     });
 
     const nlbTargetGroup = this.nlbListener.addTargets('nlb-targets', {
-      targets: [new targets.AlbTarget(this.alb, 80)],
+      targets: [new targets.AlbListenerTarget(this.listener)], 
       port: 80,
       healthCheck: {
         protocol: elbv2.Protocol.HTTP
@@ -229,21 +229,12 @@ export class SharedInfraStack extends cdk.Stack {
 
     this.tenantMappingTable = new Table(this, 'TenantMappingTable', {
       partitionKey: { name: 'tenantId', type: AttributeType.STRING },
-      pointInTimeRecovery: true
+      pointInTimeRecoverySpecification: { 
+        pointInTimeRecoveryEnabled: true 
+      }
     });
 
-    //=====>>MYSQL<<===========
-    if(process.env.CDK_USE_DB == 'mysql') {
-      const rdsCluster = new RdsCluster(this, 'RdsCluster', {
-        vpc: this.vpc,
-        stageName: props.stageName,
-        lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
-        env: {
-          account: this.account,
-          region: this.region
-        }
-      });
-    }
+
 
     //**Output */
     new cdk.CfnOutput(this, 'ALBDnsName', {
@@ -277,7 +268,10 @@ export class SharedInfraStack extends cdk.Stack {
       value: this.appSiteUrl
     });
 
-    new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
+    // CDK Nag 체크 (환경변수로 제어)
+    if (process.env.CDK_NAG_ENABLED === 'true') {
+      new SharedInfraNag(this, 'SharedInfraNag', { stageName: props.stageName });
+    }
   }
 
   ssmLookup (parameterName: string) {

@@ -1,40 +1,58 @@
 {
   "name": "application",
-  "version": "0.0.0",
-  "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development"
-  },
+  "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@angular/animations": "~14.0.0",
-    "@angular/cdk": "~14.0.4",
-    "@angular/common": "~14.0.0",
-    "@angular/compiler": "~14.0.0",
-    "@angular/core": "~14.0.0",
-    "@angular/forms": "~14.0.0",
-    "@angular/material": "~14.0.4",
-    "@angular/platform-browser": "~14.0.0",
-    "@angular/platform-browser-dynamic": "~14.0.0",
-    "@angular/router": "~14.0.0",
-    "@aws-amplify/ui-angular": "~2.4.14",
-    "aws-amplify": "~4.3.27",
-    "bootstrap": "~5.2.0",
-    "chart.js": "~3.8.0",
-    "chartjs-plugin-datalabels": "~2.0.0",
-    "ng2-charts": "~4.0.0",
-    "rxjs": "~7.5.0",
-    "tslib": "~2.3.0",
-    "zone.js": "~0.11.4"
+    "@aws-amplify/ui-react": "^4.6.0",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.14.19",
+    "@mui/material": "^5.14.20",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.68",
+    "@types/uuid": "^9.0.7",
+    "aws-amplify": "^5.3.0",
+    "axios": "^1.6.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.20.1",
+    "react-scripts": "5.0.1",
+    "typescript": "^4.9.5",
+    "uuid": "^9.0.1",
+    "web-vitals": "^2.1.4"
   },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "node node_modules/react-scripts/scripts/build.js",
+    "build:fallback": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "postinstall": "echo 'Verifying react-scripts installation...' && ls -la node_modules/react-scripts/scripts/build.js"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "proxy": "http://localhost:3001",
   "devDependencies": {
-    "@angular-devkit/build-angular": "~14.2.13",
-    "@angular/cli": "~14.0.5",
-    "@angular/compiler-cli": "~14.0.0",
-    "@types/jasmine": "~4.0.0",
-    "cypress": "^12.5.1",
-    "typescript": "~4.7.2"
+    "@types/react": "^19.1.9",
+    "@types/react-dom": "^19.1.7"
   }
 }

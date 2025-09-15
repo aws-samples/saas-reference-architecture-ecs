@@ -14,6 +14,7 @@ interface CoreAppPlaneStackProps extends cdk.StackProps {
   eventManager: sbt.IEventManager
   systemAdminEmail: string
   regApiGatewayUrl: string
+  auth: sbt.CognitoAuth // auth 정보 추가
   distro: StaticSiteDistro
   appSiteUrl: string
   accessLogsBucket: cdk.aws_s3.Bucket
@@ -42,27 +43,25 @@ export class CoreAppPlaneStack extends cdk.Stack {
           }),
         ],
       }),
-      script: fs.readFileSync('../scripts/provision-tenant.sh', 'utf8'),
-      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email'],
+      script: fs.readFileSync('./lib/provision-scripts/provision-tenant.sh', 'utf8'),
+      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName', 'email', 'useFederation', 'useEc2', 'useRProxy'],
       environmentJSONVariablesFromIncomingEvent: ['prices'],
-      environmentVariablesToOutgoingEvent: {tenantData:[
-        'tenantS3Bucket',
-        'tenantConfig',
-        // 'tenantStatus',
-        'prices', // added so we don't lose it for targets beyond provisioning (ex. billing)
-        'tenantName', // added so we don't lose it for targets beyond provisioning (ex. billing)
-        'email', // added so we don't lose it for targets beyond provisioning (ex. billing)
-      ],
-      tenantRegistrationData: ['registrationStatus'],
-     },
+      environmentVariablesToOutgoingEvent: { 
+        tenantData:[
+          'tenantS3Bucket',
+          'tenantConfig',
+          'prices', // added so we don't lose it for targets beyond provisioning (ex. billing)
+          'tenantName', // added so we don't lose it for targets beyond provisioning (ex. billing)
+          'email', // added so we don't lose it for targets beyond provisioning (ex. billing)
+        ],
+        tenantRegistrationData: ['registrationStatus'],
+      },
       scriptEnvironmentVariables: {
         // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
         // the control plane is also deployed. To ensure the operation does not error out, this value
         // is provided as an env parameter.
         CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail,
       },
-      // outgoingEvent: sbt.DetailType.PROVISION_SUCCESS,
-      // incomingEvent: sbt.DetailType.ONBOARDING_REQUEST,
       eventManager: props.eventManager
     };
 
@@ -78,13 +77,12 @@ export class CoreAppPlaneStack extends cdk.Stack {
           }),
         ],
       }),
-      script: fs.readFileSync('../scripts/deprovision-tenant.sh', 'utf8'),
+      script: fs.readFileSync('./lib/provision-scripts/deprovision-tenant.sh', 'utf8'),
       environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
       environmentVariablesToOutgoingEvent: {
         tenantRegistrationData:['registrationStatus']
       },
-      // outgoingEvent: sbt.DetailType.DEPROVISION_SUCCESS,
-      // incomingEvent: sbt.DetailType.OFFBOARDING_REQUEST,
+
       scriptEnvironmentVariables: {
         TENANT_STACK_MAPPING_TABLE: props.tenantMappingTable.tableName,
         // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
@@ -101,7 +99,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
       provisioningScriptJobProps
     );
 
-    const deprovisioningScriptJob: sbt.ProvisioningScriptJob = new sbt.DeprovisioningScriptJob(
+    const deprovisioningScriptJob: sbt.DeprovisioningScriptJob = new sbt.DeprovisioningScriptJob(
       this,
       'deprovisioningScriptJob', 
       deprovisioningScriptJobProps
@@ -112,24 +110,38 @@ export class CoreAppPlaneStack extends cdk.Stack {
       scriptJobs: [provisioningScriptJob, deprovisioningScriptJob]
     });
 
-    const staticSite = new StaticSite(this, 'TenantWebUI', {
-      name: 'AppSite',
-      assetDirectory: path.join(__dirname, '../../../client/Application'),
-      production: true,
-      apiUrl: props.regApiGatewayUrl,
-      distribution: props.distro.cloudfrontDistribution,
-      appBucket: props.distro.siteBucket,
-      accessLogsBucket: props.accessLogsBucket,
-      env: {
-        account: this.account,
-        region: this.region
-      }
-    });
+    // Check if Application directory exists before creating StaticSite
+    const applicationPath = path.join(__dirname, '../../../client/Application');
+    
+    let staticSite;
+    if (fs.existsSync(applicationPath)) {
+      staticSite = new StaticSite(this, 'TenantWebUI', {
+        name: 'AppSite',
+        assetDirectory: applicationPath,
+        production: true,
+        clientId: props.auth.userClientId, // auth 정보 추가
+        issuer: props.auth.tokenEndpoint, // auth 정보 추가
+        apiUrl: props.regApiGatewayUrl,
+        wellKnownEndpointUrl: props.auth.wellKnownEndpointUrl, // auth 정보 추가
+        distribution: props.distro.cloudfrontDistribution,
+        appBucket: props.distro.siteBucket,
+        accessLogsBucket: props.accessLogsBucket,
+        env: {
+          account: this.account,
+          region: this.region
+        }
+      });
+    } else {
+      console.log('Application directory not found, skipping StaticSite creation');
+    }
 
     new cdk.CfnOutput(this, 'appSiteUrl', {
       value: props.appSiteUrl
     });
 
-    new CoreAppPlaneNag(this, 'CoreAppPlaneNag');
+    // CDK Nag 체크 (환경변수로 제어)
+    if (process.env.CDK_NAG_ENABLED === 'true') {
+      new CoreAppPlaneNag(this, 'CoreAppPlaneNag');
+    }
   }
 }

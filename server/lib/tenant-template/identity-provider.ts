@@ -1,10 +1,12 @@
-import { aws_cognito, type StackProps } from 'aws-cdk-lib';
+import { aws_cognito, type StackProps, Tags } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { type IdentityDetails } from '../interfaces/identity-details';
 
 interface IdentityProviderStackProps extends StackProps {
   tenantId: string
+  tier: string
   appSiteUrl: string
+  useFederation: string
 }
 
 export class IdentityProvider extends Construct {
@@ -13,9 +15,10 @@ export class IdentityProvider extends Construct {
   public readonly identityDetails: IdentityDetails;
   constructor (scope: Construct, id: string, props: IdentityProviderStackProps) {
     super(scope, id);
-    this.tenantUserPool = new aws_cognito.UserPool(this, 'TenantUserPool', {
+    this.tenantUserPool = new aws_cognito.UserPool(this, props.tenantId, {
       autoVerify: { email: true },
-      selfSignUpEnabled: true,
+      advancedSecurityMode: aws_cognito.AdvancedSecurityMode.OFF,
+      selfSignUpEnabled: props.useFederation.toLowerCase() === 'true',
 
       accountRecovery: aws_cognito.AccountRecovery.EMAIL_ONLY,
       standardAttributes: {
@@ -60,6 +63,13 @@ export class IdentityProvider extends Construct {
           'Login: ${props.appSiteUrl}, tenant: ${tenantName}, username:{username}, temp P.W:{####}',
       }
     });
+
+    // Override logical ID to remove hash and include tier info
+    const cleanTenantId = props.tenantId.replace(/[^a-zA-Z0-9]/g, '');
+    (this.tenantUserPool.node.defaultChild as aws_cognito.CfnUserPool).overrideLogicalId(`${props.tier.toLowerCase()}UserPool${cleanTenantId}`);
+
+    // Add tags for cleanup identification
+    Tags.of(this.tenantUserPool).add('SaaSFactory', 'ECS-SaaS-Ref');
 
     const writeAttributes = new aws_cognito.ClientAttributes()
       .withStandardAttributes({ email: true })

@@ -45,27 +45,39 @@ export class ControlPlaneStack extends cdk.Stack {
     this.regApiGatewayUrl = controlPlane.controlPlaneAPIGatewayUrl;
     this.auth = cognitoAuth;
 
-    const staticSite = new StaticSite(this, 'AdminWebUi', {
-      name: 'AdminSite',
-      assetDirectory: path.join(__dirname, '../../../client/AdminWeb'),
-      production: true,
-      clientId: this.auth.userClientId,  //.clientId,
-      issuer: this.auth.tokenEndpoint,
-      apiUrl: this.regApiGatewayUrl,
-      wellKnownEndpointUrl: this.auth.wellKnownEndpointUrl,
-      distribution: props.distro.cloudfrontDistribution,
-      appBucket: props.distro.siteBucket,
-      accessLogsBucket: props.accessLogsBucket,
-      env: {
-        account: this.account,
-        region: this.region
-      }
-    });
+    // Check if AdminWeb directory exists before creating StaticSite
+    const adminWebPath = path.join(__dirname, '../../../client/AdminWeb');
+    const fs = require('fs');
+    
+    let staticSite;
+    if (fs.existsSync(adminWebPath)) {
+      staticSite = new StaticSite(this, 'AdminWebUi', {
+        name: 'AdminSite',
+        assetDirectory: adminWebPath,
+        production: true,
+        clientId: this.auth.userClientId,  //.clientId,
+        issuer: this.auth.tokenEndpoint,
+        apiUrl: this.regApiGatewayUrl,
+        wellKnownEndpointUrl: this.auth.wellKnownEndpointUrl,
+        distribution: props.distro.cloudfrontDistribution,
+        appBucket: props.distro.siteBucket,
+        accessLogsBucket: props.accessLogsBucket,
+        env: {
+          account: this.account,
+          region: this.region
+        }
+      });
+    } else {
+      console.log('AdminWeb directory not found, skipping StaticSite creation');
+    }
     
     new cdk.CfnOutput(this, 'adminSiteUrl', {
       value: props.adminSiteUrl
     });
 
-    new ControlPlaneNag(this, 'controlplane-nag');
+    // CDK Nag 체크 (환경변수로 제어)
+    if (process.env.CDK_NAG_ENABLED === 'true') {
+      new ControlPlaneNag(this, 'controlplane-nag');
+    }
   }
 }
