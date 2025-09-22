@@ -19,6 +19,20 @@ export GOSUMDB=off
 echo "Docker BuildKit enabled for faster builds"
 echo "Go proxy set to direct for consistent builds"
 
+# Check if Go is installed
+if ! command -v go &> /dev/null; then
+    echo "Go is not installed. Installing Go..."
+    # Install Go on Amazon Linux
+    sudo dnf install -y golang
+    # Verify installation
+    go version || {
+        echo "Go installation failed. Please install Go manually."
+        exit 1
+    }
+else
+    echo "Go is already installed: $(go version)"
+fi
+
 SERVICE_REPOS=("user" "product" "order" "rproxy")
 
 REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')

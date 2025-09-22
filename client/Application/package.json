@@ -8,26 +8,28 @@
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.14.19",
     "@mui/material": "^5.14.20",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.68",
-    "@types/uuid": "^9.0.7",
+
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/uuid": "^9.0.0",
+    "ajv": "^8.17.1",
+
     "aws-amplify": "^5.3.0",
     "axios": "^1.6.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.20.1",
-    "react-scripts": "^0.0.0",
-    "typescript": "^4.9.5",
-    "uuid": "^9.0.1",
-    "web-vitals": "^2.1.4"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-refresh": "^0.14.0",
+    "react-router-dom": "^6.20.0",
+    "react-scripts": "5.0.1",
+    "typescript": "^5.3.0",
+    "uuid": "^9.0.0",
+    "web-vitals": "^3.5.0"
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "node node_modules/react-scripts/scripts/build.js",
-    "build:fallback": "react-scripts build",
+    "build": "react-scripts build",
+    "build:fallback": "node node_modules/react-scripts/scripts/build.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "postinstall": "echo 'Verifying react-scripts installation...' && ls -la node_modules/react-scripts/scripts/build.js"
@@ -52,7 +54,6 @@
   },
   "proxy": "http://localhost:3001",
   "devDependencies": {
-    "@types/react": "^19.1.9",
-    "@types/react-dom": "^19.1.7"
+    "@types/uuid": "^9.0.0"
   }
 }

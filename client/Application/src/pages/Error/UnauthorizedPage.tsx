@@ -104,7 +104,7 @@ const UnauthorizedPage: React.FC = () => {
                   mb: 1
                 }}
               >
-                Unauthorized
+                Tenant Name
               </Typography>
               
               <Typography 

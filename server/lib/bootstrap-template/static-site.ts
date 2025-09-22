@@ -73,11 +73,7 @@ export class StaticSite extends Construct {
                 nodejs: "22",
               },
               commands: [
-                "echo 'Node.js version:'",
-                "node --version",
-                "echo 'npm version:'",
-                "npm --version",
-                "npm install --force",
+                "npm install --legacy-peer-deps --no-optional",
               ],
             },
             build: {
@@ -109,9 +105,8 @@ const environment: Environment = ${JSON.stringify(
 export { environment };
 export default environment;
 EOF`,
-                "echo 'Environment config created:'",
-                "cat ./src/config/environment.ts",
-                "npm run build",
+
+                "npm run build || npm run build:fallback || GENERATE_SOURCEMAP=false npm run build",
               ],
             },
           },
