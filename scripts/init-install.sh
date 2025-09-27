@@ -3,7 +3,8 @@
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="dummy"
 
 # Generate API keys if not provided and save to file for persistence
-API_KEYS_FILE=".api-keys.env"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+API_KEYS_FILE="$SCRIPT_DIR/.api-keys.env"
 
 if [[ -z "$CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER" ]]; then
   export CDK_PARAM_API_KEY_PREMIUM_TIER_PARAMETER="$(uuidgen | tr '[:upper:]' '[:lower:]')-sbt"

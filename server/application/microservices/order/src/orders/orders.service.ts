@@ -29,7 +29,7 @@ export class OrdersService {
     };
     console.log('Creating order:', newOrder);
     try {
-      const client = await this.fetchClient();
+      const client = await this.fetchClient(tenantId);
       const cmd = new PutCommand({
         Item: newOrder,
         TableName: this.tableName
@@ -50,7 +50,7 @@ export class OrdersService {
   async findAll (tenantId: string) {
     console.log('Get all orders:', tenantId, 'Table Name:', this.tableName);
     try {
-      const client = await this.fetchClient();
+      const client = await this.fetchClient(tenantId);
       const cmd = new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'tenantId=:t_id',
@@ -83,7 +83,7 @@ export class OrdersService {
   async findOne (id: string, tenantId: string) {
     console.log('Find order:', id, 'TenantId:OrderId', tenantId);
     try {
-      const client = await this.fetchClient();
+      const client = await this.fetchClient(tenantId);
       const cmd = new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'tenantId=:t_id AND orderId=:o_id',
@@ -114,7 +114,7 @@ export class OrdersService {
     }
   }
 
-  async fetchClient () {
-    return DynamoDBDocumentClient.from(new DynamoDBClient({}));
+  async fetchClient (tenantId: string) {
+    return await this.clientFac.getClient(tenantId);
   }
 }

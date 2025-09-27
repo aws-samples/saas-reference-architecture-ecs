@@ -45,7 +45,7 @@ export class EcsCluster extends cdk.NestedStack {
       
       const launchTemplate = new ec2.LaunchTemplate(this, `EcsLaunchTemplate-${props.tenantId}`, {
         instanceType: ec2.InstanceType.of(ec2.InstanceClass.M5, ec2.InstanceSize.LARGE),
-        machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
+        machineImage: ecs.EcsOptimizedImage.amazonLinux2023(),
         userData,
         role: trunking.ec2Role,
         // role: launchTemplateRole,

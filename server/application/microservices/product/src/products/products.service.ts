@@ -30,7 +30,7 @@ export class ProductsService {
     console.log('Creating product:', newProduct);
 
     try {
-      const client = await this.fetchClient();
+      const client = await this.fetchClient(tenantId);
       const cmd = new PutCommand({
         Item: newProduct,
         TableName: this.tableName
@@ -51,7 +51,7 @@ export class ProductsService {
   async findAll (tenantId: string) {
     console.log('Getting All Products for Tenant:', tenantId);
     try {
-      const client = await this.fetchClient();
+      const client = await this.fetchClient(tenantId);
       const cmd = new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'tenantId=:t_id',
@@ -79,7 +79,7 @@ export class ProductsService {
       console.log('Getting Product: ', id);
       console.log('Getting Product: productID ', id.split(':')[1]);
 
-      const client = await this.fetchClient();
+      const client = await this.fetchClient(tenantId);
       const cmd = new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'tenantId=:t_id AND productId=:p_id',
@@ -109,7 +109,7 @@ export class ProductsService {
   ) {
     try {
       console.log('Updating Product: ', id);
-      const client = await this.fetchClient();
+      const client = await this.fetchClient(tenantId);
       const cmd = new UpdateCommand({
         TableName: this.tableName,
         Key: {
@@ -147,7 +147,7 @@ export class ProductsService {
     }
   }
 
-  async fetchClient () {
-    return DynamoDBDocumentClient.from(new DynamoDBClient({}));
+  async fetchClient (tenantId: string) {
+    return await this.clientFac.getClient(tenantId);
   }
 }
