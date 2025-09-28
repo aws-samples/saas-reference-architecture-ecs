@@ -6,13 +6,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"saas-ecs-microservices/pkg/auth"
+	"saas-ecs-microservices/pkg/clientfactory"
 	"strconv"
 	"strings"
 	"time"
-	"saas-ecs-microservices/pkg/auth"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -37,27 +37,28 @@ type CreateOrderDto struct {
 }
 
 type DynamoDBService struct {
-	client    *dynamodb.Client
-	tableName string
+	clientFactory *clientfactory.ClientFactory
+	tableName     string
 }
 
 var dbService *DynamoDBService
 
 func initDynamoDB() error {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return err
-	}
-
 	tableName := getEnvOrDefault("TABLE_NAME", "order-table-name-basic")
+	log.Printf("Order service using table: %s", tableName)
 	dbService = &DynamoDBService{
-		client:    dynamodb.NewFromConfig(cfg),
-		tableName: tableName,
+		clientFactory: clientfactory.NewClientFactory(),
+		tableName:     tableName,
 	}
 	return nil
 }
 
 func (db *DynamoDBService) getOrders(tenantID string) ([]Order, error) {
+	client, err := db.clientFactory.GetClient(tenantID, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(db.tableName),
 		KeyConditionExpression: aws.String("tenantId=:t_id"),
@@ -66,7 +67,7 @@ func (db *DynamoDBService) getOrders(tenantID string) ([]Order, error) {
 		},
 	}
 
-	result, err := db.client.Query(context.TODO(), input)
+	result, err := client.Query(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +78,11 @@ func (db *DynamoDBService) getOrders(tenantID string) ([]Order, error) {
 }
 
 func (db *DynamoDBService) getOrder(tenantID, orderID string) (*Order, error) {
+	client, err := db.clientFactory.GetClient(tenantID, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(db.tableName),
 		KeyConditionExpression: aws.String("tenantId=:t_id AND orderId=:o_id"),
@@ -86,7 +92,7 @@ func (db *DynamoDBService) getOrder(tenantID, orderID string) (*Order, error) {
 		},
 	}
 
-	result, err := db.client.Query(context.TODO(), input)
+	result, err := client.Query(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +107,11 @@ func (db *DynamoDBService) getOrder(tenantID, orderID string) (*Order, error) {
 }
 
 func (db *DynamoDBService) putOrder(order Order) error {
+	client, err := db.clientFactory.GetClient(order.TenantID, nil)
+	if err != nil {
+		return err
+	}
+
 	item, err := attributevalue.MarshalMap(order)
 	if err != nil {
 		return err
@@ -111,7 +122,7 @@ func (db *DynamoDBService) putOrder(order Order) error {
 		Item:      item,
 	}
 
-	_, err = db.client.PutItem(context.TODO(), input)
+	_, err = client.PutItem(context.TODO(), input)
 	return err
 }
 
