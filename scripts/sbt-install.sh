@@ -1,5 +1,5 @@
 #!/bin/bash -e
-
+export PAGER=""
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="$1"
 
 if [[ -z "$CDK_PARAM_SYSTEM_ADMIN_EMAIL" ]]; then
@@ -39,6 +39,8 @@ CDK_SOURCE_NAME="source.tar.gz"
 
 VERSIONS=$(aws s3api list-object-versions --bucket "$CDK_PARAM_S3_BUCKET_NAME" --prefix "$CDK_SOURCE_NAME" --query 'Versions[?IsLatest==`true`].{VersionId:VersionId}' --output text 2>&1)
 export CDK_PARAM_COMMIT_ID=$(echo "$VERSIONS" | awk 'NR==1{print $1}')
+
+export CDK_DISABLE_NOTICES=true
 
 cd ../server
 

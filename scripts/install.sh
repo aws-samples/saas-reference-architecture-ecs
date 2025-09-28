@@ -1,5 +1,5 @@
 #!/bin/bash -e
-
+export PAGER=""
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="$1"
 
 if [[ -z "$CDK_PARAM_SYSTEM_ADMIN_EMAIL" ]]; then
@@ -38,6 +38,8 @@ if [ -z "$ECS_ROLE" ]; then
 else
     echo "ECS Service linked role exists: $ECS_ROLE"
 fi
+
+export CDK_DISABLE_NOTICES=true
 
 # Preprovision basic infrastructure
 cd ../server
