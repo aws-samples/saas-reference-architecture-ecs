@@ -6,13 +6,13 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"saas-ecs-microservices/pkg/auth"
-	"saas-ecs-microservices/pkg/clientfactory"
 	"strconv"
 	"strings"
 	"time"
+	"saas-ecs-microservices/pkg/auth"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -42,28 +42,27 @@ type UpdateProductDto struct {
 }
 
 type DynamoDBService struct {
-	clientFactory *clientfactory.ClientFactory
-	tableName     string
+	client    *dynamodb.Client
+	tableName string
 }
 
 var dbService *DynamoDBService
 
 func initDynamoDB() error {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return err
+	}
+
 	tableName := getEnvOrDefault("TABLE_NAME", "product-table-name-basic")
-	log.Printf("Product service using table: %s", tableName)
 	dbService = &DynamoDBService{
-		clientFactory: clientfactory.NewClientFactory(),
-		tableName:     tableName,
+		client:    dynamodb.NewFromConfig(cfg),
+		tableName: tableName,
 	}
 	return nil
 }
 
 func (db *DynamoDBService) getProducts(tenantID string) ([]Product, error) {
-	client, err := db.clientFactory.GetClient(tenantID, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(db.tableName),
 		KeyConditionExpression: aws.String("tenantId=:t_id"),
@@ -72,7 +71,7 @@ func (db *DynamoDBService) getProducts(tenantID string) ([]Product, error) {
 		},
 	}
 
-	result, err := client.Query(context.TODO(), input)
+	result, err := db.client.Query(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +82,6 @@ func (db *DynamoDBService) getProducts(tenantID string) ([]Product, error) {
 }
 
 func (db *DynamoDBService) getProduct(tenantID, productID string) (*Product, error) {
-	client, err := db.clientFactory.GetClient(tenantID, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(db.tableName),
 		KeyConditionExpression: aws.String("tenantId=:t_id AND productId=:p_id"),
@@ -97,7 +91,7 @@ func (db *DynamoDBService) getProduct(tenantID, productID string) (*Product, err
 		},
 	}
 
-	result, err := client.Query(context.TODO(), input)
+	result, err := db.client.Query(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -112,11 +106,6 @@ func (db *DynamoDBService) getProduct(tenantID, productID string) (*Product, err
 }
 
 func (db *DynamoDBService) putProduct(product Product) error {
-	client, err := db.clientFactory.GetClient(product.TenantID, nil)
-	if err != nil {
-		return err
-	}
-
 	item, err := attributevalue.MarshalMap(product)
 	if err != nil {
 		return err
@@ -127,7 +116,7 @@ func (db *DynamoDBService) putProduct(product Product) error {
 		Item:      item,
 	}
 
-	_, err = client.PutItem(context.TODO(), input)
+	_, err = db.client.PutItem(context.TODO(), input)
 	return err
 }
 
