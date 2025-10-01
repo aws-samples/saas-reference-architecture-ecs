@@ -21,7 +21,7 @@ export class ProductsService {
   // tableName: string = process.env.PRODUCT_TABLE_NAME;
   tableName: string = process.env.TABLE_NAME;
 
-  async create (createProductDto: CreateProductDto, tenantId: string) {
+  async create (createProductDto: CreateProductDto, tenantId: string, jwtToken: string) {
     const newProduct = {
       ...createProductDto,
       productId: uuid(),
@@ -30,7 +30,7 @@ export class ProductsService {
     console.log('Creating product:', newProduct);
 
     try {
-      const client = await this.fetchClient(tenantId);
+      const client = await this.fetchClient(tenantId, jwtToken);
       const cmd = new PutCommand({
         Item: newProduct,
         TableName: this.tableName
@@ -48,10 +48,10 @@ export class ProductsService {
     }
   }
 
-  async findAll (tenantId: string) {
+  async findAll (tenantId: string, jwtToken: string) {
     console.log('Getting All Products for Tenant:', tenantId);
     try {
-      const client = await this.fetchClient(tenantId);
+      const client = await this.fetchClient(tenantId, jwtToken);
       const cmd = new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'tenantId=:t_id',
@@ -74,12 +74,12 @@ export class ProductsService {
     }
   }
 
-  async findOne (id: string, tenantId: string) {
+  async findOne (id: string, tenantId: string, jwtToken: string) {
     try {
       console.log('Getting Product: ', id);
       console.log('Getting Product: productID ', id.split(':')[1]);
 
-      const client = await this.fetchClient(tenantId);
+      const client = await this.fetchClient(tenantId, jwtToken);
       const cmd = new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'tenantId=:t_id AND productId=:p_id',
@@ -105,11 +105,12 @@ export class ProductsService {
   async update (
     id: string,
     tenantId: string,
-    updateProductDto: UpdateProductDto
+    updateProductDto: UpdateProductDto,
+    jwtToken: string
   ) {
     try {
       console.log('Updating Product: ', id);
-      const client = await this.fetchClient(tenantId);
+      const client = await this.fetchClient(tenantId, jwtToken);
       const cmd = new UpdateCommand({
         TableName: this.tableName,
         Key: {
@@ -147,7 +148,7 @@ export class ProductsService {
     }
   }
 
-  async fetchClient (tenantId: string) {
-    return await this.clientFac.getClient(tenantId);
+  async fetchClient (tenantId: string, jwtToken: string) {
+    return await this.clientFac.getClient(tenantId, jwtToken);
   }
 }

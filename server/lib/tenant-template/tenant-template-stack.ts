@@ -281,17 +281,77 @@ export class TenantTemplateStack extends cdk.Stack {
     let policy = JSON.stringify(info.policy);
 
     if (storage) {
-      // Create role for DynamoDB-enabled service
+      // Create separate ABAC role for tenant isolation
+      const abacRole = new iam.Role(this, `${info.name}-ABACRole`, {
+        assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+        inlinePolicies: {
+          DynamoDBTenantAccess: storage.policyDocument
+        }
+      });
+
+      // Create main ECS task role
       const taskRole = new iam.Role(this, `${info.name}-ecsTaskRole`, {
         assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
         inlinePolicies: {
-          EcsContainerInlinePolicy: storage.policyDocument,
+          STSAssumeRolePolicy: new iam.PolicyDocument({
+            statements: [
+              new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["sts:AssumeRole", "sts:TagSession"],
+                resources: [abacRole.roleArn]
+              })
+            ]
+          })
         },
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName(
             "service-role/AmazonEC2ContainerServiceforEC2Role"
           ),
         ],
+      });
+
+      // Use Custom Resource to update ABAC role trust policy after both roles are created
+      new AwsCustomResource(this, `${info.name}-UpdateTrustPolicy`, {
+        onCreate: {
+          service: "IAM",
+          action: "updateAssumeRolePolicy",
+          parameters: {
+            RoleName: abacRole.roleName,
+            PolicyDocument: JSON.stringify({
+              Version: "2012-10-17",
+              Statement: [
+                {
+                  Effect: "Allow",
+                  Principal: { Service: "ecs-tasks.amazonaws.com" },
+                  Action: "sts:AssumeRole"
+                },
+                {
+                  Effect: "Allow",
+                  Principal: { AWS: taskRole.roleArn },
+                  Action: ["sts:AssumeRole", "sts:TagSession"],
+                  Condition: {
+                    StringLike: {
+                      "aws:RequestTag/tenant": "*"
+                    }
+                  }
+                }
+              ]
+            })
+          },
+          physicalResourceId: PhysicalResourceId.of(`${info.name}-trust-policy-update`)
+        },
+        policy: AwsCustomResourcePolicy.fromSdkCalls({
+          resources: [abacRole.roleArn]
+        })
+      });
+
+      // Add environment variables for TokenVendingMachine
+      info.environment = info.environment || {};
+      info.environment.IAM_ROLE_ARN = abacRole.roleArn;
+      info.environment.REQUEST_TAG_KEYS_MAPPING_ATTRIBUTES = '{"tenant":"custom:tenantId"}';
+      info.environment.IDP_DETAILS = JSON.stringify({
+        issuer: identityProvider.identityDetails.details.issuer,
+        audience: identityProvider.identityDetails.details.clientId
       });
 
       // Attach additional policy if exists (e.g., SSM)

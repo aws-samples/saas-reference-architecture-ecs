@@ -31,12 +31,18 @@ export class EcsDynamoDB extends Construct {
     });
     cdk.Tags.of(this.table).add('TenantName', props.tenantName);
 
+    // Create ABAC policy for tenant isolation
     this.policyDocument = new cdk.aws_iam.PolicyDocument({ 
       statements: [new cdk.aws_iam.PolicyStatement({
         actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 
           'dynamodb:UpdateItem', 'dynamodb:DeleteItem', 'dynamodb:Query'],
         resources: [this.table.tableArn],
-        effect: cdk.aws_iam.Effect.ALLOW
+        effect: cdk.aws_iam.Effect.ALLOW,
+        conditions: {
+          'ForAllValues:StringEquals': {
+            'dynamodb:LeadingKeys': ['${aws:PrincipalTag/tenant}']
+          }
+        }
       })]
     });
 
