@@ -6,7 +6,7 @@ export class ControlPlaneNag extends Construct {
   constructor (scope: Construct, id: string) {
     super(scope, id);
     
-    // 전체 스택에 대한 일반적인 CDK NAG 예외처리
+    // General CDK NAG exception handling for the entire stack
     NagSuppressions.addStackSuppressions(cdk.Stack.of(this), [
       {
         id: 'AwsSolutions-IAM4',

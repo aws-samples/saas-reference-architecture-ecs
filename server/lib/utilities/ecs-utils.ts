@@ -73,7 +73,7 @@ export function getContainerDefinitionOptions(
     'ecs.Protocol.UDP': ecs.Protocol.UDP,
   };
 
-  // ContainerDefinitionOptions 생성
+  // Create ContainerDefinitionOptions
   const containerOptions: ecs.ContainerDefinitionOptions = {
     containerName: jsonConfig.name,
     image: ecs.ContainerImage.fromRegistry(jsonConfig.image),
@@ -88,7 +88,7 @@ export function getContainerDefinitionOptions(
     portMappings: jsonConfig.portMappings?.map((port: any) => ({
       name: port.name,
       containerPort: port.containerPort,
-      appProtocol: appProtocolMap[port.appProtocol], // ecs.AppProtocol 값을 매핑하거나 기본값 HTTP//
+      appProtocol: appProtocolMap[port.appProtocol], // Map ecs.AppProtocol value or default to HTTP
       protocol:  protocolMap[port.protocol] //|| ecs.Protocol.TCP,
     })),
     environment: environmentVariables, // 

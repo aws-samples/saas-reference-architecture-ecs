@@ -123,7 +123,7 @@ fi
 echo "$(date) cleaning up tenants..."
 STACK_STATUS_FILTER="CREATE_COMPLETE ROLLBACK_COMPLETE UPDATE_COMPLETE UPDATE_ROLLBACK_COMPLETE IMPORT_COMPLETE IMPORT_ROLLBACK_COMPLETE"
 
-# 단순하게 모든 테넌트 스택 검색 및 삭제
+# Simply search and delete all tenant stacks
 echo "$(date) searching for all tenant stacks..."
 tenant_stacks=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --query 'StackSummaries[?starts_with(StackName, `tenant-template-stack`)].StackName' --output text)
 
