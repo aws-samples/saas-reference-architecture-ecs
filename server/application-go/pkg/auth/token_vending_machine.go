@@ -50,7 +50,7 @@ func (tvm *TokenVendingMachine) AssumeRole(jwtToken string, durationSeconds int3
 
 	tenantId := claims.TenantID
 	if tvm.debug {
-		log.Printf("🔐 TokenVendingMachine: Extracted tenantId: %s", maskTenantID(tenantId))
+		log.Printf("🔐 TokenVendingMachine: Extracted tenantId: [REDACTED]")
 	}
 
 	// Get ABAC role ARN from environment
@@ -80,7 +80,7 @@ func (tvm *TokenVendingMachine) AssumeRole(jwtToken string, durationSeconds int3
 	}
 
 	if tvm.debug {
-		log.Printf("🔐 TokenVendingMachine: Calling AssumeRole with tenant tag: %s", maskTenantID(tenantId))
+		log.Printf("🔐 TokenVendingMachine: Calling AssumeRole with tenant tag: [REDACTED]")
 	}
 
 	result, err := tvm.stsClient.AssumeRole(context.TODO(), input)
@@ -90,7 +90,7 @@ func (tvm *TokenVendingMachine) AssumeRole(jwtToken string, durationSeconds int3
 	}
 
 	if tvm.debug {
-		log.Printf("✅ TokenVendingMachine: AssumeRole successful for tenant: %s", maskTenantID(tenantId))
+		log.Printf("✅ TokenVendingMachine: AssumeRole successful for tenant: [REDACTED]")
 	}
 
 	// Convert to JSON
