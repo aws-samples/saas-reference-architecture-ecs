@@ -128,6 +128,19 @@ func generateID() string {
 	return strconv.FormatInt(time.Now().UnixNano(), 10)
 }
 
+// extractJWTToken safely extracts JWT token from Authorization header
+func extractJWTToken(r *http.Request) string {
+	const bearerPrefix = "Bearer "
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return ""
+	}
+	if !strings.HasPrefix(authHeader, bearerPrefix) {
+		return ""
+	}
+	return strings.TrimPrefix(authHeader, bearerPrefix)
+}
+
 func main() {
 	if err := initDynamoDB(); err != nil {
 		log.Printf("CRITICAL: Failed to initialize DynamoDB: %v", err)
@@ -180,8 +193,7 @@ func handleOrders(w http.ResponseWriter, r *http.Request) {
 		
 		var err error
 		// Get JWT token from Authorization header
-		authHeader := r.Header.Get("Authorization")
-		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+		jwtToken := extractJWTToken(r)
 		
 		orderList, err = dbService.getOrders(tenantID, jwtToken)
 		if err != nil {
@@ -248,8 +260,7 @@ func handleOrders(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		// Get JWT token from Authorization header
-		authHeader := r.Header.Get("Authorization")
-		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+		jwtToken := extractJWTToken(r)
 		
 		if err := dbService.putOrder(order, jwtToken); err != nil {
 			log.Printf("ERROR: Failed to save order for tenant %s: %v", tenantID, err)
@@ -311,8 +322,7 @@ func handleOrderByID(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		// Get JWT token from Authorization header
-		authHeader := r.Header.Get("Authorization")
-		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+		jwtToken := extractJWTToken(r)
 		
 		order, err := dbService.getOrder(tenantID, orderID, jwtToken)
 		if err != nil {

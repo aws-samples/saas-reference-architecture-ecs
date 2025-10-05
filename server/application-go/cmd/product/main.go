@@ -141,6 +141,19 @@ func generateID() string {
 	return strconv.FormatInt(time.Now().UnixNano(), 10)
 }
 
+// extractJWTToken safely extracts JWT token from Authorization header
+func extractJWTToken(r *http.Request) string {
+	const bearerPrefix = "Bearer "
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return ""
+	}
+	if !strings.HasPrefix(authHeader, bearerPrefix) {
+		return ""
+	}
+	return strings.TrimPrefix(authHeader, bearerPrefix)
+}
+
 func main() {
 	if err := initDynamoDB(); err != nil {
 		log.Printf("CRITICAL: Failed to initialize DynamoDB: %v", err)
@@ -187,8 +200,7 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 		if dbService != nil {
 			var err error
 			// Get JWT token from Authorization header
-			authHeader := r.Header.Get("Authorization")
-			jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+			jwtToken := extractJWTToken(r)
 			
 			productList, err = dbService.getProducts(tenantID, jwtToken)
 			if err != nil {
@@ -229,8 +241,7 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 		
 		if dbService != nil {
 			// Get JWT token from Authorization header
-			authHeader := r.Header.Get("Authorization")
-			jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+			jwtToken := extractJWTToken(r)
 			
 			if err := dbService.putProduct(product, jwtToken); err != nil {
 				log.Printf("Error saving product: %v", err)
@@ -276,8 +287,7 @@ func handleProductByID(w http.ResponseWriter, r *http.Request) {
 		if dbService != nil {
 			var err error
 			// Get JWT token from Authorization header
-			authHeader := r.Header.Get("Authorization")
-			jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+			jwtToken := extractJWTToken(r)
 			
 			product, err = dbService.getProduct(tenantID, productID, jwtToken)
 			if err != nil {
@@ -300,8 +310,7 @@ func handleProductByID(w http.ResponseWriter, r *http.Request) {
 	case "PUT":
 		// Update product
 		// Get JWT token from Authorization header
-		authHeader := r.Header.Get("Authorization")
-		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+		jwtToken := extractJWTToken(r)
 		
 		var product *Product
 		if dbService != nil {
