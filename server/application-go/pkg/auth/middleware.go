@@ -18,7 +18,7 @@ type Claims struct {
 
 // Extract claims from JWT token without validation (for demo purposes)
 func ValidateJWT(tokenString string) (*Claims, error) {
-	log.Printf("Validating JWT token: %s...", tokenString[:min(50, len(tokenString))])
+	log.Printf("Validating JWT token: [REDACTED]")
 	
 	// Split JWT token (header.payload.signature)
 	parts := strings.Split(tokenString, ".")
@@ -28,7 +28,7 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 	}
 
 	// Decode payload (base64)
-	log.Printf("Decoding JWT payload part: %s", parts[1])
+	log.Printf("Decoding JWT payload part: [REDACTED]")
 	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		log.Printf("Error decoding JWT payload with RawURL: %v", err)
@@ -40,7 +40,7 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 		}
 	}
 
-	log.Printf("Decoded JWT payload: %s", string(payload))
+	log.Printf("Decoded JWT payload: [REDACTED]")
 
 	// Parse claims
 	var rawClaims map[string]interface{}
@@ -49,7 +49,7 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 		return nil, fmt.Errorf("failed to parse JWT claims: %v", err)
 	}
 
-	log.Printf("Raw JWT claims: %+v", rawClaims)
+	log.Printf("Raw JWT claims: [REDACTED]")
 
 	// Extract specific fields
 	claims := &Claims{}
@@ -82,7 +82,7 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 		claims.Username = "unknown-user" // default
 	}
 
-	log.Printf("SUCCESS: Extracted claims - TenantID: %s, Email: %s, UserRole: %s, Username: %s", claims.TenantID, claims.Email, claims.UserRole, claims.Username)
+	log.Printf("SUCCESS: Extracted claims - TenantID: %s, Email: [REDACTED], UserRole: %s, Username: [REDACTED]", claims.TenantID, claims.UserRole)
 	return claims, nil
 }
 
