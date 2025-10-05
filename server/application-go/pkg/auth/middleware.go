@@ -82,7 +82,7 @@ func ValidateJWT(tokenString string) (*Claims, error) {
 		claims.Username = "unknown-user" // default
 	}
 
-	log.Printf("SUCCESS: Extracted claims - TenantID: [REDACTED], Email: [REDACTED], UserRole: %s, Username: [REDACTED]", claims.UserRole)
+	log.Printf("SUCCESS: Extracted claims - TenantID: [REDACTED], Email: [REDACTED], UserRole: [REDACTED], Username: [REDACTED]")
 	return claims, nil
 }
 
