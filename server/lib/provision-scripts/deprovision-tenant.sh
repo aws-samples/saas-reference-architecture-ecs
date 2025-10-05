@@ -26,10 +26,10 @@ export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 # Define variables
 STACK_NAME="tenant-template-stack-basic"
 USER_POOL_OUTPUT_PARAM_NAME="TenantUserpoolId"
-PRODUCT_TABLE_OUTPUT_PARAM_NAME="productsTableName"
-ORDER_TABLE_OUTPUT_PARAM_NAME="ordersTableName"
-PRODUCT_TABLE_NAME="product-table-name-basic"
-ORDER_TABLE_NAME="order-table-name-basic"
+PRODUCT_TABLE_OUTPUT_PARAM_NAME="productsTableOutputParam"
+ORDER_TABLE_OUTPUT_PARAM_NAME="ordersTableOutputParam"
+PRODUCT_TABLE_NAME="product-table-basic"
+ORDER_TABLE_NAME="order-table-basic"
 # Delete tenant items 
 delete_items_if_exists() {
   TABLE_NAME="$1"

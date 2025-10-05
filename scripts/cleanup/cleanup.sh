@@ -123,20 +123,22 @@ fi
 echo "$(date) cleaning up tenants..."
 STACK_STATUS_FILTER="CREATE_COMPLETE ROLLBACK_COMPLETE UPDATE_COMPLETE UPDATE_ROLLBACK_COMPLETE IMPORT_COMPLETE IMPORT_ROLLBACK_COMPLETE"
 
-# 단순하게 모든 테넌트 스택 검색 및 삭제
+# Simply search and delete all tenant stacks
 echo "$(date) searching for all tenant stacks..."
-tenant_stacks=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --query 'StackSummaries[?starts_with(StackName, `tenant-template-stack`)].StackName' --output text)
+tenant_stacks=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --query 'StackSummaries[?starts_with(StackName, `tenant-template-stack`)].StackName' --output text 2>/dev/null || echo "")
 
-if [[ -z "$tenant_stacks" ]]; then
+if [[ -z "$tenant_stacks" || "$tenant_stacks" == "None" ]]; then
     echo "$(date) no tenant stacks found."
 else
     echo "$(date) found tenant stacks: $tenant_stacks"
-    for i in $tenant_stacks; do
-        export CDK_PARAM_TENANT_ID=$(echo "$i" | cut -d '-' -f5-)
-        echo "$(date) deleting stack: $i"
-        aws cloudformation delete-stack --stack-name "$i"
-        echo "$(date) waiting for stack delete operation to complete..."
-        aws cloudformation wait stack-delete-complete --stack-name "$i" || echo "$(date) stack delete failed for $i, continuing..."        
+    for stack_name in $tenant_stacks; do
+        if [[ -n "$stack_name" && "$stack_name" != "None" ]]; then
+            export CDK_PARAM_TENANT_ID=$(echo "$stack_name" | cut -d '-' -f5-)
+            echo "$(date) deleting stack: $stack_name"
+            aws cloudformation delete-stack --stack-name "$stack_name"
+            echo "$(date) waiting for stack delete operation to complete..."
+            aws cloudformation wait stack-delete-complete --stack-name "$stack_name" || echo "$(date) stack delete failed for $stack_name, continuing..."
+        fi
     done
 fi
 
@@ -145,36 +147,29 @@ fi
 npx cdk destroy --all --force || echo "$(date) stack destroy failed, continuing..."
 
 echo "$(date) cleaning up user pools..."
-next_token=""
-while true; do
-    if [[ "${next_token}" == "" ]]; then
-        response=$( aws cognito-idp list-user-pools --max-results 1)
-    else
-        # using next-token instead of starting-token. See: https://github.com/aws/aws-cli/issues/7661
-        response=$( aws cognito-idp list-user-pools --max-results 1 --next-token "$next_token")
-    fi
+# Get all user pools at once to avoid pagination issues during deletion
+pool_ids=$(aws cognito-idp list-user-pools --max-results 60 --query 'UserPools[?Name==`SaaSControlPlaneUserPool`].Id' --output text)
 
-    pool_ids=$(aws cognito-idp list-user-pools --max-results 1 --query 'UserPools[?Name==`SaaSControlPlaneUserPool`].Id' --output text)
+if [[ -n "$pool_ids" ]]; then
     for i in $pool_ids; do
-        echo "$(date) deleting user pool with name $i..."
-        echo "getting pool domain..."
-        pool_domain=$(aws cognito-idp describe-user-pool --user-pool-id "$i" --query 'UserPool.Domain' --output text)
-
-        echo "deleting pool domain $pool_domain..."
-        aws cognito-idp delete-user-pool-domain \
-            --user-pool-id "$i" \
-            --domain "$pool_domain"
-
-        echo "deleting pool $i..."
-        aws cognito-idp delete-user-pool --user-pool-id "$i"
+        echo "$(date) deleting user pool with id $i..."
+        
+        # Get pool domain (handle case where domain might not exist)
+        pool_domain=$(aws cognito-idp describe-user-pool --user-pool-id "$i" --query 'UserPool.Domain' --output text 2>/dev/null || echo "null")
+        
+        if [[ "$pool_domain" != "null" && "$pool_domain" != "None" ]]; then
+            echo "$(date) deleting pool domain $pool_domain..."
+            aws cognito-idp delete-user-pool-domain \
+                --user-pool-id "$i" \
+                --domain "$pool_domain" 2>/dev/null || echo "$(date) failed to delete domain, continuing..."
+        fi
+        
+        echo "$(date) deleting pool $i..."
+        aws cognito-idp delete-user-pool --user-pool-id "$i" 2>/dev/null || echo "$(date) failed to delete user pool $i, continuing..."
     done
-
-    next_token=$(aws cognito-idp list-user-pools --max-results 1 --query 'NextToken' --output text 2>/dev/null || echo "null")
-    if [[ "${next_token}" == "null" ]]; then
-        # no more results left. Exit loop...
-        break
-    fi
-done
+else
+    echo "$(date) no SaaSControlPlaneUserPool found"
+fi
 
 
 echo "$(date) removing buckets..."

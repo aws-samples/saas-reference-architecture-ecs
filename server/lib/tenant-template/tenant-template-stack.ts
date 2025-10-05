@@ -281,17 +281,59 @@ export class TenantTemplateStack extends cdk.Stack {
     let policy = JSON.stringify(info.policy);
 
     if (storage) {
-      // Create role for DynamoDB-enabled service
+      // Create main ECS task role first
       const taskRole = new iam.Role(this, `${info.name}-ecsTaskRole`, {
         assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-        inlinePolicies: {
-          EcsContainerInlinePolicy: storage.policyDocument,
-        },
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName(
             "service-role/AmazonEC2ContainerServiceforEC2Role"
           ),
         ],
+      });
+
+      // Create ABAC role with proper Trust Policy from the start
+      const abacRole = new iam.Role(this, `${info.name}-ABACRole`, {
+        assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+        inlinePolicies: {
+          DynamoDBTenantAccess: storage.policyDocument
+        }
+      });
+
+      // Add Task Role to ABAC Role Trust Policy with conditions
+      abacRole.assumeRolePolicy?.addStatements(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          principals: [new iam.ArnPrincipal(taskRole.roleArn)],
+          actions: ["sts:AssumeRole", "sts:TagSession"],
+          conditions: {
+            StringLike: {
+              "aws:RequestTag/tenant": "*"
+            }
+          }
+        })
+      );
+
+      // Add ABAC role assume permission to task role
+      taskRole.addToPolicy(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ["sts:AssumeRole", "sts:TagSession"],
+          resources: [abacRole.roleArn],
+          conditions: {
+            StringLike: {
+              "aws:RequestTag/tenant": "*"
+            }
+          }
+        })
+      );
+
+      // Add environment variables for TokenVendingMachine
+      info.environment = info.environment || {};
+      info.environment.IAM_ROLE_ARN = abacRole.roleArn;
+      info.environment.REQUEST_TAG_KEYS_MAPPING_ATTRIBUTES = '{"tenant":"custom:tenantId"}';
+      info.environment.IDP_DETAILS = JSON.stringify({
+        issuer: identityProvider.identityDetails.details.issuer,
+        audience: identityProvider.identityDetails.details.clientId
       });
 
       // Attach additional policy if exists (e.g., SSM)

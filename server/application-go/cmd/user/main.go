@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"log"
 	"net/http"
 	"os"
+	"saas-ecs-microservices/pkg/auth"
 	"strings"
 	"time"
 
@@ -159,14 +159,6 @@ func (c *CognitoService) CreateUser(ctx context.Context, userDto UserDto, tenant
 	return err
 }
 
-type JWTClaims struct {
-	Sub        string `json:"sub"`
-	Email      string `json:"email"`
-	TenantId   string `json:"custom:tenantId"`
-	UserRole   string `json:"custom:userRole"`
-	Username   string `json:"cognito:username"`
-}
-
 func extractTenantFromToken(authHeader string) (string, string, error) {
 	if authHeader == "" {
 		return "", "", nil // No auth header, return empty
@@ -178,27 +170,14 @@ func extractTenantFromToken(authHeader string) (string, string, error) {
 		return "", "", nil // No Bearer prefix found
 	}
 
-	// Split JWT token (header.payload.signature)
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return "", "", nil // Invalid JWT format
-	}
-
-	// Decode payload (base64)
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	// Use auth package to validate JWT
+	claims, err := auth.ValidateJWT(token)
 	if err != nil {
-		log.Printf("Error decoding JWT payload: %v", err)
+		log.Printf("Error validating JWT: %v", err)
 		return "", "", nil
 	}
 
-	// Parse claims
-	var claims JWTClaims
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		log.Printf("Error parsing JWT claims: %v", err)
-		return "", "", nil
-	}
-
-	return claims.TenantId, claims.Username, nil
+	return claims.TenantID, claims.Username, nil
 }
 
 var cognitoService *CognitoService
@@ -220,8 +199,8 @@ func main() {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
-	mux.HandleFunc("/users", handleUsers)
-	mux.HandleFunc("/users/", handleUserByID)
+	mux.HandleFunc("/users", auth.JWTMiddleware(handleUsers))
+	mux.HandleFunc("/users/", auth.JWTMiddleware(handleUserByID))
 
 	port := getEnvOrDefault("PORT", "3010")
 	log.Printf("User service starting on port %s", port)
@@ -234,23 +213,15 @@ func main() {
 func handleUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// Extract tenant info from JWT token
-	tenantID, currentUser, err := extractTenantFromToken(r.Header.Get("Authorization"))
-	if err != nil {
-		log.Printf("Error extracting tenant from token: %v", err)
-		http.Error(w, `{"error":"Invalid authorization token"}`, http.StatusUnauthorized)
-		return
-	}
-
-	// Fallback to demo-tenant if no token provided (for testing)
-	if tenantID == "" {
-		tenantID = "demo-tenant"
-		log.Printf("No tenant ID found in token, using demo-tenant")
-	}
+	// Get tenant info from JWT middleware
+	tenantID := auth.GetTenantFromRequest(r)
+	user := auth.GetUserFromRequest(r)
+	
+	log.Printf("Request from tenant: %s, user: %s", tenantID, user.Email)
 
 	switch r.Method {
 	case "GET":
-		log.Printf("Getting All Users for Tenant: %s (requested by: %s)", tenantID, currentUser)
+		log.Printf("Getting All Users for Tenant: %s (requested by: %s)", tenantID, user.Email)
 
 		var users []User
 		if cognitoService != nil {

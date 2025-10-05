@@ -28,6 +28,9 @@ export interface ContainerInfo {
     proxy_endpoint?: string,
     cluster_endpoint_resource?:string
     namespace?: string,
+    IAM_ROLE_ARN?: string,
+    REQUEST_TAG_KEYS_MAPPING_ATTRIBUTES?: string,
+    IDP_DETAILS?: string,
   },
   healthCheck?: {
     command: string[],

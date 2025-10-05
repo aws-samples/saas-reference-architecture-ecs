@@ -39,25 +39,38 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
       const tenantName = sessionStorage.getItem('app_tenantName');
       if (tenantName) {
         let tenantTier: string | null = null;
+        let tenantId: string = createTenantId(tenantName); // fallback
         
         try {
           // Get current user from Amplify Auth
           const user = await Auth.currentAuthenticatedUser();
           console.log('TenantContext - Current user:', user);
           
-          if (user && user.attributes && user.attributes['custom:tenantTier']) {
-            tenantTier = user.attributes['custom:tenantTier'];
-            console.log('TenantContext - Found tier from Cognito:', tenantTier);
+          if (user && user.attributes) {
+            if (user.attributes['custom:tenantTier']) {
+              tenantTier = user.attributes['custom:tenantTier'];
+              console.log('TenantContext - Found tier from Cognito:', tenantTier);
+            }
+            
+            // Extract tenant ID from JWT token
+            const session = await Auth.currentSession();
+            const idToken = session.getIdToken();
+            const payload = idToken.decodePayload();
+            
+            if (payload['custom:tenantId']) {
+              tenantId = payload['custom:tenantId'];
+              console.log('TenantContext - Found tenant ID from JWT:', tenantId);
+            }
           }
         } catch (authError) {
           console.log('Could not get authenticated user:', authError);
         }
         
-        console.log('TenantContext - Loading tenant:', tenantName, 'tier:', tenantTier);
+        console.log('TenantContext - Loading tenant:', tenantName, 'ID:', tenantId, 'tier:', tenantTier);
         
-        // Create tenant object with tier from Cognito
+        // Create tenant object with actual tenant ID from JWT
         const storedTenant: Tenant = {
-          id: createTenantId(tenantName),
+          id: tenantId,
           name: tenantName,
           ...(tenantTier && { tier: tenantTier }),
         };
@@ -109,6 +122,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
       
       console.log('TenantContext - Creating new tenant:', tenantName);
       
+      // Initially use fallback ID, will be updated after authentication
       const newTenant: Tenant = {
         id: createTenantId(tenantName),
         name: tenantName,

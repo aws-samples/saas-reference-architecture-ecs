@@ -14,7 +14,7 @@ class AuthConfigurationService {
 
   async setTenantConfig(tenantName: string): Promise<ConfigParams> {
     try {
-      const apiUrl = environment.apiUrl; // environment.ts에서 직접 가져오기
+      const apiUrl = environment.apiUrl; // Get directly from environment.ts
       const url = `${apiUrl}/tenant-config/${tenantName}`;
       
       console.log('Calling tenant config API:', url);

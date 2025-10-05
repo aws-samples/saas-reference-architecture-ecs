@@ -12,7 +12,6 @@ import {
   QueryCommand
 } from '@aws-sdk/lib-dynamodb';
 import { ClientFactoryService } from '@app/client-factory';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 
 @Injectable()
 export class OrdersService {
@@ -20,7 +19,7 @@ export class OrdersService {
   // tableName: string = process.env.ORDER_TABLE_NAME;
   tableName: string = process.env.TABLE_NAME;
 
-  async create (createOrderDto: CreateOrderDto, tenantId: string) {
+  async create (createOrderDto: CreateOrderDto, tenantId: string, jwtToken: string) {
     const newOrder = {
       orderName: createOrderDto.orderName,
       orderId: uuid(),
@@ -29,7 +28,7 @@ export class OrdersService {
     };
     console.log('Creating order:', newOrder);
     try {
-      const client = await this.fetchClient(tenantId);
+      const client = await this.fetchClient(tenantId, jwtToken);
       const cmd = new PutCommand({
         Item: newOrder,
         TableName: this.tableName
@@ -47,10 +46,10 @@ export class OrdersService {
     }
   }
 
-  async findAll (tenantId: string) {
+  async findAll (tenantId: string, jwtToken: string) {
     console.log('Get all orders:', tenantId, 'Table Name:', this.tableName);
     try {
-      const client = await this.fetchClient(tenantId);
+      const client = await this.fetchClient(tenantId, jwtToken);
       const cmd = new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'tenantId=:t_id',
@@ -80,10 +79,10 @@ export class OrdersService {
     }
   }
 
-  async findOne (id: string, tenantId: string) {
+  async findOne (id: string, tenantId: string, jwtToken: string) {
     console.log('Find order:', id, 'TenantId:OrderId', tenantId);
     try {
-      const client = await this.fetchClient(tenantId);
+      const client = await this.fetchClient(tenantId, jwtToken);
       const cmd = new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'tenantId=:t_id AND orderId=:o_id',
@@ -114,7 +113,7 @@ export class OrdersService {
     }
   }
 
-  async fetchClient (tenantId: string) {
-    return await this.clientFac.getClient(tenantId);
+  async fetchClient (tenantId: string, jwtToken: string) {
+    return await this.clientFac.getClient(tenantId, jwtToken);
   }
 }

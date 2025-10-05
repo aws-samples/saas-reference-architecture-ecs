@@ -3,16 +3,16 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"saas-ecs-microservices/pkg/auth"
 	"strconv"
 	"strings"
 	"time"
-	"saas-ecs-microservices/pkg/auth"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -42,36 +42,43 @@ type UpdateProductDto struct {
 }
 
 type DynamoDBService struct {
-	client    *dynamodb.Client
-	tableName string
+	clientFactory *auth.ClientFactory
+	tableName     string
 }
 
 var dbService *DynamoDBService
 
 func initDynamoDB() error {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return err
-	}
-
-	tableName := getEnvOrDefault("TABLE_NAME", "product-table-name-basic")
+	tableName := getEnvOrDefault("TABLE_NAME", "product-table-basic")
 	dbService = &DynamoDBService{
-		client:    dynamodb.NewFromConfig(cfg),
-		tableName: tableName,
+		clientFactory: auth.NewClientFactory(),
+		tableName:     tableName,
 	}
 	return nil
 }
 
-func (db *DynamoDBService) getProducts(tenantID string) ([]Product, error) {
+func (db *DynamoDBService) getProducts(tenantID, jwtToken string) ([]Product, error) {
+	log.Printf("Getting All Products for Tenant: %s", tenantID)
+	
+	client, err := db.clientFactory.GetDynamoDBClient(tenantID, jwtToken)
+	if err != nil {
+		return nil, err
+	}
+
+	// VULNERABILITY DEMO CODE (commented out for production)
+	// hackedTenantId := "f7b61bd7-23a4-4181-8432-5895ab49af04"
+	// log.Printf("🚨 HACKING: Actually accessing tenant: %s (instead of %s)", hackedTenantId, tenantID)
+
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(db.tableName),
 		KeyConditionExpression: aws.String("tenantId=:t_id"),
 		ExpressionAttributeValues: map[string]types.AttributeValue{
-			":t_id": &types.AttributeValueMemberS{Value: tenantID},
+			":t_id": &types.AttributeValueMemberS{Value: tenantID}, // ✅ Using correct tenant ID
+		 	// ":t_id": &types.AttributeValueMemberS{Value: hackedTenantId}, // 🚨 DEMO: Uncomment for vulnerability test
 		},
 	}
 
-	result, err := db.client.Query(context.TODO(), input)
+	result, err := client.Query(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +88,12 @@ func (db *DynamoDBService) getProducts(tenantID string) ([]Product, error) {
 	return products, err
 }
 
-func (db *DynamoDBService) getProduct(tenantID, productID string) (*Product, error) {
+func (db *DynamoDBService) getProduct(tenantID, productID, jwtToken string) (*Product, error) {
+	client, err := db.clientFactory.GetDynamoDBClient(tenantID, jwtToken)
+	if err != nil {
+		return nil, err
+	}
+
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(db.tableName),
 		KeyConditionExpression: aws.String("tenantId=:t_id AND productId=:p_id"),
@@ -91,7 +103,7 @@ func (db *DynamoDBService) getProduct(tenantID, productID string) (*Product, err
 		},
 	}
 
-	result, err := db.client.Query(context.TODO(), input)
+	result, err := client.Query(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +117,12 @@ func (db *DynamoDBService) getProduct(tenantID, productID string) (*Product, err
 	return &product, err
 }
 
-func (db *DynamoDBService) putProduct(product Product) error {
+func (db *DynamoDBService) putProduct(product Product, jwtToken string) error {
+	client, err := db.clientFactory.GetDynamoDBClient(product.TenantID, jwtToken)
+	if err != nil {
+		return err
+	}
+
 	item, err := attributevalue.MarshalMap(product)
 	if err != nil {
 		return err
@@ -116,12 +133,25 @@ func (db *DynamoDBService) putProduct(product Product) error {
 		Item:      item,
 	}
 
-	_, err = db.client.PutItem(context.TODO(), input)
+	_, err = client.PutItem(context.TODO(), input)
 	return err
 }
 
 func generateID() string {
 	return strconv.FormatInt(time.Now().UnixNano(), 10)
+}
+
+// extractJWTToken safely extracts JWT token from Authorization header
+func extractJWTToken(r *http.Request) string {
+	const bearerPrefix = "Bearer "
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		return ""
+	}
+	if !strings.HasPrefix(authHeader, bearerPrefix) {
+		return ""
+	}
+	return strings.TrimPrefix(authHeader, bearerPrefix)
 }
 
 func main() {
@@ -165,13 +195,19 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		// Get all products for tenant
+		log.Printf("Getting All Products for Tenant: %s", tenantID)
 		var productList []Product
 		if dbService != nil {
 			var err error
-			productList, err = dbService.getProducts(tenantID)
+			// Get JWT token from Authorization header
+			jwtToken := extractJWTToken(r)
+			
+			productList, err = dbService.getProducts(tenantID, jwtToken)
 			if err != nil {
 				log.Printf("Error getting products: %v", err)
-				productList = []Product{}
+				errorMsg := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+				http.Error(w, errorMsg, http.StatusInternalServerError)
+				return
 			}
 		} else {
 			productList = []Product{}
@@ -204,9 +240,13 @@ func handleProducts(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		if dbService != nil {
-			if err := dbService.putProduct(product); err != nil {
+			// Get JWT token from Authorization header
+			jwtToken := extractJWTToken(r)
+			
+			if err := dbService.putProduct(product, jwtToken); err != nil {
 				log.Printf("Error saving product: %v", err)
-				http.Error(w, `{"error":"Failed to save product"}`, http.StatusInternalServerError)
+				errorMsg := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+				http.Error(w, errorMsg, http.StatusInternalServerError)
 				return
 			}
 		}
@@ -246,10 +286,14 @@ func handleProductByID(w http.ResponseWriter, r *http.Request) {
 		var product *Product
 		if dbService != nil {
 			var err error
-			product, err = dbService.getProduct(tenantID, productID)
+			// Get JWT token from Authorization header
+			jwtToken := extractJWTToken(r)
+			
+			product, err = dbService.getProduct(tenantID, productID, jwtToken)
 			if err != nil {
 				log.Printf("Error getting product: %v", err)
-				http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+				errorMsg := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+				http.Error(w, errorMsg, http.StatusInternalServerError)
 				return
 			}
 		}
@@ -265,13 +309,17 @@ func handleProductByID(w http.ResponseWriter, r *http.Request) {
 		
 	case "PUT":
 		// Update product
+		// Get JWT token from Authorization header
+		jwtToken := extractJWTToken(r)
+		
 		var product *Product
 		if dbService != nil {
 			var err error
-			product, err = dbService.getProduct(tenantID, productID)
+			product, err = dbService.getProduct(tenantID, productID, jwtToken)
 			if err != nil {
 				log.Printf("Error getting product: %v", err)
-				http.Error(w, `{"error":"Internal server error"}`, http.StatusInternalServerError)
+				errorMsg := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+				http.Error(w, errorMsg, http.StatusInternalServerError)
 				return
 			}
 		}
@@ -293,9 +341,10 @@ func handleProductByID(w http.ResponseWriter, r *http.Request) {
 		product.Category = updateDto.Category
 		
 		if dbService != nil {
-			if err := dbService.putProduct(*product); err != nil {
+			if err := dbService.putProduct(*product, jwtToken); err != nil {
 				log.Printf("Error updating product: %v", err)
-				http.Error(w, `{"error":"Failed to update product"}`, http.StatusInternalServerError)
+				errorMsg := fmt.Sprintf(`{"error":"%s"}`, err.Error())
+				http.Error(w, errorMsg, http.StatusInternalServerError)
 				return
 			}
 		}

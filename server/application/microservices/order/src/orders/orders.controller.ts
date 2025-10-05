@@ -9,7 +9,8 @@ import {
   Body,
   Param,
   UseGuards,
-  SetMetadata
+  SetMetadata,
+  Req
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -22,8 +23,9 @@ export class OrdersController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  async create (@Body() createOrderDto: CreateOrderDto, @TenantCredentials() tenant) {
-    await this.ordersService.create(createOrderDto, tenant.tenantId);
+  async create (@Body() createOrderDto: CreateOrderDto, @TenantCredentials() tenant, @Req() req) {
+    const jwtToken = req.headers.authorization?.replace('Bearer ', '') || '';
+    await this.ordersService.create(createOrderDto, tenant.tenantId, jwtToken);
   }
 
   @Get('/health')
@@ -35,13 +37,15 @@ export class OrdersController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async findAll (@TenantCredentials() tenant) {
-    return await this.ordersService.findAll(tenant?.tenantId);
+  async findAll (@TenantCredentials() tenant, @Req() req) {
+    const jwtToken = req.headers.authorization?.replace('Bearer ', '') || '';
+    return await this.ordersService.findAll(tenant?.tenantId, jwtToken);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  async findOne (@Param('id') id: string, @TenantCredentials() tenant) {
-    return await this.ordersService.findOne(id, tenant?.tenantId);
+  async findOne (@Param('id') id: string, @TenantCredentials() tenant, @Req() req) {
+    const jwtToken = req.headers.authorization?.replace('Bearer ', '') || '';
+    return await this.ordersService.findOne(id, tenant?.tenantId, jwtToken);
   }
 }

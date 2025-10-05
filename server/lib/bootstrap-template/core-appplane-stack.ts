@@ -14,7 +14,7 @@ interface CoreAppPlaneStackProps extends cdk.StackProps {
   eventManager: sbt.IEventManager
   systemAdminEmail: string
   regApiGatewayUrl: string
-  auth: sbt.CognitoAuth // auth 정보 추가
+  auth: sbt.CognitoAuth // Add auth information
   distro: StaticSiteDistro
   appSiteUrl: string
   accessLogsBucket: cdk.aws_s3.Bucket
@@ -119,10 +119,10 @@ export class CoreAppPlaneStack extends cdk.Stack {
         name: 'AppSite',
         assetDirectory: applicationPath,
         production: true,
-        clientId: props.auth.userClientId, // auth 정보 추가
-        issuer: props.auth.tokenEndpoint, // auth 정보 추가
+        clientId: props.auth.userClientId, // Add auth information
+        issuer: props.auth.tokenEndpoint, // Add auth information
         apiUrl: props.regApiGatewayUrl,
-        wellKnownEndpointUrl: props.auth.wellKnownEndpointUrl, // auth 정보 추가
+        wellKnownEndpointUrl: props.auth.wellKnownEndpointUrl, // Add auth information
         distribution: props.distro.cloudfrontDistribution,
         appBucket: props.distro.siteBucket,
         accessLogsBucket: props.accessLogsBucket,
@@ -139,7 +139,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
       value: props.appSiteUrl
     });
 
-    // CDK Nag 체크 (환경변수로 제어)
+    // CDK Nag check (controlled by environment variable)
     if (process.env.CDK_NAG_ENABLED === 'true') {
       new CoreAppPlaneNag(this, 'CoreAppPlaneNag');
     }
