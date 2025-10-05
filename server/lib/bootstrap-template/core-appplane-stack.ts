@@ -139,7 +139,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
       value: props.appSiteUrl
     });
 
-    // CDK Nag 체크 (환경변수로 제어)
+    // CDK Nag check (controlled by environment variable)
     if (process.env.CDK_NAG_ENABLED === 'true') {
       new CoreAppPlaneNag(this, 'CoreAppPlaneNag');
     }

@@ -6,13 +6,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"saas-ecs-microservices/pkg/auth"
 	"strconv"
 	"strings"
 	"time"
-	"saas-ecs-microservices/pkg/auth"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -37,27 +36,27 @@ type CreateOrderDto struct {
 }
 
 type DynamoDBService struct {
-	client    *dynamodb.Client
-	tableName string
+	clientFactory *auth.ClientFactory
+	tableName     string
 }
 
 var dbService *DynamoDBService
 
 func initDynamoDB() error {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
-	if err != nil {
-		return err
-	}
-
-	tableName := getEnvOrDefault("TABLE_NAME", "order-table-name-basic")
+	tableName := getEnvOrDefault("TABLE_NAME", "order-table-basic")
 	dbService = &DynamoDBService{
-		client:    dynamodb.NewFromConfig(cfg),
-		tableName: tableName,
+		clientFactory: auth.NewClientFactory(),
+		tableName:     tableName,
 	}
 	return nil
 }
 
-func (db *DynamoDBService) getOrders(tenantID string) ([]Order, error) {
+func (db *DynamoDBService) getOrders(tenantID, jwtToken string) ([]Order, error) {
+	client, err := db.clientFactory.GetDynamoDBClient(tenantID, jwtToken)
+	if err != nil {
+		return nil, err
+	}
+
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(db.tableName),
 		KeyConditionExpression: aws.String("tenantId=:t_id"),
@@ -66,7 +65,7 @@ func (db *DynamoDBService) getOrders(tenantID string) ([]Order, error) {
 		},
 	}
 
-	result, err := db.client.Query(context.TODO(), input)
+	result, err := client.Query(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +75,12 @@ func (db *DynamoDBService) getOrders(tenantID string) ([]Order, error) {
 	return orders, err
 }
 
-func (db *DynamoDBService) getOrder(tenantID, orderID string) (*Order, error) {
+func (db *DynamoDBService) getOrder(tenantID, orderID, jwtToken string) (*Order, error) {
+	client, err := db.clientFactory.GetDynamoDBClient(tenantID, jwtToken)
+	if err != nil {
+		return nil, err
+	}
+
 	input := &dynamodb.QueryInput{
 		TableName:              aws.String(db.tableName),
 		KeyConditionExpression: aws.String("tenantId=:t_id AND orderId=:o_id"),
@@ -86,7 +90,7 @@ func (db *DynamoDBService) getOrder(tenantID, orderID string) (*Order, error) {
 		},
 	}
 
-	result, err := db.client.Query(context.TODO(), input)
+	result, err := client.Query(context.TODO(), input)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +104,12 @@ func (db *DynamoDBService) getOrder(tenantID, orderID string) (*Order, error) {
 	return &order, err
 }
 
-func (db *DynamoDBService) putOrder(order Order) error {
+func (db *DynamoDBService) putOrder(order Order, jwtToken string) error {
+	client, err := db.clientFactory.GetDynamoDBClient(order.TenantID, jwtToken)
+	if err != nil {
+		return err
+	}
+
 	item, err := attributevalue.MarshalMap(order)
 	if err != nil {
 		return err
@@ -111,7 +120,7 @@ func (db *DynamoDBService) putOrder(order Order) error {
 		Item:      item,
 	}
 
-	_, err = db.client.PutItem(context.TODO(), input)
+	_, err = client.PutItem(context.TODO(), input)
 	return err
 }
 
@@ -170,7 +179,11 @@ func handleOrders(w http.ResponseWriter, r *http.Request) {
 		}
 		
 		var err error
-		orderList, err = dbService.getOrders(tenantID)
+		// Get JWT token from Authorization header
+		authHeader := r.Header.Get("Authorization")
+		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+		
+		orderList, err = dbService.getOrders(tenantID, jwtToken)
 		if err != nil {
 			log.Printf("ERROR: Failed to get orders for tenant %s: %v", tenantID, err)
 			http.Error(w, `{"error":"Failed to retrieve orders"}`, http.StatusInternalServerError)
@@ -234,7 +247,11 @@ func handleOrders(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		
-		if err := dbService.putOrder(order); err != nil {
+		// Get JWT token from Authorization header
+		authHeader := r.Header.Get("Authorization")
+		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+		
+		if err := dbService.putOrder(order, jwtToken); err != nil {
 			log.Printf("ERROR: Failed to save order for tenant %s: %v", tenantID, err)
 			http.Error(w, `{"error":"Failed to save order"}`, http.StatusInternalServerError)
 			return
@@ -293,7 +310,11 @@ func handleOrderByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		
-		order, err := dbService.getOrder(tenantID, orderID)
+		// Get JWT token from Authorization header
+		authHeader := r.Header.Get("Authorization")
+		jwtToken := strings.TrimPrefix(authHeader, "Bearer ")
+		
+		order, err := dbService.getOrder(tenantID, orderID, jwtToken)
 		if err != nil {
 			log.Printf("ERROR: Failed to get order %s for tenant %s: %v", orderID, tenantID, err)
 			http.Error(w, `{"error":"Failed to retrieve order"}`, http.StatusInternalServerError)

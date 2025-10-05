@@ -155,13 +155,13 @@ EOF`,
       ],
     });
 
-    // Deploy Stage - 올바른 S3 버킷에 배포
+    // Deploy Stage - Deploy to correct S3 bucket
     pipeline.addStage({
       stageName: "Deploy",
       actions: [
         new codepipeline_actions.S3DeployAction({
           actionName: "CopyToS3",
-          bucket: props.appBucket, // CloudFront와 연결된 올바른 버킷
+          bucket: props.appBucket, // Correct bucket connected to CloudFront
           input: buildOutput,
           cacheControl: [
             codepipeline_actions.CacheControl.fromString("no-store"),

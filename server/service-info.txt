@@ -55,7 +55,7 @@
           "protocol": "ecs.Protocol.TCP"
         }],
         "environment" : {
-          "TABLE_NAME": "ORDER_TABLE_NAME"
+          "TABLE_NAME": "ORDER_TABLE"
         }
       },
       {
@@ -75,7 +75,7 @@
           "protocol": "ecs.Protocol.TCP"
         }],
         "environment" : {
-          "TABLE_NAME": "PRODUCT_TABLE_NAME"
+          "TABLE_NAME": "PRODUCT_TABLE"
         }
       },
       {

@@ -27,7 +27,6 @@ export class ClientFactoryService {
           accessKeyId: creds.AccessKeyId,
           secretAccessKey: creds.SecretAccessKey,
           sessionToken: creds.SessionToken
-          // Omit expiration to avoid TypeError
         }
       })
     );

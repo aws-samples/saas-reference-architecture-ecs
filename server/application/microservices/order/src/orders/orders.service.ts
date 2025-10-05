@@ -12,7 +12,6 @@ import {
   QueryCommand
 } from '@aws-sdk/lib-dynamodb';
 import { ClientFactoryService } from '@app/client-factory';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 
 @Injectable()
 export class OrdersService {
