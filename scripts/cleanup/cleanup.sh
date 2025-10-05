@@ -125,18 +125,20 @@ STACK_STATUS_FILTER="CREATE_COMPLETE ROLLBACK_COMPLETE UPDATE_COMPLETE UPDATE_RO
 
 # Simply search and delete all tenant stacks
 echo "$(date) searching for all tenant stacks..."
-tenant_stacks=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --query 'StackSummaries[?starts_with(StackName, `tenant-template-stack`)].StackName' --output text)
+tenant_stacks=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --query 'StackSummaries[?starts_with(StackName, `tenant-template-stack`)].StackName' --output text 2>/dev/null || echo "")
 
-if [[ -z "$tenant_stacks" ]]; then
+if [[ -z "$tenant_stacks" || "$tenant_stacks" == "None" ]]; then
     echo "$(date) no tenant stacks found."
 else
     echo "$(date) found tenant stacks: $tenant_stacks"
-    for i in $tenant_stacks; do
-        export CDK_PARAM_TENANT_ID=$(echo "$i" | cut -d '-' -f5-)
-        echo "$(date) deleting stack: $i"
-        aws cloudformation delete-stack --stack-name "$i"
-        echo "$(date) waiting for stack delete operation to complete..."
-        aws cloudformation wait stack-delete-complete --stack-name "$i" || echo "$(date) stack delete failed for $i, continuing..."        
+    for stack_name in $tenant_stacks; do
+        if [[ -n "$stack_name" && "$stack_name" != "None" ]]; then
+            export CDK_PARAM_TENANT_ID=$(echo "$stack_name" | cut -d '-' -f5-)
+            echo "$(date) deleting stack: $stack_name"
+            aws cloudformation delete-stack --stack-name "$stack_name"
+            echo "$(date) waiting for stack delete operation to complete..."
+            aws cloudformation wait stack-delete-complete --stack-name "$stack_name" || echo "$(date) stack delete failed for $stack_name, continuing..."
+        fi
     done
 fi
 
