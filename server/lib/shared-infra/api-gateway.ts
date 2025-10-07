@@ -32,6 +32,10 @@ export class ApiGateway extends Construct {
         new cdk.aws_iam.PolicyStatement({
           actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
           resources: ['*']
+        }),
+        new cdk.aws_iam.PolicyStatement({
+          actions: ['apigateway:GET'],
+          resources: ['*']
         })
       ]
     });
@@ -98,7 +102,6 @@ export class ApiGateway extends Construct {
       restApiName: 'TenantAPI',
       description: 'API imported from a Swagger/OpenAPI definition with placeholders replaced',
       apiDefinition: apigateway.ApiDefinition.fromInline(JSON.parse(updateData)),
-    
       cloudWatchRole: true,
       deployOptions: {
         accessLogDestination: new apigateway.LogGroupLogDestination(logGroup),
@@ -111,6 +114,10 @@ export class ApiGateway extends Construct {
         stageName: props.stageName,
       },
     });
+
+    // Set API Key Source Type using L1 construct
+    const cfnRestApi = this.restApi.node.defaultChild as apigateway.CfnRestApi;
+    cfnRestApi.apiKeySourceType = 'AUTHORIZER';
 
     authorizerFunction.addPermission('AuthorizerPermission', {
       principal: new cdk.aws_iam.ServicePrincipal('apigateway.amazonaws.com'),

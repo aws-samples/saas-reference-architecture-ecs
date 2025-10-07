@@ -17,12 +17,35 @@ import idp_object_factory
 
 region = os.environ['AWS_REGION']
 sts_client = boto3.client("sts", region_name=region)
+apigateway_client = boto3.client("apigateway", region_name=region)
 
-# api keys for different tiers
-# for a basic(pooled) deployment
-premium_tier_api_key = os.environ.get('PREMIUM_TIER_API_KEY', '')
-advanced_tier_api_key = os.environ.get('ADVANCED_TIER_API_KEY', '')
-basic_tier_api_key = os.environ.get('BASIC_TIER_API_KEY', '')
+# api key IDs for different tiers
+premium_tier_api_key_id = os.environ.get('PREMIUM_TIER_API_KEY', '')
+advanced_tier_api_key_id = os.environ.get('ADVANCED_TIER_API_KEY', '')
+basic_tier_api_key_id = os.environ.get('BASIC_TIER_API_KEY', '')
+
+# Cache for API key values to avoid repeated API calls
+api_key_cache = {}
+
+def get_api_key_value(api_key_id):
+    """Get API key value from API key ID, with caching"""
+    if not api_key_id:
+        return ''
+    
+    if api_key_id in api_key_cache:
+        return api_key_cache[api_key_id]
+    
+    try:
+        response = apigateway_client.get_api_key(
+            apiKey=api_key_id,
+            includeValue=True
+        )
+        api_key_value = response.get('value', '')
+        api_key_cache[api_key_id] = api_key_value
+        return api_key_value
+    except Exception as e:
+        logger.error(f"Failed to get API key value for ID {api_key_id}: {str(e)}")
+        return ''
 
 authorizer_access_role = os.environ['AUTHORIZER_ACCESS_ROLE']
 
@@ -55,11 +78,11 @@ def lambda_handler(event, context):
         tenant_tier = response["custom:tenantTier"]
 
     if (tenant_tier.upper() == utils.TenantTier.PREMIUM.value.upper()):
-        api_key = premium_tier_api_key
+        api_key = get_api_key_value(premium_tier_api_key_id)
     elif (tenant_tier.upper() == utils.TenantTier.ADVANCED.value.upper()):
-        api_key = advanced_tier_api_key
+        api_key = get_api_key_value(advanced_tier_api_key_id)
     elif (tenant_tier.upper() == utils.TenantTier.BASIC.value.upper()):
-        api_key = basic_tier_api_key
+        api_key = get_api_key_value(basic_tier_api_key_id)
 
     logger.info("Method ARN: " + event['methodArn'])    
 

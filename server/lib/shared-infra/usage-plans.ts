@@ -1,13 +1,12 @@
 import { Construct } from 'constructs';
-import { ApiKey, Period, type RestApi, type UsagePlan } from 'aws-cdk-lib/aws-apigateway';
+import { ApiKey, Period, type RestApi, type SpecRestApi, type UsagePlan } from 'aws-cdk-lib/aws-apigateway';
 import { addTemplateTag } from '../utilities/helper-functions';
 
 interface UsagePlansProps {
-  apiGateway: RestApi
+  apiGateway: SpecRestApi
   apiKeyIdBasicTier: string
   apiKeyIdAdvancedTier: string
   apiKeyIdPremiumTier: string
-  isPooledDeploy: boolean
 }
 
 export class UsagePlans extends Construct {
@@ -24,8 +23,8 @@ export class UsagePlans extends Construct {
         period: Period.DAY
       },
       throttle: {
-        burstLimit: 50,
-        rateLimit: 50
+        burstLimit: 10,
+        rateLimit: 10
       }
     });
 
@@ -39,8 +38,8 @@ export class UsagePlans extends Construct {
         period: Period.DAY
       },
       throttle: {
-        burstLimit: 100,
-        rateLimit: 75
+        burstLimit: 15,
+        rateLimit: 15
       }
     });
 
