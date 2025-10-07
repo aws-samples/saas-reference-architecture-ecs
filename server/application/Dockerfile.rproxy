@@ -1,9 +1,9 @@
-FROM public.ecr.aws/nginx/nginx:mainline-alpine AS build
+FROM public.ecr.aws/nginx/nginx:1.27-alpine AS build
 
 COPY ./reverseproxy/index.html /etc/nginx/html/index.html
 COPY ./reverseproxy/nginx.template /etc/nginx/nginx.template 
 
-RUN chmod 644 /etc/nginx/html/index.html /etc/nginx/nginx.template
+RUN apk update && apk upgrade && chmod 644 /etc/nginx/html/index.html /etc/nginx/nginx.template
 
 ENTRYPOINT [ "sh", "-c", "envsubst '${NAMESPACE}' < /etc/nginx/nginx.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'" ]
 

@@ -1,5 +1,6 @@
 FROM node:20-alpine AS build
 WORKDIR /app
+RUN apk update && apk upgrade
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=false
 COPY . .
@@ -7,6 +8,7 @@ RUN yarn build user
 
 FROM node:20-alpine
 WORKDIR /app
+RUN apk update && apk upgrade
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=true && yarn cache clean
 COPY --from=build /app/dist ./dist
