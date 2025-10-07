@@ -72,6 +72,20 @@ const decodeJWT = (token: string): DecodedJWT | null => {
 const AuthInfo: React.FC = () => {
   const { user } = useAuthenticator();
   const { tenant } = useTenant();
+  const [idTooltip, setIdTooltip] = React.useState('');
+  const [accessTooltip, setAccessTooltip] = React.useState('');
+
+  const copyIdToken = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setIdTooltip('Copied!!');
+    setTimeout(() => setIdTooltip(''), 2000);
+  };
+
+  const copyAccessToken = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setAccessTooltip('Copied!!');
+    setTimeout(() => setAccessTooltip(''), 2000);
+  };
 
   return (
     <div className="page-container">
@@ -231,9 +245,54 @@ const AuthInfo: React.FC = () => {
                 {user?.getSignInUserSession()?.getIdToken()?.getJwtToken() ? (
                   <>
                     <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Raw Token
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Raw Token
+                        </Typography>
+                        <Box sx={{ position: 'relative' }}>
+                          <Box 
+                            sx={{ 
+                              cursor: 'pointer', 
+                              color: 'primary.main',
+                              fontSize: '1rem',
+                              width: '16px',
+                              height: '16px',
+                              border: '1px solid currentColor',
+                              borderRadius: '2px',
+                              position: 'relative',
+                              '&:hover': { color: 'primary.dark' },
+                              '&::after': {
+                                content: '""',
+                                position: 'absolute',
+                                top: '-2px',
+                                left: '2px',
+                                width: '12px',
+                                height: '12px',
+                                border: '1px solid currentColor',
+                                borderRadius: '2px',
+                                bgcolor: 'background.paper'
+                              }
+                            }}
+                            onClick={() => copyIdToken(user.getSignInUserSession()?.getIdToken()?.getJwtToken() || '')}
+                          />
+                          {idTooltip && (
+                            <Box sx={{
+                              position: 'absolute',
+                              top: '-30px',
+                              right: '0',
+                              bgcolor: 'rgba(0,0,0,0.8)',
+                              color: 'white',
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: 1,
+                              fontSize: '0.75rem',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {idTooltip}
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
                       <Typography 
                         variant="body2" 
                         sx={{ 
@@ -360,9 +419,54 @@ const AuthInfo: React.FC = () => {
                 {user?.getSignInUserSession()?.getAccessToken()?.getJwtToken() ? (
                   <>
                     <Box sx={{ mb: 2 }}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        Raw Token
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Raw Token
+                        </Typography>
+                        <Box sx={{ position: 'relative' }}>
+                          <Box 
+                            sx={{ 
+                              cursor: 'pointer', 
+                              color: 'primary.main',
+                              fontSize: '1rem',
+                              width: '16px',
+                              height: '16px',
+                              border: '1px solid currentColor',
+                              borderRadius: '2px',
+                              position: 'relative',
+                              '&:hover': { color: 'primary.dark' },
+                              '&::after': {
+                                content: '""',
+                                position: 'absolute',
+                                top: '-2px',
+                                left: '2px',
+                                width: '12px',
+                                height: '12px',
+                                border: '1px solid currentColor',
+                                borderRadius: '2px',
+                                bgcolor: 'background.paper'
+                              }
+                            }}
+                            onClick={() => copyAccessToken(user.getSignInUserSession()?.getAccessToken()?.getJwtToken() || '')}
+                          />
+                          {accessTooltip && (
+                            <Box sx={{
+                              position: 'absolute',
+                              top: '-30px',
+                              right: '0',
+                              bgcolor: 'rgba(0,0,0,0.8)',
+                              color: 'white',
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: 1,
+                              fontSize: '0.75rem',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {accessTooltip}
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
                       <Typography 
                         variant="body2" 
                         sx={{ 

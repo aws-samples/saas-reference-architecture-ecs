@@ -27,20 +27,26 @@ fi
 echo "Project root found at: $PROJECT_ROOT"
 
 confirm() {
-    RED='\033[0;31m'
-    BOLD='\033[1m'
-    NC='\033[0m' # No Color
     echo ""
-    echo -e "${RED}${BOLD}=============================================="
+    echo -e "\033[0;31m\033[1m=============================================="
     echo -e " ** WARNING! This ACTION IS IRREVERSIBLE! **"
-    echo -e "==============================================${NC}"
+    echo -e "==============================================\033[0m"
     echo ""
     echo "You are about to delete all SaaS ECS reference Architecture resources."
-    echo "Do you want to continue?" 
-    read -rp "[y/N] " response
+    echo "Do you want to continue?"
+    printf "[y/N] "
+    read response
+    
+    # Remove ALL non-ASCII characters, keeping only English letters
+    response=$(echo "$response" | LC_ALL=C sed 's/[^a-zA-Z]//g')
+    
     case "$response" in
-        [yY][eE][sS]|[yY]) return 0 ;;
-        *) return 1 ;;
+        y|Y|yes|YES)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
     esac
 }
 
@@ -221,15 +227,5 @@ for SERVICE in "${SERVICE_REPOS[@]}"; do
     echo "Repository [$SERVICE] does not exist"
   fi
 done
-
-# Clean up API keys file
-API_KEYS_FILE="$PROJECT_ROOT/scripts/.api-keys.env"
-if [ -f "$API_KEYS_FILE" ]; then
-    echo "$(date) removing API keys file: $API_KEYS_FILE"
-    rm -f "$API_KEYS_FILE"
-    echo "$(date) API keys file removed successfully"
-else
-    echo "$(date) API keys file not found, skipping removal"
-fi
 
 echo "$(date) cleanup completed!"

@@ -12,7 +12,6 @@ import * as sbt from '@cdklabs/sbt-aws';
 
 interface CoreAppPlaneStackProps extends cdk.StackProps {
   eventManager: sbt.IEventManager
-  systemAdminEmail: string
   regApiGatewayUrl: string
   auth: sbt.CognitoAuth // Add auth information
   distro: StaticSiteDistro
@@ -29,7 +28,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
     super(scope, id, props);
     addTemplateTag(this, 'CoreAppPlaneStack');
 
-    const systemAdminEmail = props.systemAdminEmail;
+
 
     const provisioningScriptJobProps : sbt.TenantLifecycleScriptJobProps = {
       permissions: new PolicyDocument({
@@ -57,10 +56,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
         tenantRegistrationData: ['registrationStatus'],
       },
       scriptEnvironmentVariables: {
-        // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
-        // the control plane is also deployed. To ensure the operation does not error out, this value
-        // is provided as an env parameter.
-        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail,
+        // CDK_PARAM_SYSTEM_ADMIN_EMAIL removed - not used in provision-tenant.sh
       },
       eventManager: props.eventManager
     };
@@ -85,10 +81,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
 
       scriptEnvironmentVariables: {
         TENANT_STACK_MAPPING_TABLE: props.tenantMappingTable.tableName,
-        // CDK_PARAM_SYSTEM_ADMIN_EMAIL is required because as part of deploying the bootstrap-template
-        // the control plane is also deployed. To ensure the operation does not error out, this value
-        // is provided as an env parameter.
-        CDK_PARAM_SYSTEM_ADMIN_EMAIL: systemAdminEmail,
+        // CDK_PARAM_SYSTEM_ADMIN_EMAIL removed - not used in deprovision-tenant.sh
       },
       eventManager: props.eventManager
     };

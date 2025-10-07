@@ -16,12 +16,9 @@ import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
 
 import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 import { ApiGateway } from './api-gateway';
+import { UsagePlans } from './usage-plans';
 
 export interface SharedInfraProps extends cdk.StackProps {
-  ApiKeySSMParameterNames: ApiKeySSMParameterNames
-  apiKeyPremiumTierParameter: string
-  apiKeyAdvancedTierParameter: string
-  apiKeyBasicTierParameter: string
   stageName: string
   azCount: number
 }
@@ -43,6 +40,23 @@ export class SharedInfraStack extends cdk.Stack {
   constructor (scope: Construct, id: string, props: SharedInfraProps) {
     super(scope, id);
     addTemplateTag(this, 'SharedInfraStack');
+    
+    // Define API Key SSM Parameter Names internally
+    const apiKeySSMParameterNames = {
+      basic: {
+        keyId: 'apiKeyBasicTierKeyId',
+        value: 'apiKeyBasicTierValue'
+      },
+      advanced: {
+        keyId: 'apiKeyAdvancedTierKeyId',
+        value: 'apiKeyAdvancedTierValue'
+      },
+      premium: {
+        keyId: 'apiKeyPremiumTierKeyId',
+        value: 'apiKeyPremiumTierValue'
+      }
+    };
+    
     const azs = cdk.Fn.getAzs(this.region);
 
     const selectedAzs = Array(props.azCount).fill('').map(() => '');
@@ -143,22 +157,54 @@ export class SharedInfraStack extends cdk.Stack {
       compatibleRuntimes: [Runtime.PYTHON_3_10]
     });
 
-    const basicKey = new TenantApiKey(this, 'BasicTierApiKey', {
-      apiKeyValue: props.apiKeyBasicTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.basic.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.basic.value
+    // Generate API Keys automatically in CDK (Best Practice)
+    const basicKey = new apigateway.ApiKey(this, 'BasicTierApiKey', {
+      description: 'API Key for Basic Tier tenants'
     });
 
-    const advanceKey = new TenantApiKey(this, 'AdvancedTierApiKey', {
-      apiKeyValue: props.apiKeyAdvancedTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.advanced.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.advanced.value
+    const advanceKey = new apigateway.ApiKey(this, 'AdvancedTierApiKey', {
+      description: 'API Key for Advanced Tier tenants'
     });
 
-    const premiumKey = new TenantApiKey(this, 'PremiumTierApiKey', {
-      apiKeyValue: props.apiKeyPremiumTierParameter,
-      ssmParameterApiKeyIdName: props.ApiKeySSMParameterNames.premium.keyId,
-      ssmParameterApiValueName: props.ApiKeySSMParameterNames.premium.value
+    const premiumKey = new apigateway.ApiKey(this, 'PremiumTierApiKey', {
+      description: 'API Key for Premium Tier tenants'
+    });
+
+    // Store API Key values in SSM Parameter Store (Secure)
+    new StringParameter(this, 'BasicApiKeyValue', {
+      parameterName: apiKeySSMParameterNames.basic.value,
+      stringValue: basicKey.keyId,
+      description: 'Basic Tier API Key Value'
+    });
+
+    new StringParameter(this, 'AdvancedApiKeyValue', {
+      parameterName: apiKeySSMParameterNames.advanced.value,
+      stringValue: advanceKey.keyId,
+      description: 'Advanced Tier API Key Value'
+    });
+
+    new StringParameter(this, 'PremiumApiKeyValue', {
+      parameterName: apiKeySSMParameterNames.premium.value,
+      stringValue: premiumKey.keyId,
+      description: 'Premium Tier API Key Value'
+    });
+
+    new StringParameter(this, 'BasicApiKeyId', {
+      parameterName: apiKeySSMParameterNames.basic.keyId,
+      stringValue: basicKey.keyId,
+      description: 'Basic Tier API Key ID'
+    });
+
+    new StringParameter(this, 'AdvancedApiKeyId', {
+      parameterName: apiKeySSMParameterNames.advanced.keyId,
+      stringValue: advanceKey.keyId,
+      description: 'Advanced Tier API Key ID'
+    });
+
+    new StringParameter(this, 'PremiumApiKeyId', {
+      parameterName: apiKeySSMParameterNames.premium.keyId,
+      stringValue: premiumKey.keyId,
+      description: 'Premium Tier API Key ID'
     });
 
     const vpcLink = new apigateway.VpcLink(this, 'ecs-vpc-link', {
@@ -171,16 +217,16 @@ export class SharedInfraStack extends cdk.Stack {
       nlb,
       vpcLink: vpcLink,
       apiKeyBasicTier: {
-        apiKeyId: basicKey.apiKey.keyId,
-        value: basicKey.apiKeyValue
+        apiKeyId: basicKey.keyId,
+        value: basicKey.keyId
       },
       apiKeyAdvancedTier: {
-        apiKeyId: advanceKey.apiKey.keyId,
-        value: advanceKey.apiKeyValue
+        apiKeyId: advanceKey.keyId,
+        value: advanceKey.keyId
       },
       apiKeyPremiumTier: {
-        apiKeyId: premiumKey.apiKey.keyId,
-        value: premiumKey.apiKeyValue
+        apiKeyId: premiumKey.keyId,
+        value: premiumKey.keyId
       }
     });
 
@@ -234,7 +280,13 @@ export class SharedInfraStack extends cdk.Stack {
       }
     });
 
-
+    // Create Usage Plans for API rate limiting
+    new UsagePlans(this, 'UsagePlans', {
+      apiGateway: this.apiGateway.restApi,
+      apiKeyIdBasicTier: basicKey.keyId,
+      apiKeyIdAdvancedTier: advanceKey.keyId,
+      apiKeyIdPremiumTier: premiumKey.keyId
+    });
 
     //**Output */
     new cdk.CfnOutput(this, 'ALBDnsName', {
