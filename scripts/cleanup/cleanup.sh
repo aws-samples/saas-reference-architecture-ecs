@@ -27,6 +27,9 @@ fi
 echo "Project root found at: $PROJECT_ROOT"
 
 confirm() {
+    # Save current terminal settings
+    local old_tty_settings=$(stty -g 2>/dev/null || true)
+    
     echo ""
     echo -e "\033[0;31m\033[1m=============================================="
     echo -e " ** WARNING! This ACTION IS IRREVERSIBLE! **"
@@ -35,13 +38,22 @@ confirm() {
     echo "You are about to delete all SaaS ECS reference Architecture resources."
     echo "Do you want to continue?"
     printf "[y/N] "
-    read response
+    
+    # Restore terminal to sane state
+    stty sane 2>/dev/null || true
+    
+    read -r response
+    
+    # Restore original terminal settings
+    if [ -n "$old_tty_settings" ]; then
+        stty "$old_tty_settings" 2>/dev/null || true
+    fi
     
     # Remove ALL non-ASCII characters, keeping only English letters
-    response=$(echo "$response" | LC_ALL=C sed 's/[^a-zA-Z]//g')
+    response=$(echo "$response" | LC_ALL=C sed 's/[^a-zA-Z]//g' | tr '[:upper:]' '[:lower:]')
     
     case "$response" in
-        y|Y|yes|YES)
+        y|yes)
             return 0
             ;;
         *)
@@ -50,9 +62,11 @@ confirm() {
     esac
 }
 
-if ! confirm; then
-    echo "Cleanup cancelled"
-    exit 1
+if [[ "$SKIP_CONFIRM" != "true" ]]; then
+    if ! confirm; then
+        echo "Cleanup cancelled"
+        exit 1
+    fi
 fi
 
 export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
@@ -74,7 +88,7 @@ sleep 10
 echo "$(date) emptying out buckets..."
 for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*|^shared-infra-stack-*"); do
     echo "$(date) emptying out s3 bucket with name s3://${i}..."
-    aws s3 rm --recursive "s3://${i}"
+    aws s3 rm --recursive "s3://${i}" --only-show-errors 2>/dev/null || aws s3 rm --recursive "s3://${i}" --quiet 2>/dev/null || aws s3 rm --recursive "s3://${i}" 2>/dev/null
 
     if [[ ${i} == *"accesslog"* ]]; then
         aws s3 rb --force "s3://${i}" #delete in stack
@@ -126,6 +140,16 @@ if [ ! -z "$delete_markers" ] && [ "$delete_markers" -gt 0 ]; then
 fi
 
 
+echo "$(date) force deleting all ECS services..."
+for cluster in $(aws ecs list-clusters --query 'clusterArns[*]' --output text --no-cli-pager 2>/dev/null || echo ""); do
+    if [[ -n "$cluster" ]]; then
+        cluster_name=$(basename "$cluster")
+        echo "$(date) deleting all services in cluster: $cluster_name"
+        aws ecs list-services --cluster "$cluster_name" --query 'serviceArns[*]' --output text --no-cli-pager 2>/dev/null | \
+            xargs -r -n1 -P10 -I{} aws ecs delete-service --cluster "$cluster_name" --service {} --force --no-cli-pager 2>/dev/null || true
+    fi
+done
+
 echo "$(date) cleaning up tenants..."
 STACK_STATUS_FILTER="CREATE_COMPLETE ROLLBACK_COMPLETE UPDATE_COMPLETE UPDATE_ROLLBACK_COMPLETE IMPORT_COMPLETE IMPORT_ROLLBACK_COMPLETE"
 
@@ -143,7 +167,14 @@ else
             echo "$(date) deleting stack: $stack_name"
             aws cloudformation delete-stack --stack-name "$stack_name"
             echo "$(date) waiting for stack delete operation to complete..."
-            aws cloudformation wait stack-delete-complete --stack-name "$stack_name" || echo "$(date) stack delete failed for $stack_name, continuing..."
+            aws cloudformation wait stack-delete-complete --stack-name "$stack_name" || {
+                echo "$(date) stack delete failed for $stack_name, retrying after ECS cleanup..."
+                # Force delete ECS services if stack deletion failed
+                cluster_name="prod-$(echo "$stack_name" | cut -d '-' -f5-)"
+                aws ecs list-services --cluster "$cluster_name" --query 'serviceArns[*]' --output text --no-cli-pager 2>/dev/null | xargs -r -n1 -I{} aws ecs delete-service --cluster "$cluster_name" --service {} --force --no-cli-pager 2>/dev/null || true
+                sleep 10
+                aws cloudformation delete-stack --stack-name "$stack_name" 2>/dev/null || true
+            }
         fi
     done
 fi
@@ -181,7 +212,7 @@ fi
 echo "$(date) removing buckets..."
 for i in $(aws s3 ls | awk '{print $3}' | grep -E "^tenant-update-stack-*|^controlplane-stack-*|^core-appplane-*|^saas-reference-architecture-*"); do
     echo "$(date) removing s3 bucket with name s3://${i}..."
-    aws s3 rm --recursive "s3://${i}"
+    aws s3 rm --recursive "s3://${i}" 
     
     # Handle versioned objects and delete markers
     TEMP_FILE_BUCKET=$(mktemp)

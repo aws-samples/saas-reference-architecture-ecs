@@ -10,8 +10,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags='-w -s' -o rproxy ./c
 # Runtime stage
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests and update packages
-RUN apk update && apk --no-cache add ca-certificates
+# Install ca-certificates for HTTPS requests and update packages including libxml2 security fix
+RUN apk update && apk upgrade --no-cache && \
+    apk --no-cache add ca-certificates libxml2>=2.13.9-r0
 
 WORKDIR /root/
 

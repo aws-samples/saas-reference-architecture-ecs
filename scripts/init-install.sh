@@ -83,8 +83,10 @@ else
 fi
 # End Multi Architecture Setting
 
-npx cdk deploy \
-    shared-infra-stack \
-    tenant-template-stack-basic \
-    tenant-template-stack-advanced --require-approval never --concurrency 10 --asset-parallelism true
+# Deploy shared infrastructure first
+npx cdk deploy shared-infra-stack --require-approval never --concurrency 10 --asset-parallelism true
+
+# Deploy tenant stacks sequentially (CDK synthesis requires sequential execution)
+CDK_PARAM_TENANT_ID=basic CDK_PARAM_TIER=basic npx cdk deploy tenant-template-stack-basic --exclusively --require-approval never --concurrency 10 --asset-parallelism true
+CDK_PARAM_TENANT_ID=advanced CDK_PARAM_TIER=advanced CDK_ADV_CLUSTER=INACTIVE npx cdk deploy tenant-template-stack-advanced --exclusively --require-approval never --concurrency 10 --asset-parallelism true
 # 

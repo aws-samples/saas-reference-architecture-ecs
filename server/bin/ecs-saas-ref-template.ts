@@ -102,22 +102,7 @@ const tenantTemplateStack = new TenantTemplateStack(app, `tenant-template-stack-
   env
 });
 
-const advancedTierTempStack = new TenantTemplateStack(app, `tenant-template-stack-advanced`, {
-  tenantId: 'advanced',
-  tenantName: tenantName,
-  stageName: stageName,
-  tenantMappingTable: sharedInfraStack.tenantMappingTable,
-  commitId: commitId,
-  tier: 'advanced',
-  advancedCluster: 'INACTIVE', // Keep INACTIVE for initial deployment
-  appSiteUrl: sharedInfraStack.appSiteUrl,
-  useFederation: useFederation,
-  useEc2: process.env.CDK_PARAM_USE_EC2_ADVANCED === 'true', // Use dedicated setting for Advanced Tier
-  useRProxy: false, // Advanced initial infrastructure does not use rProxy
-  env
-});
 tenantTemplateStack.addDependency(sharedInfraStack);
-advancedTierTempStack.addDependency(sharedInfraStack);
 
 cdk.Tags.of(tenantTemplateStack).add('TenantId', tenantId);
 cdk.Tags.of(tenantTemplateStack).add('TenantName', tenantName);
