@@ -85,14 +85,14 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "Detected macOS - skipping ARM64 emulation setup"
 else
     # Make the script executable
-    chmod +x ../scripts/setup_multiarch.sh
+    chmod +x ../scripts/utils/setup_multiarch.sh
 
     # Run the setup_multiarch.sh script
     echo "Running setup_multiarch.sh to configure ARM64 emulation..."
-    ../scripts/setup_multiarch.sh
+    ../scripts/utils/setup_multiarch.sh
 
     # Create a symlink in /usr/local/bin for global access
-    sudo ln -sf ../scripts/setup_multiarch.sh /usr/local/bin/setup_multiarch
+    sudo ln -sf ../scripts/utils/setup_multiarch.sh /usr/local/bin/setup_multiarch
 
     echo "ARM64 emulation setup complete!"
     echo "You can run 'setup_multiarch' command anytime to refresh the configuration"
