@@ -1,6 +1,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
-RUN apk update && apk upgrade
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache openssl>=3.5.5-r0
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=false
 COPY . .
@@ -8,7 +9,8 @@ RUN yarn build product
 
 FROM node:20-alpine
 WORKDIR /app
-RUN apk update && apk upgrade
+RUN apk update && apk upgrade --no-cache && \
+    apk add --no-cache openssl>=3.5.5-r0
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=true && yarn cache clean
 COPY --from=build /app/dist ./dist
