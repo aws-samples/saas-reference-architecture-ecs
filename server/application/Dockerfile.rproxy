@@ -9,7 +9,8 @@ RUN apk update && apk upgrade --no-cache && \
         openssl>=3.3.6-r0 \
         libpng>=1.6.54-r0 \
         c-ares>=1.34.6-r0 \
-        busybox>=1.37.0-r14 && \
+        busybox>=1.37.0-r14 \
+        expat>=2.7.4-r0 && \
     chmod 644 /etc/nginx/html/index.html /etc/nginx/nginx.template
 
 ENTRYPOINT [ "sh", "-c", "envsubst '${NAMESPACE}' < /etc/nginx/nginx.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'" ]
