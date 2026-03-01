@@ -14,7 +14,7 @@ import {
   SwapHorizOutlined as SwapIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuthenticator } from '@aws-amplify/ui-react';
+import { useAuth } from 'react-oidc-context';
 import { useTenant } from "../../contexts/TenantContext";
 import { useLayout } from './hooks/useLayout';
 import { DRAWER_WIDTH } from './constants';
@@ -25,7 +25,7 @@ import AppHeader from './components/AppHeader';
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut } = useAuthenticator();
+  const auth = useAuth();
   const { setTenant } = useTenant();
   const { mobileOpen, desktopOpen, handleDrawerToggle, handleMobileDrawerToggle } = useLayout();
 
@@ -42,21 +42,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const handleLogout = useCallback(async () => {
     try {
-      // Clear tenant context first
-      setTenant(null);
-      
-      // Clear all sessionStorage
+      const clientId = auth.settings.client_id;
+      const authority = auth.settings.authority;
+      const logoutUri = window.location.origin;
+      const cognitoDomain = `https://${clientId}.auth.${authority.split('cognito-idp.')[1]?.split('.amazonaws')[0]}.amazoncognito.com`;
+
+      // Clear ALL storage first, then set force-login flag, then redirect immediately
+      // Do NOT call setTenant(null) or auth.removeUser() — they trigger React re-renders
+      // which can cause oidc-client-ts to fire signinRedirect before the redirect happens
       sessionStorage.clear();
-      
-      // Sign out from Amplify
-      await signOut();
+      localStorage.clear();
+      sessionStorage.setItem('oidc_force_login', 'true');
+
+      // Redirect immediately — no React state updates before this
+      window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if signOut fails, clear local data
       sessionStorage.clear();
-      setTenant(null);
+      window.location.href = window.location.origin;
     }
-  }, [signOut, setTenant]);
+  }, [auth]);
 
   const bottomMenuItems: MenuItem[] = useMemo(() => [
     { text: "Auth Debug", icon: <DebugIcon />, path: "/auth/info" },
@@ -64,8 +69,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ], [handleChangeTenant]);
 
   const userEmail = String(
-    user?.attributes?.email ||
-    user?.username ||
+    auth.user?.profile?.email ||
+    auth.user?.profile?.preferred_username ||
     "User"
   );
 

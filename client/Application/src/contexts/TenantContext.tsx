@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo, useCallback } from 'react';
-import { Auth, Hub } from 'aws-amplify';
-import { authConfigService } from '../services/authConfigService';
+import { authConfigService, TenantAuthConfig } from '../services/authConfigService';
 import { createTenantId } from '../constants/tenant';
 
 interface Tenant {
@@ -13,7 +12,7 @@ interface TenantContextType {
   tenant: Tenant | null;
   setTenant: (tenant: Tenant | null) => void;
   loading: boolean;
-  setTenantConfig: (tenantName: string) => Promise<string>;
+  setTenantConfig: (tenantName: string) => Promise<TenantAuthConfig>;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -31,84 +30,22 @@ interface TenantProviderProps {
 }
 
 export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
-  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [tenant, setTenantState] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const checkTenant = useCallback(async () => {
-    try {
-      const tenantName = sessionStorage.getItem('app_tenantName');
-      if (tenantName) {
-        let tenantTier: string | null = null;
-        let tenantId: string = createTenantId(tenantName); // fallback
-        
-        try {
-          // Get current user from Amplify Auth
-          const user = await Auth.currentAuthenticatedUser();
-          console.log('TenantContext - Current user:', user);
-          
-          if (user && user.attributes) {
-            if (user.attributes['custom:tenantTier']) {
-              tenantTier = user.attributes['custom:tenantTier'];
-              console.log('TenantContext - Found tier from Cognito:', tenantTier);
-            }
-            
-            // Extract tenant ID from JWT token
-            const session = await Auth.currentSession();
-            const idToken = session.getIdToken();
-            const payload = idToken.decodePayload();
-            
-            if (payload['custom:tenantId']) {
-              tenantId = payload['custom:tenantId'];
-              console.log('TenantContext - Found tenant ID from JWT:', tenantId);
-            }
-          }
-        } catch (authError) {
-          console.log('Could not get authenticated user:', authError);
-        }
-        
-        console.log('TenantContext - Loading tenant:', tenantName, 'ID:', tenantId, 'tier:', tenantTier);
-        
-        // Create tenant object with actual tenant ID from JWT
-        const storedTenant: Tenant = {
-          id: tenantId,
-          name: tenantName,
-          ...(tenantTier && { tier: tenantTier }),
-        };
-        setTenant(storedTenant);
-      }
-    } catch (error) {
-      console.error('Failed to load tenant:', error);
-    } finally {
-      setLoading(false);
+  // Check for existing tenant in sessionStorage on mount
+  useEffect(() => {
+    const tenantName = sessionStorage.getItem('app_tenantName');
+    if (tenantName) {
+      const tenantId = sessionStorage.getItem('app_tenantId') || createTenantId(tenantName);
+      setTenantState({ id: tenantId, name: tenantName });
     }
+    setLoading(false);
   }, []);
 
-  useEffect(() => {
-    // Initial check
-    checkTenant();
-
-    // Listen for auth state changes
-    const authListener = Hub.listen('auth', (data) => {
-      console.log('TenantContext - Auth event:', data.payload.event);
-      
-      if (data.payload.event === 'signIn') {
-        console.log('TenantContext - User signed in, updating tenant info');
-        // Small delay to ensure user attributes are available
-        setTimeout(() => {
-          checkTenant();
-        }, 500);
-      }
-    });
-
-    return () => {
-      Hub.remove('auth', authListener);
-    };
-  }, [checkTenant]);
-
   const handleSetTenant = useCallback((newTenant: Tenant | null) => {
-    setTenant(newTenant);
+    setTenantState(newTenant);
     if (newTenant) {
-      // Store only tenant name in sessionStorage
       sessionStorage.setItem('app_tenantName', newTenant.name);
     } else {
       sessionStorage.removeItem('app_tenantName');
@@ -116,33 +53,20 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ children }) => {
     }
   }, []);
 
-  const setTenantConfig = useCallback(async (tenantName: string): Promise<string> => {
-    try {
-      const configParams = await authConfigService.setTenantConfig(tenantName);
-      
-      console.log('TenantContext - Creating new tenant:', tenantName);
-      
-      // Initially use fallback ID, will be updated after authentication
-      const newTenant: Tenant = {
-        id: createTenantId(tenantName),
-        name: tenantName,
-      };
-      
-      handleSetTenant(newTenant);
-      
-      // Generate Cognito login URL
-      const loginUrl = authConfigService.configureCognitoAuth(configParams);
-      return loginUrl;
-    } catch (error) {
-      throw error;
-    }
+  const setTenantConfig = useCallback(async (tenantName: string): Promise<TenantAuthConfig> => {
+    const config = await authConfigService.setTenantConfig(tenantName);
+    handleSetTenant({
+      id: config.tenantId || createTenantId(tenantName),
+      name: tenantName,
+    });
+    return config;
   }, [handleSetTenant]);
 
   const value = useMemo(() => ({
     tenant,
     setTenant: handleSetTenant,
     loading,
-    setTenantConfig
+    setTenantConfig,
   }), [tenant, handleSetTenant, loading, setTenantConfig]);
 
   return (

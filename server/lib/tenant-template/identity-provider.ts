@@ -4,6 +4,7 @@ import { type IdentityDetails } from '../interfaces/identity-details';
 
 interface IdentityProviderStackProps extends StackProps {
   tenantId: string
+  tenantName: string
   tier: string
   appSiteUrl: string
   useFederation: string
@@ -21,6 +22,10 @@ export class IdentityProvider extends Construct {
       selfSignUpEnabled: props.useFederation.toLowerCase() === 'true',
 
       accountRecovery: aws_cognito.AccountRecovery.EMAIL_ONLY,
+      signInAliases: {
+        email: true,
+        username: false
+      },
       standardAttributes: {
         email: {
           required: true,
@@ -56,11 +61,14 @@ export class IdentityProvider extends Construct {
 
       },
       userInvitation: {
-        emailSubject: 'Your temporary password tenant UI application',
-        emailBody:
-          `Login into tenant UI application at ${props.appSiteUrl} with username {username} and temporary password {####}`,
+        emailSubject: props.tenantName !== 'basic'
+          ? `[${props.tenantName}] Your temporary password`
+          : 'Your temporary password',
+        emailBody: props.tenantName !== 'basic'
+          ? `Welcome to ${props.tenantName}!\n\nLogin at ${props.appSiteUrl}?tenant=${props.tenantName}\n\nUsername:\n{username}\n\nTemporary password:\n{####}\n\nPlease change your password after first login.`
+          : `Welcome!\n\nLogin at ${props.appSiteUrl}\n\nUsername:\n{username}\n\nTemporary password:\n{####}\n\nPlease change your password after first login.`,
         smsMessage:
-          'Login: ${props.appSiteUrl}, tenant: ${tenantName}, username:{username}, temp P.W:{####}',
+          `Tenant: ${props.tenantName}, Username: {username}, Temp PW: {####}`,
       }
     });
 
@@ -94,7 +102,9 @@ export class IdentityProvider extends Construct {
         flows: {
           authorizationCodeGrant: true,
           implicitCodeGrant: true
-        }
+        },
+        callbackUrls: [props.appSiteUrl],
+        logoutUrls: [props.appSiteUrl],
       }
     });
 
@@ -105,5 +115,12 @@ export class IdentityProvider extends Construct {
         appClientId: this.tenantUserPoolClient.userPoolClientId
       }
     };
+
+    // Add Cognito Hosted UI domain (required for OIDC authorization code flow)
+    this.tenantUserPool.addDomain('CognitoDomain', {
+      cognitoDomain: {
+        domainPrefix: this.tenantUserPoolClient.userPoolClientId
+      }
+    });
   }
 }
