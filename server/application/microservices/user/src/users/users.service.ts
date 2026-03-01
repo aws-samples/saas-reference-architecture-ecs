@@ -14,205 +14,166 @@ import {
   AdminUpdateUserAttributesCommand,
   GetGroupCommand,
   CreateGroupCommand,
-  AdminAddUserToGroupCommand
+  AdminAddUserToGroupCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { UserInfo } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
-  tableName: string = process.env.USER_TABLE_NAME;
   cognitoClient: CognitoIdentityProviderClient =
     new CognitoIdentityProviderClient({ region: process.env.AWS_REGION });
 
   userPoolId: string = process.env.COGNITO_USER_POOL_ID;
 
-  async create (userDto: UserDto, tenant: any) {
+  async create(userDto: UserDto, tenantId: string, tenantTier: string, tenantName: string) {
     console.log('Creating user:', userDto);
     try {
-      const command = new AdminCreateUserCommand({
-        UserPoolId: this.userPoolId,
-        Username: userDto.userName,
-        DesiredDeliveryMediums: ['EMAIL'],
-        UserAttributes: [
-          {
-            Name: 'email',
-            Value: userDto.userEmail
-          },
-          {
-            Name: 'email_verified',
-            Value: 'true'
-          },
-          {
-            Name: 'custom:userRole',
-            Value: userDto.userRole
-          },
-          {
-            Name: 'custom:tenantId',
-            Value: tenant.tenantId
-          },
-          {
-            Name: 'custom:tenantTier',
-            Value: tenant.tenantTier
-          }
-        ]
-      });
-      let response = await this.cognitoClient.send(command);
-      const input = {
-        GroupName: tenant.tenantId, // required
-        UserPoolId: this.userPoolId // required
-      };
+      await this.cognitoClient.send(
+        new AdminCreateUserCommand({
+          UserPoolId: this.userPoolId,
+          Username: userDto.userEmail,
+          DesiredDeliveryMediums: ['EMAIL'],
+          UserAttributes: [
+            { Name: 'email', Value: userDto.userEmail },
+            { Name: 'email_verified', Value: 'true' },
+            { Name: 'custom:tenantId', Value: tenantId },
+            { Name: 'custom:userRole', Value: userDto.userRole || 'TenantUser' },
+            { Name: 'custom:tenantTier', Value: tenantTier },
+            { Name: 'custom:tenantName', Value: tenantName },
+          ],
+        })
+      );
+
+      // Ensure tenant group exists
+      const groupInput = { GroupName: tenantId, UserPoolId: this.userPoolId };
       try {
-        response = await this.cognitoClient.send(new GetGroupCommand(input));
-      } catch (error) {
-        response = await this.cognitoClient.send(
+        await this.cognitoClient.send(new GetGroupCommand(groupInput));
+      } catch {
+        await this.cognitoClient.send(
           new CreateGroupCommand({
-            ...input,
-            Description: `${tenant.tenantId}'s group`,
-            Precedence: Number(0)
+            ...groupInput,
+            Description: `${tenantId}'s group`,
+            Precedence: 0,
           })
         );
       }
-      response = await this.cognitoClient.send(
+
+      await this.cognitoClient.send(
         new AdminAddUserToGroupCommand({
-          ...input,
-          Username: userDto.userName
+          ...groupInput,
+          Username: userDto.userEmail,
         })
       );
-      return JSON.stringify(response);
+
+      return { message: 'User created successfully' };
     } catch (error) {
       console.error(error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error
-        },
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  async findAll (tenantId: string) {
+  async findAll(tenantId: string) {
     console.log('Getting All Users for Tenant:', tenantId);
     try {
-      const input = {
-        UserPoolId: this.userPoolId, // required
-        GroupName: tenantId // required
-      };
-      const command = new ListUsersInGroupCommand(input);
-      const response = await this.cognitoClient.send(command);
+      // Ensure tenant group exists before listing
+      try {
+        await this.cognitoClient.send(
+          new GetGroupCommand({ GroupName: tenantId, UserPoolId: this.userPoolId })
+        );
+      } catch {
+        // Group doesn't exist yet — return empty list
+        return [];
+      }
+
+      const response = await this.cognitoClient.send(
+        new ListUsersInGroupCommand({
+          UserPoolId: this.userPoolId,
+          GroupName: tenantId,
+        })
+      );
 
       const users: UserInfo[] = [];
-      for (let i = 0; i < response.Users.length; i++) {
-        const user = {
-          ...response.Users[i],
-          Attributes: response.Users[i].Attributes.reduce(
-            (acc, { Name, Value }) => ({ ...acc, [Name]: Value }),
-            {}
-          )
-        };
+      for (const user of response.Users || []) {
+        const attrs = (user.Attributes || []).reduce(
+          (acc, { Name, Value }) => ({ ...acc, [Name]: Value }),
+          {} as Record<string, string>
+        );
 
         const userInfo = new UserInfo();
-        const attributes = user['Attributes'];
-        userInfo.username = user['Username'];
-        userInfo.email = attributes['email'];
-        userInfo.user_role = attributes['custom:userRole'];
-        userInfo.status = user['UserStatus'];
-        userInfo.enabled = user['Enabled'];
-        userInfo.created = user['UserCreateDate'];
-        userInfo.modified = user['UserLastModifiedDate'];
+        userInfo.username = user.Username;
+        userInfo.email = attrs['email'];
+        userInfo.user_role = attrs['custom:userRole'];
+        userInfo.status = user.UserStatus;
+        userInfo.enabled = user.Enabled;
+        userInfo.created = user.UserCreateDate;
+        userInfo.modified = user.UserLastModifiedDate;
         users.push(userInfo);
       }
       return users;
     } catch (error) {
       console.error(error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error
-        },
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  async findOne (userName: string) {
+  async findOne(userName: string) {
     try {
-      console.log('Getting User: ', userName);
-
-      const input = {
-        UserPoolId: this.userPoolId, // required
-        Username: userName // required
-      };
-      const command = new AdminGetUserCommand(input);
-      console.log('Getting one User for Tenant2');
-      const response = await this.cognitoClient.send(command);
-
-      return JSON.stringify(response);
+      const response = await this.cognitoClient.send(
+        new AdminGetUserCommand({
+          UserPoolId: this.userPoolId,
+          Username: userName,
+        })
+      );
+      return response;
     } catch (error) {
       console.error(error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error
-        },
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  async update (userName: string, updateUserDto: UpdateUserDto) {
+  async update(userName: string, updateUserDto: UpdateUserDto) {
     try {
-      console.log('Updating User: ', userName);
-      const input = {
-        UserPoolId: this.userPoolId, // required
-        Username: userName, // required
-        UserAttributes: [
-          {
-            Name: 'email', // required
-            Value: updateUserDto.userEmail
-          },
-          {
-            Name: 'custom:userRole', // required
-            Value: updateUserDto.userRole
-          }
-        ]
-      };
-      const command = new AdminUpdateUserAttributesCommand(input);
-      const response = await this.cognitoClient.send(command);
-
-      console.log('Update Response:', response);
-      return JSON.stringify(updateUserDto);
+      await this.cognitoClient.send(
+        new AdminUpdateUserAttributesCommand({
+          UserPoolId: this.userPoolId,
+          Username: userName,
+          UserAttributes: [
+            { Name: 'email', Value: updateUserDto.userEmail },
+          ],
+        })
+      );
+      return updateUserDto;
     } catch (error) {
       console.error(error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error
-        },
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  async delete (username: string) {
+  async delete(username: string) {
     try {
-      console.log('Deleting User: ', username);
-
-      const input = {
-        UserPoolId: this.userPoolId, // required
-        Username: username // required
-      };
-      const command = new AdminDeleteUserCommand(input);
-      const response = await this.cognitoClient.send(command);
-
-      return JSON.stringify(response);
+      await this.cognitoClient.send(
+        new AdminDeleteUserCommand({
+          UserPoolId: this.userPoolId,
+          Username: username,
+        })
+      );
+      return { message: 'User deleted successfully' };
     } catch (error) {
       console.error(error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error
-        },
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

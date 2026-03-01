@@ -1,11 +1,11 @@
 // User service matching Angular version with JWT token support
 import { httpClient } from './httpClient';
 import { User, CreateUserRequest } from '../types/User';
+import { environment } from '../config/environment';
 
 class UserService {
   private get baseUrl(): string {
-    const apiGatewayUrl = sessionStorage.getItem('app_apiGatewayUrl');
-    return `${apiGatewayUrl}/users`;
+    return `${environment.apiUrl}users`;
   }
 
   async fetch(): Promise<User[]> {

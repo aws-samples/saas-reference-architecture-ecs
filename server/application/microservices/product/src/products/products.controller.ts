@@ -39,9 +39,8 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard)
   async findAll (@TenantCredentials() tenant, @Req() req) {
     console.log('Get products', tenant);
-    const tenantId = tenant.tenantId;
     const jwtToken = req.headers.authorization?.replace('Bearer ', '') || '';
-    return await this.productsService.findAll(tenantId, jwtToken);
+    return await this.productsService.findAll(tenant.tenantId, jwtToken);
   }
 
   @Get('/health')

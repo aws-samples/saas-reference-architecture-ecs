@@ -13,6 +13,7 @@ import * as sbt from '@cdklabs/sbt-aws';
 interface CoreAppPlaneStackProps extends cdk.StackProps {
   eventManager: sbt.IEventManager
   regApiGatewayUrl: string
+  appApiUrl: string
   auth: sbt.CognitoAuth // Add auth information
   distro: StaticSiteDistro
   appSiteUrl: string
@@ -111,11 +112,13 @@ export class CoreAppPlaneStack extends cdk.Stack {
       staticSite = new StaticSite(this, 'TenantWebUI', {
         name: 'AppSite',
         assetDirectory: applicationPath,
-        production: true,
-        clientId: props.auth.userClientId, // Add auth information
-        issuer: props.auth.tokenEndpoint, // Add auth information
-        apiUrl: props.regApiGatewayUrl,
-        wellKnownEndpointUrl: props.auth.wellKnownEndpointUrl, // Add auth information
+        siteConfig: {
+          production: true,
+          apiUrl: props.appApiUrl,
+          controlPlaneUrl: props.regApiGatewayUrl,
+          domain: '',
+          usingCustomDomain: false,
+        },
         distribution: props.distro.cloudfrontDistribution,
         appBucket: props.distro.siteBucket,
         accessLogsBucket: props.accessLogsBucket,

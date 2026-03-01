@@ -77,6 +77,7 @@ const controlPlaneStack = new ControlPlaneStack(app, 'controlplane-stack', {
 
 const coreAppPlaneStack = new CoreAppPlaneStack(app, 'core-appplane-stack', {
   regApiGatewayUrl: controlPlaneStack.regApiGatewayUrl,
+  appApiUrl: sharedInfraStack.apiGateway.restApi.url,
   eventManager: controlPlaneStack.eventManager,
   auth: controlPlaneStack.auth, // Add auth information
   accessLogsBucket: sharedInfraStack.accessLogsBucket,

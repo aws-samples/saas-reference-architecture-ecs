@@ -1,11 +1,11 @@
 // Product service matching Angular version with JWT token support
 import { httpClient } from './httpClient';
 import { Product } from '../types/Product';
+import { environment } from '../config/environment';
 
 class ProductService {
   private get baseUrl(): string {
-    const apiGatewayUrl = sessionStorage.getItem('app_apiGatewayUrl');
-    return `${apiGatewayUrl}/products`;
+    return `${environment.apiUrl}products`;
   }
 
   async fetch(): Promise<Product[]> {

@@ -54,11 +54,13 @@ export class ControlPlaneStack extends cdk.Stack {
       staticSite = new StaticSite(this, 'AdminWebUi', {
         name: 'AdminSite',
         assetDirectory: adminWebPath,
-        production: true,
-        clientId: this.auth.userClientId,  //.clientId,
-        issuer: this.auth.tokenEndpoint,
-        apiUrl: this.regApiGatewayUrl,
-        wellKnownEndpointUrl: this.auth.wellKnownEndpointUrl,
+        siteConfig: {
+          production: true,
+          clientId: this.auth.userClientId,
+          issuer: this.auth.tokenEndpoint,
+          controlPlaneUrl: this.regApiGatewayUrl,
+          wellKnownEndpointUrl: this.auth.wellKnownEndpointUrl,
+        },
         distribution: props.distro.cloudfrontDistribution,
         appBucket: props.distro.siteBucket,
         accessLogsBucket: props.accessLogsBucket,

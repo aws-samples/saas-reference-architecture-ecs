@@ -1,7 +1,16 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache openssl>=3.5.5-r0
+    apk add --no-cache \
+        openssl>=3.5.5-r0 \
+        curl>=8.14.1-r2 \
+        expat>=2.7.4-r0 \
+        libxml2>=2.13.9-r0 \
+        sqlite-libs>=3.49.2-r0 \
+        xz-libs>=5.6.4-r0 \
+        busybox>=1.37.0-r20 \
+        c-ares>=1.34.6-r0 \
+        pcre2>=10.46-r0
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=false
 COPY . .
@@ -10,7 +19,16 @@ RUN yarn build product
 FROM node:20-alpine
 WORKDIR /app
 RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache openssl>=3.5.5-r0
+    apk add --no-cache \
+        openssl>=3.5.5-r0 \
+        curl>=8.14.1-r2 \
+        expat>=2.7.4-r0 \
+        libxml2>=2.13.9-r0 \
+        sqlite-libs>=3.49.2-r0 \
+        xz-libs>=5.6.4-r0 \
+        busybox>=1.37.0-r20 \
+        c-ares>=1.34.6-r0 \
+        pcre2>=10.46-r0
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=true && yarn cache clean
 COPY --from=build /app/dist ./dist

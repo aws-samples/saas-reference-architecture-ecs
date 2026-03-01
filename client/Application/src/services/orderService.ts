@@ -1,11 +1,11 @@
 // Order service matching Angular version with JWT token support
 import { httpClient } from './httpClient';
 import { Order } from '../types/Order';
+import { environment } from '../config/environment';
 
 class OrderService {
   private get baseUrl(): string {
-    const apiGatewayUrl = sessionStorage.getItem('app_apiGatewayUrl');
-    return `${apiGatewayUrl}/orders`;
+    return `${environment.apiUrl}orders`;
   }
 
   async fetch(): Promise<Order[]> {

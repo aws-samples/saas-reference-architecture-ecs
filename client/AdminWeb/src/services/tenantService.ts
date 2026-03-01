@@ -4,7 +4,7 @@ import { environment } from '../config/environment';
 import { handleApiError } from '../types/errors';
 
 class TenantService {
-  private baseUrl = environment.apiUrl;
+  private baseUrl = environment.controlPlaneUrl;
   private tenantsApiUrl = `${this.baseUrl}/tenant-registrations`;
   private tenantsMgmtApiUrl = `${this.baseUrl}/tenants`;
 

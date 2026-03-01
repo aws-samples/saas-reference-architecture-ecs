@@ -34,7 +34,7 @@ export class ProductsService {
         Item: newProduct,
         TableName: this.tableName
       });
-      client.send(cmd);
+      await client.send(cmd);
     } catch (error) {
       console.error(error);
       throw new HttpException(
