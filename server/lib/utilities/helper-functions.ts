@@ -13,6 +13,26 @@ export function getHashCode(max: number): number {
   return Math.floor(Math.random() * max);
 }
 
+// Service base ranges to prevent cross-service priority collisions
+const SERVICE_BASE: Record<string, number> = {
+  rproxy:     1000,
+  orders:     10000,
+  products:   20000,
+  users:      30000,
+  fossaadmin: 40000,
+  fossacore:  45000,
+};
+
+export function getRulePriority(tenantId: string, serviceName: string): number {
+  const base = SERVICE_BASE[serviceName] ?? 1000;
+  let hash = 0;
+  for (let i = 0; i < tenantId.length; i++) {
+    hash = (hash * 31 + tenantId.charCodeAt(i)) >>> 0;
+  }
+  // Up to 4999 tenants per service slot before collision
+  return base + (hash % 4999) + 1;
+}
+
 const getTimeString = () => {
   const date = new Date();
   const yyyy = date.getFullYear().toString();

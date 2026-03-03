@@ -5,9 +5,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { HttpNamespace } from 'aws-cdk-lib/aws-servicediscovery';
 import { Construct } from 'constructs';
-import { getHashCode } from '../utilities/helper-functions';
+import { getRulePriority } from '../utilities/helper-functions';
 import { type ContainerInfo } from '../interfaces/container-info';
-import { addTemplateTag } from '../utilities/helper-functions';
 import { getServiceName, createTaskDefinition, getContainerDefinitionOptions } from '../utilities/ecs-utils';
 import { IdentityDetails } from '../interfaces/identity-details';
 
@@ -117,7 +116,7 @@ export class EcsService extends Construct {
 
       new elbv2.ApplicationListenerRule(this, `Rule-${props.info.name}-${props.tenantId}`, {
         listener: listener,
-        priority: getHashCode(50000),
+        priority: getRulePriority(props.tenantId, props.info.name),
         action: elbv2.ListenerAction.forward([targetGroupHttp]),
         conditions: props.isRProxy ?[
           elbv2.ListenerCondition.httpHeader('tenantPath', [props.tenantId]),
