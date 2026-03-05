@@ -46,11 +46,15 @@ export class TenantTemplateStack extends cdk.Stack {
     const waveNumber = props.waveNumber || "1";
     addTemplateTag(this, "TenantTemplateStack");
 
+    // appSiteUrl: shared-infra-stack의 CloudFormation Export에서 읽기
+    // props.appSiteUrl은 fallback (CodeBuild 환경변수 등에서 직접 주입 시 사용)
+    const appSiteUrl = props.appSiteUrl || cdk.Fn.importValue('AppSiteUrl');
+
     const identityProvider = new IdentityProvider(this, "IdentityProvider", {
       tenantId: props.tenantId,
       tenantName: props.tenantName,
       tier: props.tier,
-      appSiteUrl: props.appSiteUrl,
+      appSiteUrl: appSiteUrl,
       useFederation: props.useFederation,
     });
 
@@ -115,7 +119,10 @@ export class TenantTemplateStack extends cdk.Stack {
         "utf8"
       );
       const replacements: { [key: string]: string } = {
+        // Service Connect namespace for internal DNS (e.g. orders-api.<ns>.sc)
         "<NAMESPACE>": this.namespace.namespaceName,
+        // CloudFront URL from shared-infra-stack, used to serve static assets via CDN in JSP pages
+        "<APP_SITE_URL>": appSiteUrl,
       };
 
       let updateData = data;

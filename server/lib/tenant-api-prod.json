@@ -446,6 +446,412 @@
           }
         }
       },
+      "/fossacore/{proxy+}" : {
+        "x-amazon-apigateway-any-method" : {
+          "parameters" : [ {
+            "name" : "tenantPath",
+            "in" : "header",
+            "required" : true,
+            "type" : "string"
+          }, {
+            "name" : "proxy",
+            "in" : "path",
+            "required" : true,
+            "type" : "string"
+          } ],
+          "responses" : { },
+          "security" : [ {
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
+          } ],
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossacore/{proxy}",
+            "requestParameters" : {
+              "integration.request.path.proxy" : "method.request.path.proxy",
+              "integration.request.header.tenantPath" : "context.authorizer.tenantPath"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        },
+        "options" : {
+          "consumes" : [ "application/json" ],
+          "parameters" : [ {
+            "name" : "proxy",
+            "in" : "path",
+            "required" : true,
+            "type" : "string"
+          } ],
+          "responses" : {
+            "204" : {
+              "description" : "204 response",
+              "headers" : {
+                "Access-Control-Allow-Origin" : {
+                  "type" : "string"
+                },
+                "Access-Control-Allow-Methods" : {
+                  "type" : "string"
+                },
+                "Access-Control-Allow-Headers" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "x-amazon-apigateway-integration" : {
+            "type" : "mock",
+            "responses" : {
+              "default" : {
+                "statusCode" : "204",
+                "responseParameters" : {
+                  "method.response.header.Access-Control-Allow-Methods" : "'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD'",
+                  "method.response.header.Access-Control-Allow-Headers" : "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+                  "method.response.header.Access-Control-Allow-Origin" : "'*'"
+                }
+              }
+            },
+            "requestTemplates" : {
+              "application/json" : "{ statusCode: 200 }"
+            },
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
+      "/fossaadmin/login" : {
+        "get" : {
+          "parameters" : [ {
+            "name" : "_jwt",
+            "in" : "query",
+            "required" : true,
+            "type" : "string"
+          } ],
+          "responses" : { },
+          "security" : [ {
+            "fossaadminLoginAuthorizer" : [ ]
+          } ],
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossaadmin/login",
+            "requestParameters" : {
+              "integration.request.header.tenantPath" : "context.authorizer.tenantPath"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        },
+        "post" : {
+          "responses" : { },
+          "security" : [ {
+            "sharedApigatewayTenantApiAuthorizer" : [ ]
+          } ],
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossaadmin/login",
+            "requestParameters" : {
+              "integration.request.header.tenantPath" : "context.authorizer.tenantPath"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        },
+        "options" : {
+          "consumes" : [ "application/json" ],
+          "responses" : {
+            "204" : {
+              "description" : "204 response",
+              "headers" : {
+                "Access-Control-Allow-Origin" : { "type" : "string" },
+                "Access-Control-Allow-Methods" : { "type" : "string" },
+                "Access-Control-Allow-Headers" : { "type" : "string" }
+              }
+            }
+          },
+          "x-amazon-apigateway-integration" : {
+            "type" : "mock",
+            "responses" : {
+              "default" : {
+                "statusCode" : "204",
+                "responseParameters" : {
+                  "method.response.header.Access-Control-Allow-Methods" : "'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD'",
+                  "method.response.header.Access-Control-Allow-Headers" : "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+                  "method.response.header.Access-Control-Allow-Origin" : "'*'"
+                }
+              }
+            },
+            "requestTemplates" : { "application/json" : "{ statusCode: 200 }" },
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
+      "/fossaadmin/login/{proxy+}" : {
+        "x-amazon-apigateway-any-method" : {
+          "parameters" : [ {
+            "name" : "proxy",
+            "in" : "path",
+            "required" : true,
+            "type" : "string"
+          } ],
+          "responses" : { },
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossaadmin/login/{proxy}",
+            "requestParameters" : {
+              "integration.request.path.proxy" : "method.request.path.proxy",
+              "integration.request.header.tenantPath" : "'basic'"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        },
+        "options" : {
+          "consumes" : [ "application/json" ],
+          "parameters" : [ {
+            "name" : "proxy",
+            "in" : "path",
+            "required" : true,
+            "type" : "string"
+          } ],
+          "responses" : {
+            "204" : {
+              "description" : "204 response",
+              "headers" : {
+                "Access-Control-Allow-Origin" : { "type" : "string" },
+                "Access-Control-Allow-Methods" : { "type" : "string" },
+                "Access-Control-Allow-Headers" : { "type" : "string" }
+              }
+            }
+          },
+          "x-amazon-apigateway-integration" : {
+            "type" : "mock",
+            "responses" : {
+              "default" : {
+                "statusCode" : "204",
+                "responseParameters" : {
+                  "method.response.header.Access-Control-Allow-Methods" : "'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD'",
+                  "method.response.header.Access-Control-Allow-Headers" : "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+                  "method.response.header.Access-Control-Allow-Origin" : "'*'"
+                }
+              }
+            },
+            "requestTemplates" : { "application/json" : "{ statusCode: 200 }" },
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
+      "/fossaadmin/main" : {
+        "x-amazon-apigateway-any-method" : {
+          "responses" : { },
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossaadmin/main",
+            "requestParameters" : {
+              "integration.request.header.tenantPath" : "'basic'"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        },
+        "options" : {
+          "consumes" : [ "application/json" ],
+          "responses" : {
+            "204" : {
+              "description" : "204 response",
+              "headers" : {
+                "Access-Control-Allow-Origin" : { "type" : "string" },
+                "Access-Control-Allow-Methods" : { "type" : "string" },
+                "Access-Control-Allow-Headers" : { "type" : "string" }
+              }
+            }
+          },
+          "x-amazon-apigateway-integration" : {
+            "type" : "mock",
+            "responses" : {
+              "default" : {
+                "statusCode" : "204",
+                "responseParameters" : {
+                  "method.response.header.Access-Control-Allow-Methods" : "'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD'",
+                  "method.response.header.Access-Control-Allow-Headers" : "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+                  "method.response.header.Access-Control-Allow-Origin" : "'*'"
+                }
+              }
+            },
+            "requestTemplates" : { "application/json" : "{ statusCode: 200 }" },
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
+
+      "/fossaadmin/health" : {
+        "get" : {
+          "responses" : { },
+          "security" : [ { "sharedApigatewayTenantApiAuthorizer" : [ ] } ],
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "GET",
+            "uri": "{{integration_uri}}/fossaadmin/health",
+            "requestParameters" : {
+              "integration.request.header.tenantPath" : "context.authorizer.tenantPath"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
+      "/fossaadmin/customers/{proxy+}" : {
+        "x-amazon-apigateway-any-method" : {
+          "parameters" : [ { "name" : "proxy", "in" : "path", "required" : true, "type" : "string" } ],
+          "responses" : { },
+          "security" : [ { "sharedApigatewayTenantApiAuthorizer" : [ ] } ],
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossaadmin/customers/{proxy}",
+            "requestParameters" : {
+              "integration.request.path.proxy" : "method.request.path.proxy",
+              "integration.request.header.tenantPath" : "context.authorizer.tenantPath"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
+      "/fossaadmin/products/{proxy+}" : {
+        "x-amazon-apigateway-any-method" : {
+          "parameters" : [ { "name" : "proxy", "in" : "path", "required" : true, "type" : "string" } ],
+          "responses" : { },
+          "security" : [ { "sharedApigatewayTenantApiAuthorizer" : [ ] } ],
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossaadmin/products/{proxy}",
+            "requestParameters" : {
+              "integration.request.path.proxy" : "method.request.path.proxy",
+              "integration.request.header.tenantPath" : "context.authorizer.tenantPath"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
+      "/fossaadmin/billing/{proxy+}" : {
+        "x-amazon-apigateway-any-method" : {
+          "parameters" : [ { "name" : "proxy", "in" : "path", "required" : true, "type" : "string" } ],
+          "responses" : { },
+          "security" : [ { "sharedApigatewayTenantApiAuthorizer" : [ ] } ],
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossaadmin/billing/{proxy}",
+            "requestParameters" : {
+              "integration.request.path.proxy" : "method.request.path.proxy",
+              "integration.request.header.tenantPath" : "context.authorizer.tenantPath"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
+      "/fossaadmin/operation/{proxy+}" : {
+        "x-amazon-apigateway-any-method" : {
+          "parameters" : [ { "name" : "proxy", "in" : "path", "required" : true, "type" : "string" } ],
+          "responses" : { },
+          "security" : [ { "sharedApigatewayTenantApiAuthorizer" : [ ] } ],
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossaadmin/operation/{proxy}",
+            "requestParameters" : {
+              "integration.request.path.proxy" : "method.request.path.proxy",
+              "integration.request.header.tenantPath" : "context.authorizer.tenantPath"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
+      "/fossaadmin/{proxy+}" : {
+        "x-amazon-apigateway-any-method" : {
+          "parameters" : [ {
+            "name" : "proxy",
+            "in" : "path",
+            "required" : true,
+            "type" : "string"
+          } ],
+          "responses" : { },
+          "security" : [ {
+            "fossaadminPageAuthorizer" : [ ]
+          } ],
+          "x-amazon-apigateway-integration" : {
+            "type" : "http_proxy",
+            "connectionId" : "{{connection_id}}",
+            "httpMethod" : "ANY",
+            "uri": "{{integration_uri}}/fossaadmin/{proxy}",
+            "requestParameters" : {
+              "integration.request.path.proxy" : "method.request.path.proxy",
+              "integration.request.header.tenantPath" : "context.authorizer.tenantPath"
+            },
+            "connectionType" : "VPC_LINK",
+            "passthroughBehavior" : "when_no_match"
+          }
+        },
+        "options" : {
+          "consumes" : [ "application/json" ],
+          "parameters" : [ {
+            "name" : "proxy",
+            "in" : "path",
+            "required" : true,
+            "type" : "string"
+          } ],
+          "responses" : {
+            "204" : {
+              "description" : "204 response",
+              "headers" : {
+                "Access-Control-Allow-Origin" : {
+                  "type" : "string"
+                },
+                "Access-Control-Allow-Methods" : {
+                  "type" : "string"
+                },
+                "Access-Control-Allow-Headers" : {
+                  "type" : "string"
+                }
+              }
+            }
+          },
+          "x-amazon-apigateway-integration" : {
+            "type" : "mock",
+            "responses" : {
+              "default" : {
+                "statusCode" : "204",
+                "responseParameters" : {
+                  "method.response.header.Access-Control-Allow-Methods" : "'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD'",
+                  "method.response.header.Access-Control-Allow-Headers" : "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'",
+                  "method.response.header.Access-Control-Allow-Origin" : "'*'"
+                }
+              }
+            },
+            "requestTemplates" : {
+              "application/json" : "{ statusCode: 200 }"
+            },
+            "passthroughBehavior" : "when_no_match"
+          }
+        }
+      },
       "/users" : {
         "get" : {
           "parameters" : [ {
@@ -543,9 +949,34 @@
         "in" : "header",
         "x-amazon-apigateway-authtype" : "custom",
         "x-amazon-apigateway-authorizer" : {
-          "type" : "token",
+          "type" : "request",
+          "identitySource" : "method.request.header.Authorization",
           "authorizerUri" : "arn:aws:apigateway:{{region}}:lambda:path/2015-03-31/functions/arn:aws:lambda:{{region}}:{{account_id}}:function:{{authorizer_function}}/invocations",
           "authorizerResultTtlInSeconds" : 30
+        }
+      },
+      "fossaadminLoginAuthorizer" : {
+        "type" : "apiKey",
+        "name" : "_jwt",
+        "in" : "query",
+        "x-amazon-apigateway-authtype" : "custom",
+        "x-amazon-apigateway-authorizer" : {
+          "type" : "request",
+          "identitySource" : "method.request.querystring._jwt",
+          "authorizerUri" : "arn:aws:apigateway:{{region}}:lambda:path/2015-03-31/functions/arn:aws:lambda:{{region}}:{{account_id}}:function:{{authorizer_function}}/invocations",
+          "authorizerResultTtlInSeconds" : 30
+        }
+      },
+      "fossaadminPageAuthorizer" : {
+        "type" : "apiKey",
+        "name" : "Cookie",
+        "in" : "header",
+        "x-amazon-apigateway-authtype" : "custom",
+        "x-amazon-apigateway-authorizer" : {
+          "type" : "request",
+          "identitySource" : "method.request.header.Cookie",
+          "authorizerUri" : "arn:aws:apigateway:{{region}}:lambda:path/2015-03-31/functions/arn:aws:lambda:{{region}}:{{account_id}}:function:{{authorizer_function}}/invocations",
+          "authorizerResultTtlInSeconds" : 0
         }
       }
     }

@@ -56,11 +56,30 @@ def lambda_handler(event, context):
     input_details={}
     input_details['idpDetails'] = idp_details
 
-    token = event['authorizationToken'].split(" ")
-    if (token[0] != 'Bearer'):
-        raise Exception(
-            'Authorization header should have a format Bearer <JWT> Token')
-    jwt_bearer_token = token[1]
+    # REQUEST 타입: Authorization 헤더 또는 _jwt 쿼리 파라미터에서 JWT 추출
+    headers = event.get('headers') or {}
+    query_params = event.get('queryStringParameters') or {}
+
+    auth_header = headers.get('Authorization') or headers.get('authorization') or ''
+    jwt_from_query = query_params.get('_jwt') or ''
+
+    # Cookie 헤더에서 authToken 파싱
+    jwt_from_cookie = ''
+    cookie_header = headers.get('Cookie') or headers.get('cookie') or ''
+    for cookie in cookie_header.split(';'):
+        cookie = cookie.strip()
+        if cookie.startswith('authToken='):
+            jwt_from_cookie = cookie[len('authToken='):]
+            break
+
+    if auth_header.startswith('Bearer '):
+        jwt_bearer_token = auth_header[7:]
+    elif jwt_from_query:
+        jwt_bearer_token = jwt_from_query
+    elif jwt_from_cookie:
+        jwt_bearer_token = jwt_from_cookie
+    else:
+        raise Exception('Authorization header should have a format Bearer <JWT> Token')
 
     input_details['jwtToken']=jwt_bearer_token
     response = idp_authorizer_service.validateJWT(input_details)

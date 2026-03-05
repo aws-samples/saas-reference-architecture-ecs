@@ -317,7 +317,8 @@ export class SharedInfraStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'appSiteUrl', {
-      value: this.appSiteUrl
+      value: this.appSiteUrl,
+      exportName: 'AppSiteUrl'
     });
 
     // CDK Nag check (controlled by environment variable)

@@ -5,7 +5,7 @@
 
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
-SERVICE_REPOS=("user" "product" "order" "rproxy")
+SERVICE_REPOS=("fossaadmin" "fossacore" "user" "product" "order" "rproxy")
 # SERVICE_REPOS=("product")
 # RPROXY_VERSIONS=("v1" "v2")
 
