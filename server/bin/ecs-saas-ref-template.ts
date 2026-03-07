@@ -2,6 +2,7 @@
 import 'dotenv/config';
 import * as cdk from 'aws-cdk-lib';
 import { TenantTemplateStack } from '../lib/tenant-template/tenant-template-stack';
+import { TenantServiceStack } from '../lib/tenant-template/tenant-service-stack';
 import { DestroyPolicySetter } from '../lib/utilities/destroy-policy-setter';
 import { CoreAppPlaneStack } from '../lib/bootstrap-template/core-appplane-stack';
 import { getEnv } from '../lib/utilities/helper-functions';
@@ -109,3 +110,22 @@ cdk.Tags.of(tenantTemplateStack).add('TenantId', tenantId);
 cdk.Tags.of(tenantTemplateStack).add('TenantName', tenantName);
 
 cdk.Aspects.of(tenantTemplateStack).add(new DestroyPolicySetter());
+
+// Service stack: deploys ECS services, DynamoDB tables, ALB rules
+const tenantServiceStack = new TenantServiceStack(app, `tenant-service-stack-${tenantId}`, {
+  tenantId: tenantId,
+  tenantName: tenantName,
+  tier: tier,
+  advancedCluster: advancedCluster,
+  appSiteUrl: sharedInfraStack.appSiteUrl,
+  useEc2: useEc2,
+  useRProxy: useRProxy,
+  env
+});
+
+tenantServiceStack.addDependency(tenantTemplateStack);
+
+cdk.Tags.of(tenantServiceStack).add('TenantId', tenantId);
+cdk.Tags.of(tenantServiceStack).add('TenantName', tenantName);
+
+cdk.Aspects.of(tenantServiceStack).add(new DestroyPolicySetter());

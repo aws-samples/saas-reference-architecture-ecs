@@ -112,6 +112,10 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   export CDK_PARAM_OFFBOARDING_DETAIL_TYPE="NA"
   export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE="NA"
   
+  echo "undeploying tenant service stack first"
+  SERVICE_STACK_NAME=$(echo $STACK_NAME | sed 's/tenant-template-stack/tenant-service-stack/')
+  npx cdk destroy $SERVICE_STACK_NAME --force --concurrency 10 2>/dev/null || true
+
   echo "undeploying tenant template $STACK_NAME"
   npx cdk destroy $STACK_NAME --force --concurrency 10
 
