@@ -86,7 +86,10 @@ fi
 # Deploy shared infrastructure first
 npx cdk deploy shared-infra-stack --require-approval never --concurrency 10 --asset-parallelism true
 
-# Deploy tenant stacks sequentially (CDK synthesis requires sequential execution)
+# Deploy tenant infra stacks (ECS cluster, Cognito, namespace)
 CDK_PARAM_TENANT_ID=basic CDK_PARAM_TIER=basic npx cdk deploy tenant-template-stack-basic --exclusively --require-approval never --concurrency 10 --asset-parallelism true
 CDK_PARAM_TENANT_ID=advanced CDK_PARAM_TIER=advanced CDK_ADV_CLUSTER=INACTIVE npx cdk deploy tenant-template-stack-advanced --exclusively --require-approval never --concurrency 10 --asset-parallelism true
+
+# Deploy tenant service stacks (ECS services, DynamoDB tables, ALB rules)
+CDK_PARAM_TENANT_ID=basic CDK_PARAM_TIER=basic npx cdk deploy tenant-service-stack-basic --exclusively --require-approval never --concurrency 10 --asset-parallelism true
 # 
