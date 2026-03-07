@@ -41,10 +41,10 @@ export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'
 export CDK_PARAM_PROVISIONING_DETAIL_TYPE=$CDK_PARAM_ONBOARDING_DETAIL_TYPE
 export CDK_PARAM_OFFBOARDING_DETAIL_TYPE='Offboarding'
 export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
-export CDK_PARAM_TIER='basic'
+export CDK_PARAM_TIER='BASIC'
 export CDK_PARAM_STAGE='prod'
 export CDK_ADV_CLUSTER='INACTIV'
-export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
+export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-basic"
 
 
 npm install
@@ -87,9 +87,9 @@ fi
 npx cdk deploy shared-infra-stack --require-approval never --concurrency 10 --asset-parallelism true
 
 # Deploy tenant infra stacks (ECS cluster, Cognito, namespace)
-CDK_PARAM_TENANT_ID=basic CDK_PARAM_TIER=basic npx cdk deploy tenant-template-stack-basic --exclusively --require-approval never --concurrency 10 --asset-parallelism true
-CDK_PARAM_TENANT_ID=advanced CDK_PARAM_TIER=advanced CDK_ADV_CLUSTER=INACTIVE npx cdk deploy tenant-template-stack-advanced --exclusively --require-approval never --concurrency 10 --asset-parallelism true
+CDK_PARAM_TENANT_ID=basic CDK_PARAM_TIER=BASIC npx cdk deploy tenant-template-stack-basic --exclusively --require-approval never --concurrency 10 --asset-parallelism true
+CDK_PARAM_TENANT_ID=advanced CDK_PARAM_TIER=ADVANCED CDK_ADV_CLUSTER=INACTIVE npx cdk deploy tenant-template-stack-advanced --exclusively --require-approval never --concurrency 10 --asset-parallelism true
 
 # Deploy tenant service stacks (ECS services, DynamoDB tables, ALB rules)
-CDK_PARAM_TENANT_ID=basic CDK_PARAM_TIER=basic npx cdk deploy tenant-service-stack-basic --exclusively --require-approval never --concurrency 10 --asset-parallelism true
+CDK_PARAM_TENANT_ID=basic CDK_PARAM_TIER=BASIC npx cdk deploy tenant-service-stack-basic --exclusively --require-approval never --concurrency 10 --asset-parallelism true
 # 
