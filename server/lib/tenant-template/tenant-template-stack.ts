@@ -1,19 +1,13 @@
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
-import * as iam from "aws-cdk-lib/aws-iam";
 import { type Construct } from "constructs";
 import { type Table } from "aws-cdk-lib/aws-dynamodb";
 import { IdentityProvider } from "./identity-provider";
 import { EcsCluster } from "./ecs-cluster";
-import { EcsService } from "./services";
 import { TenantTemplateNag } from "../cdknag/tenant-template-nag";
 import { addTemplateTag } from "../utilities/helper-functions";
-import { ContainerInfo } from "../interfaces/container-info";
 import { HttpNamespace } from "aws-cdk-lib/aws-servicediscovery";
-import { EcsDynamoDB } from "./ecs-dynamodb";
-import path = require("path");
-import * as fs from "fs";
 import {
   AwsCustomResource,
   AwsCustomResourcePolicy,
@@ -36,8 +30,6 @@ interface TenantTemplateStackProps extends cdk.StackProps {
 }
 
 export class TenantTemplateStack extends cdk.Stack {
-  productServiceUri: string;
-  orderServiceUri: string;
   cluster: ecs.ICluster;
   namespace: HttpNamespace;
 
@@ -46,11 +38,15 @@ export class TenantTemplateStack extends cdk.Stack {
     const waveNumber = props.waveNumber || "1";
     addTemplateTag(this, "TenantTemplateStack");
 
+    // appSiteUrl: read from shared-infra-stack CloudFormation Export
+    // props.appSiteUrl is fallback (when injected directly via CodeBuild env vars)
+    const appSiteUrl = props.appSiteUrl || cdk.Fn.importValue('AppSiteUrl');
+
     const identityProvider = new IdentityProvider(this, "IdentityProvider", {
       tenantId: props.tenantId,
       tenantName: props.tenantName,
       tier: props.tier,
-      appSiteUrl: props.appSiteUrl,
+      appSiteUrl: appSiteUrl,
       useFederation: props.useFederation,
     });
 
@@ -104,75 +100,11 @@ export class TenantTemplateStack extends cdk.Stack {
       this.cluster = ecsCluster.cluster;
     }
 
-    // Deploy services conditionally
+    // Create Cloud Map namespace when services will be deployed
     if (shouldDeployServices) {
       this.namespace = new HttpNamespace(this, "CloudMapNamespace", {
         name: `${props.tenantName}`,
       });
-
-      const data = fs.readFileSync(
-        path.resolve(__dirname, "../service-info.json"),
-        "utf8"
-      );
-      const replacements: { [key: string]: string } = {
-        "<NAMESPACE>": this.namespace.namespaceName,
-      };
-
-      let updateData = data;
-      for (const [placeholder, replacement] of Object.entries(replacements)) {
-        const regex = new RegExp(placeholder, "g");
-        updateData = updateData.replace(regex, replacement);
-      }
-
-      const serviceInfo = JSON.parse(updateData);
-      const containerInfo: ContainerInfo[] = serviceInfo.Containers;
-
-      // Deploy core services (orders, products, users) in parallel first
-      const coreServices: EcsService[] = [];
-
-      containerInfo.forEach((info) => {
-        // Create storage if needed for the service
-        const storage = this.createStorageIfNeeded(info, props.tenantName);
-
-        // Create IAM task role for the service
-        const taskRole = this.createTaskRole(info, storage, identityProvider);
-
-        // Create ECS service
-        const ecsService = new EcsService(this, `${info.name}-EcsServices`, {
-          tenantId: props.tenantId,
-          tenantName: props.tenantName,
-          isEc2Tier,
-          isRProxy,
-          isTarget: !isRProxy,
-          vpc: vpc,
-          cluster: this.cluster,
-          ecsSG: ecsSG,
-          taskRole,
-          namespace: this.namespace,
-          info,
-          identityDetails: identityProvider.identityDetails,
-        });
-
-        // Set up dependencies
-        ecsService.service.node.addDependency(this.cluster);
-        ecsService.service.node.addDependency(vpc);
-
-        // Store core services for rproxy dependency
-        coreServices.push(ecsService);
-      });
-
-      if (isRProxy) {
-        this.deployRProxyService(
-          serviceInfo,
-          props,
-          vpc,
-          ecsSG,
-          identityProvider,
-          isEc2Tier,
-          isRProxy,
-          coreServices
-        );
-      }
     }
 
     new AwsCustomResource(this, "CreateTenantMapping", {
@@ -233,6 +165,46 @@ export class TenantTemplateStack extends cdk.Stack {
       value: props.commitId,
     });
 
+    // Export values for tenant-service-stack to consume
+    const exportPrefix = `tenant-${props.tenantId}`;
+
+    new cdk.CfnOutput(this, "ClusterName", {
+      value: this.cluster.clusterName,
+      exportName: `${exportPrefix}-ClusterName`,
+    });
+
+    new cdk.CfnOutput(this, "EcsSgId", {
+      value: ecsSG.securityGroupId,
+      exportName: `${exportPrefix}-EcsSgId`,
+    });
+
+    if (shouldDeployServices && this.namespace) {
+      new cdk.CfnOutput(this, "NamespaceArn", {
+        value: this.namespace.namespaceArn,
+        exportName: `${exportPrefix}-NamespaceArn`,
+      });
+
+      new cdk.CfnOutput(this, "NamespaceName", {
+        value: this.namespace.namespaceName,
+        exportName: `${exportPrefix}-NamespaceName`,
+      });
+    }
+
+    new cdk.CfnOutput(this, "CognitoUserPoolId", {
+      value: identityProvider.tenantUserPool.userPoolId,
+      exportName: `${exportPrefix}-UserPoolId`,
+    });
+
+    new cdk.CfnOutput(this, "CognitoClientId", {
+      value: identityProvider.tenantUserPoolClient.userPoolClientId,
+      exportName: `${exportPrefix}-ClientId`,
+    });
+
+    new cdk.CfnOutput(this, "CognitoIssuer", {
+      value: `https://cognito-idp.${cdk.Stack.of(this).region}.amazonaws.com/${identityProvider.tenantUserPool.userPoolId}`,
+      exportName: `${exportPrefix}-CognitoIssuer`,
+    });
+
     // CDK Nag check (controlled by environment variable)
     if (process.env.CDK_NAG_ENABLED === "true") {
       new TenantTemplateNag(this, "TenantInfraNag", {
@@ -243,173 +215,5 @@ export class TenantTemplateStack extends cdk.Stack {
         isRProxy,
       });
     }
-  }
-
-  /**
-   * Create DynamoDB storage if the service requires it
-   */
-  private createStorageIfNeeded(
-    info: ContainerInfo,
-    tenantName: string
-  ): EcsDynamoDB | undefined {
-    if (info.hasOwnProperty("database") && info.database?.kind === "dynamodb") {
-      const storage = new EcsDynamoDB(this, `${info.name}Storage`, {
-        name: info.name,
-        partitionKey: "tenantId",
-        sortKey: info.database.sortKey || "",
-        tableName: `${info.environment?.TABLE_NAME.replace(
-          /_/g,
-          "-"
-        ).toLowerCase()}-${tenantName}`,
-        tenantName: tenantName,
-      });
-
-      // Update environment variable with actual table name
-      info.environment.TABLE_NAME = storage.table.tableName;
-      return storage;
-    }
-    return undefined;
-  }
-
-  /**
-   * Create IAM task role for ECS service
-   */
-  private createTaskRole(
-    info: ContainerInfo,
-    storage: EcsDynamoDB | undefined,
-    identityProvider: IdentityProvider
-  ): iam.Role {
-    let policy = JSON.stringify(info.policy);
-
-    if (storage) {
-      // Create main ECS task role first
-      const taskRole = new iam.Role(this, `${info.name}-ecsTaskRole`, {
-        assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-        managedPolicies: [
-          iam.ManagedPolicy.fromAwsManagedPolicyName(
-            "service-role/AmazonEC2ContainerServiceforEC2Role"
-          ),
-        ],
-      });
-
-      // Create ABAC role with proper Trust Policy from the start
-      const abacRole = new iam.Role(this, `${info.name}-ABACRole`, {
-        assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-        inlinePolicies: {
-          DynamoDBTenantAccess: storage.policyDocument
-        }
-      });
-
-      // Add Task Role to ABAC Role Trust Policy with conditions
-      abacRole.assumeRolePolicy?.addStatements(
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          principals: [new iam.ArnPrincipal(taskRole.roleArn)],
-          actions: ["sts:AssumeRole", "sts:TagSession"],
-          conditions: {
-            StringLike: {
-              "aws:RequestTag/tenant": "*"
-            }
-          }
-        })
-      );
-
-      // Add ABAC role assume permission to task role
-      taskRole.addToPolicy(
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ["sts:AssumeRole", "sts:TagSession"],
-          resources: [abacRole.roleArn],
-          conditions: {
-            StringLike: {
-              "aws:RequestTag/tenant": "*"
-            }
-          }
-        })
-      );
-
-      // Add environment variables for TokenVendingMachine
-      info.environment = info.environment || {};
-      info.environment.IAM_ROLE_ARN = abacRole.roleArn;
-      info.environment.REQUEST_TAG_KEYS_MAPPING_ATTRIBUTES = '{"tenant":"custom:tenantId"}';
-      info.environment.IDP_DETAILS = JSON.stringify({
-        issuer: identityProvider.identityDetails.details.issuer,
-        audience: identityProvider.identityDetails.details.clientId
-      });
-
-      // Attach additional policy if exists (e.g., SSM)
-      if (policy) {
-        taskRole.attachInlinePolicy(
-          new iam.Policy(this, `${info.name}AdditionalPolicy`, {
-            document: iam.PolicyDocument.fromJson(JSON.parse(policy)),
-          })
-        );
-      }
-
-      return taskRole;
-    } else {
-      // Create role for stateless service
-      policy = policy.replace(
-        /<USER_POOL_ID>/g,
-        identityProvider.identityDetails.details.userPoolId
-      );
-      return new iam.Role(this, `${info.name}-ecsTaskRole`, {
-        assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-        inlinePolicies: {
-          EcsContainerInlinePolicy: iam.PolicyDocument.fromJson(
-            JSON.parse(policy)
-          ),
-        },
-      });
-    }
-  }
-
-  /**
-   * Deploy rProxy service with dependencies on core services
-   */
-  private deployRProxyService(
-    serviceInfo: any,
-    props: TenantTemplateStackProps,
-    vpc: ec2.IVpc,
-    ecsSG: ec2.SecurityGroup,
-    identityProvider: IdentityProvider,
-    isEc2Tier: boolean,
-    isRProxy: boolean,
-    coreServices: EcsService[]
-  ): void {
-    const rProxyInfo: ContainerInfo = serviceInfo.Rproxy;
-
-    // Create IAM role for rProxy with CloudWatch permissions
-    const taskRole = new iam.Role(this, `rProxy-taskRole`, {
-      assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-    });
-
-    taskRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName("CloudWatchAgentServerPolicy")
-    );
-    taskRole.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName("CloudWatchFullAccess")
-    );
-
-    // Create rProxy ECS service
-    const rproxyService = new EcsService(this, `rproxy-EcsServices`, {
-      tenantId: props.tenantId,
-      tenantName: props.tenantName,
-      isEc2Tier,
-      isRProxy,
-      isTarget: isRProxy,
-      vpc: vpc,
-      cluster: this.cluster,
-      ecsSG: ecsSG,
-      taskRole,
-      namespace: this.namespace,
-      info: rProxyInfo,
-      identityDetails: identityProvider.identityDetails,
-    });
-
-    // rProxy depends on ALL core services (orders, products, users)
-    coreServices.forEach((coreService) => {
-      rproxyService.service.node.addDependency(coreService.service);
-    });
   }
 }

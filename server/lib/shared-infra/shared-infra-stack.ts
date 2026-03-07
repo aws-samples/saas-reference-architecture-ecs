@@ -97,11 +97,14 @@ export class SharedInfraStack extends cdk.Stack {
       allowAllOutbound: true
     });
 
-    this.albSG.addIngressRule(
-      ec2.Peer.ipv4(this.vpc.vpcCidrBlock),
-      ec2.Port.tcp(80),
-      'Allow https traffic'
-    );
+    // Restrict ALB ingress to private subnets only (where NLB resides)
+    this.vpc.privateSubnets.forEach((subnet, index) => {
+      this.albSG.addIngressRule(
+        ec2.Peer.ipv4(subnet.ipv4CidrBlock),
+        ec2.Port.tcp(80),
+        `Allow traffic from private subnet ${index + 1} (NLB)`
+      );
+    });
 
     // ALB Creation
     this.alb = new elbv2.ApplicationLoadBalancer(this, 'sbt-ecs-alb', {
@@ -317,7 +320,8 @@ export class SharedInfraStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'appSiteUrl', {
-      value: this.appSiteUrl
+      value: this.appSiteUrl,
+      exportName: 'AppSiteUrl'
     });
 
     // CDK Nag check (controlled by environment variable)

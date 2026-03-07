@@ -153,7 +153,24 @@ done
 echo "$(date) cleaning up tenants..."
 STACK_STATUS_FILTER="CREATE_COMPLETE ROLLBACK_COMPLETE UPDATE_COMPLETE UPDATE_ROLLBACK_COMPLETE IMPORT_COMPLETE IMPORT_ROLLBACK_COMPLETE"
 
-# Simply search and delete all tenant stacks
+# Delete all tenant service stacks first (services before infra)
+echo "$(date) searching for all tenant service stacks..."
+service_stacks=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --query 'StackSummaries[?starts_with(StackName, `tenant-service-stack`)].StackName' --output text 2>/dev/null || echo "")
+
+if [[ -z "$service_stacks" || "$service_stacks" == "None" ]]; then
+    echo "$(date) no tenant service stacks found."
+else
+    echo "$(date) found tenant service stacks: $service_stacks"
+    for stack_name in $service_stacks; do
+        if [[ -n "$stack_name" && "$stack_name" != "None" ]]; then
+            echo "$(date) deleting service stack: $stack_name"
+            aws cloudformation delete-stack --stack-name "$stack_name"
+            aws cloudformation wait stack-delete-complete --stack-name "$stack_name" || true
+        fi
+    done
+fi
+
+# Then delete all tenant infra stacks
 echo "$(date) searching for all tenant stacks..."
 tenant_stacks=$(aws cloudformation list-stacks --stack-status-filter $STACK_STATUS_FILTER --query 'StackSummaries[?starts_with(StackName, `tenant-template-stack`)].StackName' --output text 2>/dev/null || echo "")
 
@@ -179,6 +196,27 @@ else
     done
 fi
 
+
+# Clean up VPC Endpoints before stack destroy (GuardDuty creates endpoints outside CloudFormation)
+echo "$(date) cleaning up VPC Endpoints in shared-infra VPC..."
+SHARED_VPC_ID=$(aws cloudformation describe-stacks --stack-name shared-infra-stack --query 'Stacks[0].Outputs[?OutputKey==`EcsVpcId`].OutputValue' --output text 2>/dev/null || echo "")
+if [[ -n "$SHARED_VPC_ID" && "$SHARED_VPC_ID" != "None" ]]; then
+    VPC_ENDPOINTS=$(aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=$SHARED_VPC_ID" --query 'VpcEndpoints[].VpcEndpointId' --output text 2>/dev/null || echo "")
+    if [[ -n "$VPC_ENDPOINTS" ]]; then
+        echo "$(date) deleting VPC Endpoints: $VPC_ENDPOINTS"
+        aws ec2 delete-vpc-endpoints --vpc-endpoint-ids $VPC_ENDPOINTS 2>/dev/null || true
+        echo "$(date) waiting for VPC Endpoint ENIs to be released..."
+        sleep 30
+    fi
+    # Delete GuardDuty managed Security Groups (not managed by CloudFormation)
+    GUARDDUTY_SGS=$(aws ec2 describe-security-groups --filters "Name=vpc-id,Values=$SHARED_VPC_ID" "Name=group-name,Values=GuardDutyManagedSecurityGroup-*" --query 'SecurityGroups[].GroupId' --output text 2>/dev/null || echo "")
+    if [[ -n "$GUARDDUTY_SGS" ]]; then
+        echo "$(date) deleting GuardDuty managed Security Groups: $GUARDDUTY_SGS"
+        for sg in $GUARDDUTY_SGS; do
+            aws ec2 delete-security-group --group-id "$sg" 2>/dev/null || true
+        done
+    fi
+fi
 
 # Destroy stacks
 npx cdk destroy --all --force || echo "$(date) stack destroy failed, continuing..."
