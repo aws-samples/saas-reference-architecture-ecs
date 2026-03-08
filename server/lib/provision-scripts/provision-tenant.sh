@@ -42,12 +42,12 @@ export TIER=$tier
 export TENANT_ADMIN_EMAIL=$email
 export TENANT_NAME=$tenantName
 export USE_FEDERATION=$useFederation
+export CDK_PARAM_SYSTEM_ADMIN_EMAIL=$email
 
-# Dynamic configuration processing (Premium only)
-if [[ $TIER == "PREMIUM" ]]; then
-    export CDK_PARAM_USE_EC2_PREMIUM="${useEc2:-true}"  # Premium: dynamic from onboarding
-fi
-# Advanced and Basic use fixed settings from .env file
+# EC2/Fargate configuration per tier
+# EC2/Fargate: Premium from onboarding params, Advanced from existing stack output
+[[ $TIER == "PREMIUM" ]] && export CDK_PARAM_USE_EC2_PREMIUM="${useEc2:-true}"
+[[ $TIER == "ADVANCED" ]] && export CDK_PARAM_USE_EC2_ADVANCED=$(aws cloudformation describe-stacks --stack-name tenant-template-stack-advanced --query "Stacks[0].Outputs[?OutputKey=='UseEc2'].OutputValue" --output text 2>/dev/null || echo "true")
 export CDK_PARAM_USE_RPROXY="${useRProxy:-true}"
 
 # Define variables

@@ -168,6 +168,11 @@ export class TenantTemplateStack extends cdk.Stack {
     // Export values for tenant-service-stack to consume
     const exportPrefix = `tenant-${props.tenantId}`;
 
+    new cdk.CfnOutput(this, "UseEc2", {
+      value: String(isEc2Tier),
+      exportName: `${exportPrefix}-UseEc2`,
+    });
+
     new cdk.CfnOutput(this, "ClusterName", {
       value: this.cluster.clusterName,
       exportName: `${exportPrefix}-ClusterName`,

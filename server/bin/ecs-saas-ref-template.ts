@@ -42,8 +42,10 @@ const commitId = getEnv('CDK_PARAM_COMMIT_ID');
 const tier = getEnv('CDK_PARAM_TIER');
 
 // Determine useEc2 based on tier using environment variables directly
-const useEc2 = tier === 'PREMIUM' ? process.env.CDK_PARAM_USE_EC2_PREMIUM === 'true' :
-              tier === 'ADVANCED' ? process.env.CDK_PARAM_USE_EC2_ADVANCED === 'true' :
+// Use case-insensitive comparison to handle both 'basic' and 'BASIC' etc.
+const tierUpper = tier.toUpperCase();
+const useEc2 = tierUpper === 'PREMIUM' ? process.env.CDK_PARAM_USE_EC2_PREMIUM === 'true' :
+              tierUpper === 'ADVANCED' ? process.env.CDK_PARAM_USE_EC2_ADVANCED === 'true' :
               process.env.CDK_PARAM_USE_EC2_BASIC === 'true';
 const useRProxy = process.env.CDK_PARAM_USE_RPROXY !== 'false';
 
