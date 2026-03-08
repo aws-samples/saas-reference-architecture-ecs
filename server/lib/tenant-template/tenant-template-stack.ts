@@ -147,7 +147,35 @@ export class TenantTemplateStack extends cdk.Stack {
 
             info.environment.TABLE_NAME =  storage.table.tableName;  
           } else { //MySQL database per TENANT
-            taskRole = iam.Role.fromRoleArn(this, `${info.name}-ecsTaskRole`, cdk.Fn.importValue('TaskRoleArn'), {mutable: true,})
+            const isSilo = ['advanced', 'premium'].includes(props.tier.toLowerCase());
+            if (isSilo) {
+              // Silo tier: dedicated Task Role scoped to this tenant's DB user only
+              taskRole = new iam.Role(this, `${info.name}-ecsTaskRole`, {
+                assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+                inlinePolicies: {
+                  RdsConnect: new iam.PolicyDocument({
+                    statements: [new iam.PolicyStatement({
+                      actions: ['rds-db:connect'],
+                      resources: [
+                        `arn:${Aws.PARTITION}:rds-db:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:dbuser:${proxyName}/user_${props.tenantName}`
+                      ],
+                    })],
+                  }),
+                  StsAssumeRole: new iam.PolicyDocument({
+                    statements: [new iam.PolicyStatement({
+                      actions: ['sts:AssumeRole'],
+                      resources: [stsRoleArn],
+                    })],
+                  }),
+                },
+                managedPolicies: [
+                  iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonEC2ContainerServiceforEC2Role')
+                ],
+              });
+            } else {
+              // Pool tier (Basic): shared Task Role
+              taskRole = iam.Role.fromRoleArn(this, `${info.name}-ecsTaskRole`, cdk.Fn.importValue('TaskRoleArn'), {mutable: true,});
+            }
           } 
         } else {
           policy = policy.replace(/<USER_POOL_ID>/g, `${identityProvider.identityDetails.details.userPoolId}`);

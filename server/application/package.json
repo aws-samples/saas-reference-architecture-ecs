@@ -6,7 +6,7 @@
   "private": true,
   "license": "MIT-0",
   "engines": {
-    "node": ">=14.18 || >= 16.13"
+    "node": ">=20"
   },
   "scripts": {
     "prebuild": "rimraf dist",
@@ -21,6 +21,7 @@
     "@aws-sdk/client-dynamodb": "^3.651.1",
     "@aws-sdk/client-sts": "^3.651.1",
     "@aws-sdk/lib-dynamodb": "^3.651.1",
+    "@aws-sdk/rds-signer": "^3.1004.0",
     "@nestjs/common": "^10.3.3",
     "@nestjs/config": "^3.2.0",
     "@nestjs/core": "^10.3.3",
@@ -31,14 +32,13 @@
     "@types/mustache": "^4.2.5",
     "jwks-rsa": "^3.1.0",
     "mustache": "^4.2.0",
+    "mysql2": "^2.2.5",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.1",
     "rimraf": "^5.0.5",
     "rxjs": "^7.8.1",
-    "uuid": "^9.0.1",
-    "mysql2": "^2.2.5",
-    "aws-sdk": "^2.840.0"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.3.2",

@@ -1,326 +1,259 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, OnModuleDestroy } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { v4 as uuid } from 'uuid';
 import * as mysql from 'mysql2/promise';
-import * as AWS from 'aws-sdk'; // AWS SDK for accessing STS, Secrets Manager
+import { STSClient, AssumeRoleCommand } from '@aws-sdk/client-sts';
+import { Signer } from '@aws-sdk/rds-signer';
 import * as fs from 'fs';
 import * as path from 'path';
 
-@Injectable()
-export class ProductsService {
-  private pool: mysql.Pool;
-  private dbPort = 3306;
+/**
+ * IAM token lifetime is 15 minutes.
+ * Cache connections for 14 minutes to allow a 1-minute buffer before token expiry.
+ */
+const CONNECTION_TTL_MS = 14 * 60 * 1000;
 
-  constructor () {
-    this.pool = null; // Initialize later with IAM-based authentication
+interface CachedConnection {
+  connection: mysql.Connection;
+  createdAt: number;
+}
+
+@Injectable()
+export class ProductsService implements OnModuleDestroy {
+  private readonly dbPort = 3306;
+  private readonly sslCert: string;
+  private readonly connectionCache = new Map<string, CachedConnection>();
+
+  constructor() {
+    // Load SSL certificate once at startup (fail fast if missing)
+    const sslCertPath = path.join(__dirname, 'SSLCA.pem');
+    if (!fs.existsSync(sslCertPath)) {
+      throw new Error(`SSL certificate not found at ${sslCertPath}`);
+    }
+    this.sslCert = fs.readFileSync(sslCertPath, 'utf8');
   }
 
-  // Function to create IAM-authenticated connection pool
-  private async getConnection (tenantName: string) {
-    if (this.pool) return this.pool;
+  /**
+   * Cleanup all cached connections on application shutdown.
+   * NestJS calls this when the module is destroyed (e.g., graceful shutdown).
+   */
+  async onModuleDestroy() {
+    for (const [, cached] of this.connectionCache) {
+      try {
+        await cached.connection.end();
+      } catch {
+        // Connection may already be closed
+      }
+    }
+    this.connectionCache.clear();
+  }
+
+  /**
+   * Get or create a cached IAM-authenticated MySQL connection for a tenant.
+   *
+   * Flow:
+   * 1. Check cache — if a valid (non-expired) connection exists, return it
+   * 2. STS AssumeRole with a scoped-down session policy (rds-db:connect for this tenant's DB user only)
+   * 3. Use the temporary credentials to generate an RDS IAM auth token via RDS Signer
+   * 4. Create a MySQL connection using the IAM token as password (TLS required)
+   * 5. Cache the connection with a TTL of 14 minutes (IAM token expires at 15 min)
+   */
+  private async getConnection(tenantName: string): Promise<mysql.Connection> {
+    // Check cache for a valid connection
+    const cached = this.connectionCache.get(tenantName);
+    if (cached && (Date.now() - cached.createdAt) < CONNECTION_TTL_MS) {
+      try {
+        // Verify the connection is still alive
+        await cached.connection.ping();
+        return cached.connection;
+      } catch {
+        // Connection is dead, remove from cache and create a new one
+        this.connectionCache.delete(tenantName);
+      }
+    }
+
+    // Close expired connection if it exists
+    if (cached) {
+      try { await cached.connection.end(); } catch { /* ignore */ }
+      this.connectionCache.delete(tenantName);
+    }
 
     try {
-      // Load SSL certificate for RDS Proxy (downloaded during build, copied to dist/ via nest-cli assets)
-      const sslCertPath = path.join(__dirname, 'SSLCA.pem');
-      if (!fs.existsSync(sslCertPath)) {
-        throw new Error(`SSL certificate not found at ${sslCertPath}`);
-      }
-     
-      // tenantName = "adv_013" ==> Hard coding error test 
-      // Error creating IAM-authenticated connection pool Error: Access denied for user 'user_adv_013'@'10.0.80.72' (using password: YES)
-      
-      var dbUser = `user_${tenantName}`;
-      // var dbUser = 'user100';
-      // database
-      var database = `tenant_${tenantName}_db`;
+      // ┌─────────────────────────────────────────────────────┐
+      // │  WORKSHOP-TEST: Hardcoded tenant for error testing   │
+      // │  Uncomment the line below to simulate access denied  │
+      // │  tenantName = "adv_013";                             │
+      // └─────────────────────────────────────────────────────┘
 
-      var resource = process.env.CLUSTER_ENDPOINT_RESOURCE + dbUser; 
-      // console.log('resource: '+resource);
-      //--> arn:aws:rds-db:us-west-2:033185771327:dbuser:prx-032c9bc28b5cc4ae7/user_${tenantName}
-      var iam_arn = process.env["IAM_ARN"];
-      // console.log('iam_arn: '+iam_arn);
-      // console.log('process.env.PROXY_ENDPOINT==>:' + process.env.PROXY_ENDPOINT);
+      const dbUser = `user_${tenantName}`;
+      const database = `tenant_${tenantName}_db`;
+      const iamArn = process.env['IAM_ARN'];
+      const proxyEndpoint = process.env.PROXY_ENDPOINT;
+      const region = process.env.AWS_REGION;
+      const resource = process.env.CLUSTER_ENDPOINT_RESOURCE + dbUser;
 
-      var session_policy = {
-        Version: "2012-10-17",
-        Statement: [
-          {
-            Effect: "Allow",
-            Action: "rds-db:connect",
-            Resource: resource,
-          },
-        ],
+      // Step 1: STS AssumeRole with scoped-down session policy
+      // The session policy restricts rds-db:connect to only this tenant's DB user,
+      // providing tenant-level isolation even though the base role allows wildcard access.
+      const sessionPolicy = {
+        Version: '2012-10-17',
+        Statement: [{
+          Effect: 'Allow',
+          Action: 'rds-db:connect',
+          Resource: resource,
+        }],
       };
 
-      let dbToken = await new Promise<string>((resolve, reject) => {
-        let sts = new AWS.STS({});
-    
-        sts.assumeRole(
-          {
-            RoleArn: iam_arn,
-            RoleSessionName: "session",
-            Policy: JSON.stringify(session_policy),
-          },
-          (err, iamCredentialResponse) => {
-            if (err) {
-              return reject(err);
-            }
-    
-            let iamCredentials = new AWS.Credentials({
-              accessKeyId: iamCredentialResponse.Credentials.AccessKeyId,
-              secretAccessKey: iamCredentialResponse.Credentials.SecretAccessKey,
-              sessionToken: iamCredentialResponse.Credentials.SessionToken,
-            });
-    
-            let signer = new AWS.RDS.Signer({
-              credentials: iamCredentials,
-            });
-    
-            signer.getAuthToken(
-              {
-                region: process.env.AWS_REGION,
-                hostname: process.env.PROXY_ENDPOINT,
-                port: this.dbPort,
-                username: dbUser,
-              },
-              (err, token) => {
-                if (err) {
-                  reject(err);
-                } else {
-                  resolve(token);
-                }
-              }
-            );
-          }
-        );
-      });
-      // console.log('dbToken==>: '+dbToken);
+      const stsClient = new STSClient({ region });
+      const assumeRoleResponse = await stsClient.send(new AssumeRoleCommand({
+        RoleArn: iamArn,
+        RoleSessionName: `tenant-${tenantName}`,
+        Policy: JSON.stringify(sessionPolicy),
+      }));
 
+      const credentials = assumeRoleResponse.Credentials;
+
+      // Step 2: Generate IAM auth token using the assumed role credentials
+      // RDS Signer creates a short-lived token that acts as the MySQL password
+      const signer = new Signer({
+        region,
+        hostname: proxyEndpoint,
+        port: this.dbPort,
+        username: dbUser,
+        credentials: {
+          accessKeyId: credentials.AccessKeyId,
+          secretAccessKey: credentials.SecretAccessKey,
+          sessionToken: credentials.SessionToken,
+        },
+      });
+
+      const dbToken = await signer.getAuthToken();
+
+      // Step 3: Create MySQL connection with IAM token as password
+      // mysql_clear_password plugin is required for RDS Proxy IAM auth
       type AuthSwitchHandlerFunction = (data: any, cb: (code: null | Error, buff?: Buffer | string) => void) => void;
-      
       const authSwitchHandler: AuthSwitchHandlerFunction = (data, cb) => {
         if (data.pluginName === 'mysql_clear_password') {
-          const token = `${dbToken}\0`;
-          cb(null, token);
+          cb(null, `${dbToken}\0`);
         } else {
           cb(new Error(`Authentication method '${data.pluginName}' is not supported`));
         }
       };
-        const poolOptions = {
-          host: process.env.PROXY_ENDPOINT,
-          user: dbUser,
-          ssl: { 
-            ca: fs.readFileSync(sslCertPath, 'utf8'),
-          },
-          password: dbToken, // Use IAM token as password
-          database: database, // e.g., "products_database"
-          
-          waitForConnections: true,
-          connectionLimit: 10,
-          queueLimit: 0,
-          authSwitchHandler,
-        };
-        
-        if (!sslCertPath || !dbToken) {
-          throw new Error('SSL certificate path or database token is missing');
-        }
-    
-        try {
-          const connection = await mysql.createConnection(poolOptions);
-          return connection;
-        } catch (error) {
-          console.error('Failed to create database connection:', error);
-          throw error;
-        }
-     
-/*
-      // Get the Secrets Manager credentials (for DB username and host)
-      const secretId = process.env.SECRETS_MANAGER_ARN;
-      const { host, username } = await this.getDBCredentials(secretId);
 
-      // Generate IAM authentication token
-      const dbToken = await this.generateAuthToken(host, username);
+      const connection = await mysql.createConnection({
+        host: proxyEndpoint,
+        user: dbUser,
+        ssl: { ca: this.sslCert },
+        password: dbToken,
+        database,
+        authSwitchHandler,
+      });
 
-      // Create MySQL connection pool with IAM authentication
-      const poolOptions: mysql.PoolOptions = {
-        host: host,
-        user: username,
-        password: dbToken, // Use IAM token as password
-        database: process.env.DB_NAME, // e.g., "products_database"
-        ssl: { ca: fs.readFileSync(sslCertPath) }, // Load SSL certificate from file
-        waitForConnections: true,
-        connectionLimit: 10,
-        queueLimit: 0,
-        // authSwitchHandler: function (data, cb) {
-        //   // modifies the authentication handler
-        //   if (data.pluginName === "mysql_clear_password") {
-        //     // authentication token is sent in clear text but connection uses SSL encryption
-        //     cb(null, Buffer.from(dbToken + "\0"));
-        //   }
-        // },
-      };
+      // Cache the connection with creation timestamp
+      this.connectionCache.set(tenantName, {
+        connection,
+        createdAt: Date.now(),
+      });
 
-      this.pool = mysql.createPool(poolOptions);
-
-      return this.pool;
+      return connection;
     } catch (error) {
-      console.error('Error creating IAM-authenticated connection pool', error);
+      console.error('Error creating IAM-authenticated connection:', error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: 'Error creating IAM-authenticated connection pool'
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
-      );
-    }
-      */
-    } catch (error) {
-      console.error('Error creating IAM-authenticated connection pool', error);
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: 'Error creating IAM-authenticated connection pool',
-        },
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error: 'Database connection failed' },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
-
-  };
-  // Function to get RDS Proxy IAM Auth Token
- 
-
-  // Function to get database credentials from Secrets Manager
-  private async getDBCredentials (secretId: string) {
-    const secretsManager = new AWS.SecretsManager();
-    const secretValue = await secretsManager.getSecretValue({ SecretId: secretId }).promise();
-    const credentials = JSON.parse(secretValue.SecretString);
-    return {
-      host: credentials.host,
-      username: credentials.username
-    };
   }
 
   // Create Product
-  async create (createProductDto: CreateProductDto, tenantId: string, tenantName: string) {
+  async create(createProductDto: CreateProductDto, tenantId: string, tenantName: string) {
     const newProduct = {
       productId: uuid(),
-      tenantId: tenantId,
-      ...createProductDto
+      tenantId,
+      ...createProductDto,
     };
     console.log('Creating product:', newProduct);
 
     try {
-      const pool = await this.getConnection(tenantName);
-
+      const conn = await this.getConnection(tenantName);
       const query = `
         INSERT INTO products (productId, tenantId, name, price, sku, category)
         VALUES (?, ?, ?, ?, ?, ?)
       `;
-      const values = [
-        newProduct.productId,
-        newProduct.tenantId,
-        newProduct.name,
-        newProduct.price,
-        newProduct.sku,
-        newProduct.category
-      ];
-
-      const [result] = await pool.execute(query, values);
+      const [result] = await conn.execute(query, [
+        newProduct.productId, newProduct.tenantId,
+        newProduct.name, newProduct.price,
+        newProduct.sku, newProduct.category,
+      ]);
       return result;
     } catch (error) {
-      console.error(error);
+      console.error('Create product error:', error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error.message
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error: 'Failed to create product' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   // Find all products for a tenant
-  async findAll (tenantId: string, tenantName: string) {
+  async findAll(tenantId: string, tenantName: string) {
     console.log('Getting All Products for Tenant:', tenantId);
 
     try {
-      const pool = await this.getConnection(tenantName);
-
-      const query = `
-        SELECT * FROM products
-      `;
-
-      const [rows] = await pool.execute(query, [tenantId]);
+      const conn = await this.getConnection(tenantName);
+      const query = `SELECT * FROM products`;
+      const [rows] = await conn.execute(query);
       return rows;
     } catch (error) {
-      console.error(error);
+      console.error('Find all products error:', error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error.message
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error: 'Failed to retrieve products' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   // Find one product by ID
-  async findOne (id: string, tenantId: string, tenantName: string) {
+  async findOne(id: string, tenantId: string, tenantName: string) {
+    console.log('Getting Product:', id);
+
     try {
-      console.log('Getting Product: ', id);
-
-      const pool = await this.getConnection(tenantName);
-
-      const query = `
-        SELECT * FROM products
-        WHERE tenantId = ? AND productId = ?
-      `;
-      const [rows] = await pool.execute(query, [tenantId, id.split(':')[1]]);
-      return rows[0] || null;
+      const conn = await this.getConnection(tenantName);
+      const query = `SELECT * FROM products WHERE tenantId = ? AND productId = ?`;
+      const [rows] = await conn.execute(query, [tenantId, id.split(':')[1]]);
+      return (rows as any[])[0] || null;
     } catch (error) {
-      console.error(error);
+      console.error('Find one product error:', error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error.message
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error: 'Failed to retrieve product' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   // Update product
-  async update (id: string, tenantId: string, tenantName: string, updateProductDto: UpdateProductDto) {
+  async update(id: string, tenantId: string, tenantName: string, updateProductDto: UpdateProductDto) {
+    console.log('Updating Product:', id);
+
     try {
-      console.log('Updating Product: ', id);
-
-      const pool = await this.getConnection(tenantName);
-
+      const conn = await this.getConnection(tenantName);
       const query = `
         UPDATE products
         SET name = ?, price = ?, sku = ?, category = ?
         WHERE tenantId = ? AND productId = ?
       `;
-      const values = [
-        updateProductDto.name,
-        updateProductDto.price,
-        updateProductDto.sku,
-        updateProductDto.category,
-        tenantId,
-        id.split(':')[1]
-      ];
-
-      const [result] = await pool.execute(query, values);
+      const [result] = await conn.execute(query, [
+        updateProductDto.name, updateProductDto.price,
+        updateProductDto.sku, updateProductDto.category,
+        tenantId, id.split(':')[1],
+      ]);
       return result;
     } catch (error) {
-      console.error(error);
+      console.error('Update product error:', error);
       throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: error.message
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR
+        { status: HttpStatus.INTERNAL_SERVER_ERROR, error: 'Failed to update product' },
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

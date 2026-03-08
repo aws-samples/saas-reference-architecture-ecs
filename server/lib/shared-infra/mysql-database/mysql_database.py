@@ -2,7 +2,7 @@ import boto3
 import pymysql.cursors
 import json
 import string
-import random
+import re
 from os import environ
 import logger
 
@@ -32,6 +32,10 @@ def lambda_handler(event, context):
     tenant_name = event["tenantName"]
     if not tenant_name:
         raise ValueError('Tenant ID is required')
+
+    # Validate tenant_name to prevent SQL injection (alphanumeric, hyphen, underscore only)
+    if not re.match(r'^[a-zA-Z0-9_-]+$', tenant_name):
+        raise ValueError(f'Invalid tenant name: {tenant_name}')
 
     try:
         connection = None
@@ -153,9 +157,10 @@ def update_rds_proxy( proxy_auth):
         print(f"Error updating RDS Proxy for {proxy_auth}: {e}")
         raise Exception(f"Error updating RDS Proxy for {proxy_auth}: {e}")
 
-# Password creation function
+# Password creation function (cryptographically secure)
 def generate_password(length):
+    import secrets
     characters = string.ascii_letters + string.digits
-    password = ''.join(random.choice(characters) for _ in range(length))
+    password = ''.join(secrets.choice(characters) for _ in range(length))
     return password
 
