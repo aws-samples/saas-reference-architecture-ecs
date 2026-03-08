@@ -42,6 +42,7 @@ export TIER=$tier
 export TENANT_ADMIN_EMAIL=$email
 export TENANT_NAME=$tenantName
 export USE_FEDERATION=$useFederation
+export CDK_PARAM_SYSTEM_ADMIN_EMAIL=$email
 
 # EC2/Fargate configuration per tier
 # EC2/Fargate: Premium from onboarding params, Advanced from existing stack output
