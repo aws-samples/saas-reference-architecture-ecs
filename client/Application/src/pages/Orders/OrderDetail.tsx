@@ -177,7 +177,7 @@ const OrderDetail: React.FC = () => {
                     </TableCell>
                     <TableCell align="center">
                       <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                        ${op.price.toFixed(2)}
+                        ${Number(op.price).toFixed(2)}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         Before Tax

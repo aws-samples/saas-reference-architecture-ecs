@@ -145,7 +145,7 @@ const ProductList: React.FC = () => {
                       {product.name}
                     </Button>
                   </TableCell>
-                  <TableCell sx={{ fontWeight: 500 }}>${product.price.toFixed(2)}</TableCell>
+                  <TableCell sx={{ fontWeight: 500 }}>${Number(product.price).toFixed(2)}</TableCell>
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{product.sku}</TableCell>
                   <TableCell>{product.category}</TableCell>
                   <TableCell align="right">

@@ -152,7 +152,7 @@ const OrderCreate: React.FC = () => {
                   {orderProducts.map((lineItem) => (
                     <TableRow key={lineItem.product.productId}>
                       <TableCell>{lineItem.product.name}</TableCell>
-                      <TableCell>${lineItem.product.price.toFixed(2)}</TableCell>
+                      <TableCell>${Number(lineItem.product.price).toFixed(2)}</TableCell>
                       <TableCell>{lineItem.quantity || 0}</TableCell>
                       <TableCell align="center">
                         <IconButton

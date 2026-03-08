@@ -53,7 +53,7 @@ export class RdsCluster extends Construct {
     // rdsSecurityGroup.connections.allowFrom(rdsSecurityGroup, ec2.Port.tcp(3306), 'Backend Microservices');
 
     const cluster = new rds.DatabaseCluster(this, 'SbtRDSCluster', {
-        engine: rds.DatabaseClusterEngine.auroraMysql({ version: rds.AuroraMysqlEngineVersion.VER_3_05_2 }),
+        engine: rds.DatabaseClusterEngine.auroraMysql({ version: rds.AuroraMysqlEngineVersion.VER_3_08_2 }),
         
         serverlessV2MinCapacity: 6.5,
         serverlessV2MaxCapacity: 32,

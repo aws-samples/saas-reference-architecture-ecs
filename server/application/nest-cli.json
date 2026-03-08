@@ -16,7 +16,8 @@
       "compilerOptions": {
         "tsConfigPath": "microservices/product/tsconfig.app.json",
         "assets": [
-          "**/*.json"
+          "**/*.json",
+          "**/*.pem"
         ]
       }
     },

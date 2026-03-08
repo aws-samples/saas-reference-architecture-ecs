@@ -21,8 +21,8 @@ export class ProductsService {
     if (this.pool) return this.pool;
 
     try {
-      // Load SSL certificate for RDS Proxy (pre-downloaded, stored in /src)
-      const sslCertPath = path.resolve(__dirname, '/app/microservices/product/src/SSLCA.pem');
+      // Load SSL certificate for RDS Proxy (downloaded during build, copied to dist/ via nest-cli assets)
+      const sslCertPath = path.join(__dirname, 'SSLCA.pem');
       if (!fs.existsSync(sslCertPath)) {
         throw new Error(`SSL certificate not found at ${sslCertPath}`);
       }
@@ -111,9 +111,8 @@ export class ProductsService {
           host: process.env.PROXY_ENDPOINT,
           user: dbUser,
           ssl: { 
-            ca: fs.readFileSync('/app/microservices/product/src/SSLCA.pem', "utf8"),
-            // flags: "SSL_VERIFY_SERVER_CERT",
-          }, // Load SSL certificate from file
+            ca: fs.readFileSync(sslCertPath, 'utf8'),
+          },
           password: dbToken, // Use IAM token as password
           database: database, // e.g., "products_database"
           
@@ -178,6 +177,13 @@ export class ProductsService {
       */
     } catch (error) {
       console.error('Error creating IAM-authenticated connection pool', error);
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'Error creating IAM-authenticated connection pool',
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
 
   };
