@@ -21,7 +21,7 @@ export CDK_DISABLE_NOTICES=true
 cd ../server
 
 # npx cdk bootstrap
-export CDK_PARAM_TIER='basic'
+export CDK_PARAM_TIER='BASIC'
 
 if [[ -f "package-lock.json" ]]; then
   npm ci --silent
