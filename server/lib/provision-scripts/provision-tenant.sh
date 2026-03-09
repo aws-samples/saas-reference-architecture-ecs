@@ -29,8 +29,21 @@ aws s3api get-object --bucket "$CDK_PARAM_S3_BUCKET_NAME" --key "$CDK_SOURCE_NAM
 tar --warning=no-unknown-keyword -xzf $CDK_SOURCE_NAME 2>/dev/null || tar -xzf $CDK_SOURCE_NAME
 cd ./server
 
-# Use DynamoDB only
-sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+# Auto-detect database type from shared-infra-stack
+RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::RDS::DBInstance']" --output text)
+if [ -z "$RDS_RESOURCES" ] 
+then
+  export CDK_USE_DB='dynamodb'
+else
+  export CDK_USE_DB='mysql'
+fi
+echo "CDK_USE_DB:$CDK_USE_DB"
+
+if [ "$CDK_USE_DB" == 'mysql' ]; then 
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
+else
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+fi
 
 cat ./lib/service-info.json
 
@@ -42,12 +55,12 @@ export TIER=$tier
 export TENANT_ADMIN_EMAIL=$email
 export TENANT_NAME=$tenantName
 export USE_FEDERATION=$useFederation
+export CDK_PARAM_SYSTEM_ADMIN_EMAIL=$email
 
-# Dynamic configuration processing (Premium only)
-if [[ $TIER == "PREMIUM" ]]; then
-    export CDK_PARAM_USE_EC2_PREMIUM="${useEc2:-true}"  # Premium: dynamic from onboarding
-fi
-# Advanced and Basic use fixed settings from .env file
+# EC2/Fargate configuration per tier
+# EC2/Fargate: Premium from onboarding params, Advanced from existing stack output
+[[ $TIER == "PREMIUM" ]] && export CDK_PARAM_USE_EC2_PREMIUM="${useEc2:-true}"
+[[ $TIER == "ADVANCED" ]] && export CDK_PARAM_USE_EC2_ADVANCED=$(aws cloudformation describe-stacks --stack-name tenant-template-stack-advanced --query "Stacks[0].Outputs[?OutputKey=='UseEc2'].OutputValue" --output text 2>/dev/null || echo "true")
 export CDK_PARAM_USE_RPROXY="${useRProxy:-true}"
 
 # Define variables
@@ -108,6 +121,25 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
       --asset-parallelism true \
       --no-rollback
 
+fi
+
+# Basic tier + MySQL: invoke schema creation Lambda directly (no cdk deploy for Basic)
+if [[ $TIER == "BASIC" && "$CDK_USE_DB" == "mysql" ]]; then
+    echo "Creating MySQL schema for Basic tier tenant: $TENANT_NAME"
+    SCHEME_LAMBDA_ARN=$(aws cloudformation describe-stacks --stack-name "$BOOTSTRAP_STACK_NAME" \
+      --query "Stacks[0].Outputs[?ExportName=='SchemeLambdaArn'].OutputValue" --output text)
+
+    if [[ -n "$SCHEME_LAMBDA_ARN" && "$SCHEME_LAMBDA_ARN" != "None" ]]; then
+        aws lambda invoke \
+          --function-name "$SCHEME_LAMBDA_ARN" \
+          --invocation-type "Event" \
+          --cli-binary-format raw-in-base64-out \
+          --payload "{\"tenantName\":\"$TENANT_NAME\"}" \
+          /tmp/lambda-response.json
+        echo "MySQL schema creation Lambda invoked for tenant: $TENANT_NAME"
+    else
+        echo "WARNING: SchemeLambdaArn not found. Skipping MySQL schema creation."
+    fi
 fi
 
 # Read tenant details from the cloudformation stack output parameters

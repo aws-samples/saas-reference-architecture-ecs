@@ -33,6 +33,7 @@ COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=true && yarn cache clean
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/libs ./libs
+COPY --from=build /app/microservices/product/src/SSLCA.pem ./dist/microservices/product/SSLCA.pem
 
 ########################WORKSHOP-TEST##############################
 RUN apk add --no-cache curl unzip bash vim nano && \

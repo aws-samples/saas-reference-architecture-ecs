@@ -10,8 +10,7 @@ import {
   Put,
   Param,
   UseGuards,
-  SetMetadata,
-  Req
+  SetMetadata
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -27,20 +26,18 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard)
   async create (
   @Body() createProductDto: CreateProductDto,
-    @TenantCredentials() tenant,
-    @Req() req
+    @TenantCredentials() tenant
   ) {
     console.log('Create product', tenant);
-    const jwtToken = req.headers.authorization?.replace('Bearer ', '') || '';
-    await this.productsService.create(createProductDto, tenant.tenantId, jwtToken);
+    await this.productsService.create(createProductDto, tenant.tenantId, tenant.tenantName);
   }
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async findAll (@TenantCredentials() tenant, @Req() req) {
+  async findAll (@TenantCredentials() tenant) {
     console.log('Get products', tenant);
-    const jwtToken = req.headers.authorization?.replace('Bearer ', '') || '';
-    return await this.productsService.findAll(tenant.tenantId, jwtToken);
+    const tenantId = tenant.tenantId;
+    return await this.productsService.findAll(tenantId, tenant.tenantName);
   }
 
   @Get('/health')
@@ -52,10 +49,9 @@ export class ProductsController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  async findOne (@Param('id') id: string, @TenantCredentials() tenant, @Req() req) {
+  async findOne (@Param('id') id: string, @TenantCredentials() tenant) {
     console.log('Get One product', tenant);
-    const jwtToken = req.headers.authorization?.replace('Bearer ', '') || '';
-    return await this.productsService.findOne(id, tenant.tenantId, jwtToken);
+    return await this.productsService.findOne(id, tenant.tenantId, tenant.tenantName);
   }
 
   @Put(':id')
@@ -63,11 +59,9 @@ export class ProductsController {
   async update (
   @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
-    @TenantCredentials() tenant,
-    @Req() req
+    @TenantCredentials() tenant
   ) {
     console.log(tenant);
-    const jwtToken = req.headers.authorization?.replace('Bearer ', '') || '';
-    return await this.productsService.update(id, tenant.tenantId, updateProductDto, jwtToken);
+    return await this.productsService.update(id, tenant.tenantId, tenant.tenantName, updateProductDto);
   }
 }

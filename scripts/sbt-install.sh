@@ -21,7 +21,7 @@ export CDK_DISABLE_NOTICES=true
 cd ../server
 
 # npx cdk bootstrap
-export CDK_PARAM_TIER='basic'
+export CDK_PARAM_TIER='BASIC'
 
 if [[ -f "package-lock.json" ]]; then
   npm ci --silent
@@ -33,7 +33,7 @@ fi
 npx cdk deploy \
     controlplane-stack \
     core-appplane-stack \
-    --require-approval never #--verbose ##--concurrency 10 --asset-parallelism true
+    --exclusively --require-approval never --concurrency 10 --asset-parallelism true
 
 # Get SaaS application url
 ADMIN_SITE_URL=$(aws cloudformation describe-stacks --stack-name shared-infra-stack --query "Stacks[0].Outputs[?OutputKey=='adminSiteUrl'].OutputValue" --output text)

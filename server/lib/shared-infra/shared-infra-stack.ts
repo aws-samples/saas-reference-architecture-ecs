@@ -14,6 +14,7 @@ import { addTemplateTag } from '../utilities/helper-functions';
 import { StaticSiteDistro } from './static-site-distro';
 import { AttributeType, Table } from 'aws-cdk-lib/aws-dynamodb';
 
+import { RdsCluster } from './rds-cluster';
 import { SharedInfraNag } from '../cdknag/shared-infra-nag';
 import { ApiGateway } from './api-gateway';
 import { UsagePlans } from './usage-plans';
@@ -290,6 +291,19 @@ export class SharedInfraStack extends cdk.Stack {
       apiKeyIdAdvancedTier: advanceKey.keyId,
       apiKeyIdPremiumTier: premiumKey.keyId
     });
+
+    //=====>>MYSQL<<===========
+    if(process.env.CDK_USE_DB == 'mysql') {
+      const rdsCluster = new RdsCluster(this, 'RdsCluster', {
+        vpc: this.vpc,
+        stageName: props.stageName,
+        lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
+        env: {
+          account: this.account,
+          region: this.region
+        }
+      });
+    }
 
     //**Output */
     new cdk.CfnOutput(this, 'ALBDnsName', {

@@ -5,17 +5,6 @@
       "memoryLimitMiB": 512,
       "cpu": 256,
       "containerPort":80,
-      "policy": {
-        "Version": "2012-10-17",
-        "Statement": [
-          {
-            "Effect": "Allow",
-            "Action": [ "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel","ssmmessages:OpenControlChannel","ssmmessages:OpenDataChannel"
-            ],
-            "Resource": "*"
-          }
-        ]
-      },
       "portMappings": [{
           "name": "rproxy", 
           "containerPort": 80,
@@ -37,17 +26,6 @@
             "kind": "dynamodb",
             "sortKey": "orderId"
         },
-        "policy": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [ "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel","ssmmessages:OpenControlChannel","ssmmessages:OpenDataChannel"
-              ],
-              "Resource": "*"
-            }
-          ]
-        },
         "portMappings": [{
           "name": "orders", 
           "containerPort": 3010,
@@ -55,7 +33,7 @@
           "protocol": "ecs.Protocol.TCP"
         }],
         "environment" : {
-          "TABLE_NAME": "ORDER_TABLE"
+          "TABLE_NAME": "ORDER_TABLE_NAME"
         }
       },
       {
@@ -65,7 +43,7 @@
         "cpu": 256,
         "containerPort": 3010,
         "database": {
-            "kind": "dynamodb",
+            "kind": "mysql",
             "sortKey": "productId"
         },
         "portMappings": [{
@@ -75,7 +53,10 @@
           "protocol": "ecs.Protocol.TCP"
         }],
         "environment" : {
-          "TABLE_NAME": "PRODUCT_TABLE"
+          "IAM_ARN": "<IAM_ARN>",
+          "RESOURCE": "arn:aws:rds-db:<REGION>:<ACCOUNT_ID>:dbuser:*/",
+          "PROXY_ENDPOINT": "<PROXY_ENDPOINT>",
+          "CLUSTER_ENDPOINT_RESOURCE": "<CLUSTER_ENDPOINT_RESOURCE>"
         }
       },
       {

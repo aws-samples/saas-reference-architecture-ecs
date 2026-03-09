@@ -52,15 +52,25 @@ fi
 cp .env.example .env
 echo "Created .env file from .env.example"
 
-# Use DynamoDB only
-sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+# Detect DB type from build-application.sh selection
+if [ -f "/tmp/db_type.env" ]; then
+    source /tmp/db_type.env
+fi
+export CDK_USE_DB=${DB_TYPE:-"dynamodb"}
+echo "CDK_USE_DB: $CDK_USE_DB"
+
+if [ "$CDK_USE_DB" == 'mysql' ]; then
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
+else
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+fi
 
 # npx cdk bootstrap
 export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'
 export CDK_PARAM_PROVISIONING_DETAIL_TYPE=$CDK_PARAM_ONBOARDING_DETAIL_TYPE
 export CDK_PARAM_OFFBOARDING_DETAIL_TYPE='Offboarding'
 export CDK_PARAM_DEPROVISIONING_DETAIL_TYPE=$CDK_PARAM_OFFBOARDING_DETAIL_TYPE
-export CDK_PARAM_TIER='basic'
+export CDK_PARAM_TIER='BASIC'
 export CDK_PARAM_STAGE='prod'
 export CDK_ADV_CLUSTER='INACTIV'
 export CDK_BASIC_CLUSTER="$CDK_PARAM_STAGE-$CDK_PARAM_TIER"
