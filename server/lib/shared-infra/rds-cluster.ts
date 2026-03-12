@@ -156,7 +156,7 @@ export class RdsCluster extends Construct {
     lambdaRole.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['secretsmanager:CreateSecret', 'secretsmanager:DeleteSecret', 'secretsmanager:TagResource'],
+        actions: ['secretsmanager:CreateSecret', 'secretsmanager:DeleteSecret', 'secretsmanager:TagResource', 'secretsmanager:DescribeSecret'],
         resources: [`arn:aws:secretsmanager:${props.env.region}:${props.env.account}:secret:rds_proxy_multitenant/proxy_secret_for_user*`],
       })
     );
@@ -218,7 +218,7 @@ export class RdsCluster extends Construct {
       // },
       securityGroups: [lambdaSecurityGroup],
       role: lambdaRole,
-      timeout: cdk.Duration.seconds(15),
+      timeout: cdk.Duration.minutes(15),
     });
   
     dbSecret.grantRead(this.schemeLambda);

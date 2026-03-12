@@ -19,9 +19,35 @@ shopt -s nocasematch
 export CDK_PARAM_TENANT_ID=$tenantId
 export TIER=$tier
 export CDK_PARAM_TIER=$TIER
+export TENANT_NAME=$tenantName
 
 export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# Auto-detect database type from shared-infra-stack
+BOOTSTRAP_STACK_NAME="shared-infra-stack"
+RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name "$BOOTSTRAP_STACK_NAME" --query "StackResources[?ResourceType=='AWS::RDS::DBInstance']" --output text)
+if [ -z "$RDS_RESOURCES" ]; then
+  CDK_USE_DB='dynamodb'
+else
+  CDK_USE_DB='mysql'
+fi
+echo "CDK_USE_DB: $CDK_USE_DB"
+
+# Resolve tenantName: from event, or from TenantStackMapping DynamoDB table
+if [[ -z "$TENANT_NAME" && -n "$TENANT_STACK_MAPPING_TABLE" ]]; then
+  echo "tenantName not in event, looking up from $TENANT_STACK_MAPPING_TABLE..."
+  TENANT_NAME=$(aws dynamodb get-item \
+    --table-name "$TENANT_STACK_MAPPING_TABLE" \
+    --key "{\"tenantId\": {\"S\": \"$CDK_PARAM_TENANT_ID\"}}" \
+    --query 'Item.tenantName.S' --output text 2>/dev/null || echo "")
+  if [[ "$TENANT_NAME" == "None" || -z "$TENANT_NAME" ]]; then
+    echo "WARNING: tenantName not found in mapping table for tenantId=$CDK_PARAM_TENANT_ID"
+    TENANT_NAME=""
+  else
+    echo "Resolved tenantName from mapping table: $TENANT_NAME"
+  fi
+fi
 
 # Define variables
 STACK_NAME="tenant-template-stack-basic"
@@ -30,12 +56,60 @@ PRODUCT_TABLE_OUTPUT_PARAM_NAME="productsTableOutputParam"
 ORDER_TABLE_OUTPUT_PARAM_NAME="ordersTableOutputParam"
 PRODUCT_TABLE_NAME="product-table-basic"
 ORDER_TABLE_NAME="order-table-basic"
-# Delete tenant items 
+
+# MySQL cleanup: invoke SchemeLambda with action=delete
+# Handles: DROP database/user, remove RDS Proxy Auth, delete Secrets Manager secret
+cleanup_mysql_tenant() {
+  local TENANT_NAME_TO_CLEAN="$1"
+  if [[ -z "$TENANT_NAME_TO_CLEAN" ]]; then
+    echo "WARNING: tenantName is empty, skipping MySQL cleanup"
+    return
+  fi
+
+  echo "Cleaning up MySQL resources for tenant: $TENANT_NAME_TO_CLEAN"
+  SCHEME_LAMBDA_ARN=$(aws cloudformation describe-stacks --stack-name "$BOOTSTRAP_STACK_NAME" \
+    --query "Stacks[0].Outputs[?ExportName=='SchemeLambdaArn'].OutputValue" --output text 2>/dev/null || echo "")
+
+  if [[ -n "$SCHEME_LAMBDA_ARN" && "$SCHEME_LAMBDA_ARN" != "None" ]]; then
+    # Synchronous invoke — wait for cleanup to complete before stack destroy
+    aws lambda invoke \
+      --function-name "$SCHEME_LAMBDA_ARN" \
+      --invocation-type "RequestResponse" \
+      --cli-binary-format raw-in-base64-out \
+      --payload "{\"tenantName\":\"$TENANT_NAME_TO_CLEAN\",\"action\":\"delete\"}" \
+      /tmp/mysql-cleanup-response.json
+
+    LAMBDA_RESULT=$(cat /tmp/mysql-cleanup-response.json 2>/dev/null || echo "{}")
+    echo "MySQL cleanup Lambda response: $LAMBDA_RESULT"
+
+    # Check for Lambda error (FunctionError in response)
+    if echo "$LAMBDA_RESULT" | grep -qi "error"; then
+      echo "WARNING: MySQL cleanup Lambda returned error, attempting direct secret cleanup..."
+      cleanup_secret_directly "$TENANT_NAME_TO_CLEAN"
+    else
+      echo "MySQL cleanup completed for tenant: $TENANT_NAME_TO_CLEAN"
+    fi
+  else
+    echo "WARNING: SchemeLambdaArn not found. Attempting direct secret cleanup..."
+    cleanup_secret_directly "$TENANT_NAME_TO_CLEAN"
+  fi
+}
+
+# Fallback: directly delete Secrets Manager secret if Lambda is unavailable
+cleanup_secret_directly() {
+  local TENANT_NAME_TO_CLEAN="$1"
+  local SECRET_NAME="rds_proxy_multitenant/proxy_secret_for_user_${TENANT_NAME_TO_CLEAN}"
+
+  echo "Directly deleting secret: $SECRET_NAME"
+  aws secretsmanager delete-secret \
+    --secret-id "$SECRET_NAME" \
+    --force-delete-without-recovery 2>/dev/null || echo "Secret $SECRET_NAME not found or already deleted"
+}
+
+# Delete tenant items from DynamoDB
 delete_items_if_exists() {
   TABLE_NAME="$1"
   TENANT_ID="$2"
-  SUFFIX_START=1
-  SUFFIX_END=10
 
   TABLE_INFO=$(aws dynamodb describe-table \
     --table-name "$TABLE_NAME")
@@ -44,42 +118,38 @@ delete_items_if_exists() {
   PARTITION_KEY_NAME=$(echo "$TABLE_INFO" | jq -r '.Table.KeySchema[] | select(.KeyType == "HASH") | .AttributeName')
   SORT_KEY_NAME=$(echo "$TABLE_INFO" | jq -r '.Table.KeySchema[] | select(.KeyType == "RANGE") | .AttributeName')
 
+  PARTITION_KEY_VALUE="$TENANT_ID"
 
-  # for ((SUFFIX=SUFFIX_START; SUFFIX<=SUFFIX_END; SUFFIX++)); do
-    #PARTITION_KEY_VALUE="$TENANT_ID-$SUFFIX"
-    PARTITION_KEY_VALUE="$TENANT_ID"
+  # Query DynamoDB to get items with the specified partition key value
+  QUERY_OUTPUT=$(aws dynamodb query \
+    --table-name "$TABLE_NAME" \
+    --key-condition-expression "$PARTITION_KEY_NAME = :pk" \
+    --expression-attribute-values '{":pk":{"S":"'"$PARTITION_KEY_VALUE"'"}}')
 
-    # Query DynamoDB to get items with the specified partition key value
-    QUERY_OUTPUT=$(aws dynamodb query \
-      --table-name "$TABLE_NAME" \
-      --key-condition-expression "$PARTITION_KEY_NAME = :pk" \
-      --expression-attribute-values '{":pk":{"S":"'"$PARTITION_KEY_VALUE"'"}}')
+  # Check if items were returned in the query result
+  ITEM_COUNT=$(echo "$QUERY_OUTPUT" | jq '.Items | length')
 
-    # Check if items were returned in the query result
-    ITEM_COUNT=$(echo "$QUERY_OUTPUT" | jq '.Items | length')
+  if [ "$ITEM_COUNT" -gt 0 ]; then
+    echo "Items found with PartitionKey = $PARTITION_KEY_VALUE"
 
-    if [ "$ITEM_COUNT" -gt 0 ]; then
-      echo "Items found with PartitionKey = $PARTITION_KEY_VALUE"
+    # Loop through the items and extract the PartitionKey and SortKey
+    for ITEM in $(echo "$QUERY_OUTPUT" | jq -c '.Items[]'); do
+      ITEM_KEY=$(echo "$ITEM" | jq -r '.'$PARTITION_KEY_NAME'.S')
+      ITEM_SORT_KEY=$(echo "$ITEM" | jq -r '.'$SORT_KEY_NAME'.S')
 
-      # Loop through the items and extract the PartitionKey and SortKey
-      for ITEM in $(echo "$QUERY_OUTPUT" | jq -c '.Items[]'); do
-        ITEM_KEY=$(echo "$ITEM" | jq -r '.'$PARTITION_KEY_NAME'.S')
-        ITEM_SORT_KEY=$(echo "$ITEM" | jq -r '.'$SORT_KEY_NAME'.S')
+      # Delete each item using the PartitionKey and SortKey
+      aws dynamodb delete-item \
+        --table-name "$TABLE_NAME" \
+        --key "{\"$PARTITION_KEY_NAME\":{\"S\":\"$ITEM_KEY\"},\"$SORT_KEY_NAME\":{\"S\":\"$ITEM_SORT_KEY\"}}"
 
-        # Delete each item using the PartitionKey and SortKey
-        aws dynamodb delete-item \
-          --table-name "$TABLE_NAME" \
-          --key "{\"$PARTITION_KEY_NAME\":{\"S\":\"$ITEM_KEY\"},\"$SORT_KEY_NAME\":{\"S\":\"$ITEM_SORT_KEY\"}}"
-
-        echo "Deleted item with $PARTITION_KEY_NAME = $ITEM_KEY and $SORT_KEY_NAME = $ITEM_SORT_KEY"
-      done
-    else
-      echo "No items found with PartitionKey = $PARTITION_KEY_VALUE"
-    fi
-  # done
+      echo "Deleted item with $PARTITION_KEY_NAME = $ITEM_KEY and $SORT_KEY_NAME = $ITEM_SORT_KEY"
+    done
+  else
+    echo "No items found with PartitionKey = $PARTITION_KEY_VALUE"
+  fi
 }
 
-# Un deploy the tenant template for premium tier(silo)
+# Un deploy the tenant template for premium/advanced tier (silo)
 if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
 
   STACK_NAME=$(aws dynamodb get-item \
@@ -88,6 +158,12 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   --query 'Item.stackName.S')
   STACK_NAME=$(sed -e 's/^"//' -e 's/"$//' <<<$STACK_NAME)
   echo "Stack name from $TENANT_STACK_MAPPING_TABLE is  $STACK_NAME"
+
+  # MySQL cleanup BEFORE stack destroy (Lambda needs VPC/RDS access)
+  if [[ "$CDK_USE_DB" == "mysql" ]]; then
+    cleanup_mysql_tenant "$TENANT_NAME"
+  fi
+
   # Copy to S3 Bucket
   export CDK_PARAM_S3_BUCKET_NAME="saas-reference-architecture-ecs-$ACCOUNT_ID-$REGION"
   export CDK_SOURCE_NAME="source.tar.gz"
@@ -120,6 +196,13 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   npx cdk destroy $STACK_NAME --force --concurrency 10
 
 else
+  # BASIC tier cleanup
+
+  # MySQL cleanup for Basic tier
+  if [[ "$CDK_USE_DB" == "mysql" ]]; then
+    cleanup_mysql_tenant "$TENANT_NAME"
+  fi
+
   # Read tenant details from the cloudformation stack output parameters
   SAAS_APP_USERPOOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='$USER_POOL_OUTPUT_PARAM_NAME'].OutputValue" --output text)
   
@@ -137,12 +220,13 @@ else
   echo "Deleted user group: $CDK_PARAM_TENANT_ID"
   echo "All users have been removed from the group and the group has been deleted."
 
-  # Delete tenant items from the product and order tables
-  delete_items_if_exists $PRODUCT_TABLE_NAME $CDK_PARAM_TENANT_ID
-  delete_items_if_exists $ORDER_TABLE_NAME $CDK_PARAM_TENANT_ID  
+  # Delete tenant items from the product and order tables (DynamoDB only)
+  if [[ "$CDK_USE_DB" != "mysql" ]]; then
+    delete_items_if_exists $PRODUCT_TABLE_NAME $CDK_PARAM_TENANT_ID
+    delete_items_if_exists $ORDER_TABLE_NAME $CDK_PARAM_TENANT_ID
+  fi
 
 fi
 
 # Create JSON response of output parameters
 export registrationStatus="Deleted"
-

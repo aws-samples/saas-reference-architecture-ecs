@@ -60,6 +60,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/orders",
             "requestParameters" : {
@@ -83,6 +84,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/orders",
             "requestParameters" : {
@@ -149,6 +151,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/orders/{id}",
             "requestParameters" : {
@@ -178,6 +181,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/orders/{id}",
             "requestParameters" : {
@@ -246,6 +250,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/products",
             "requestParameters" : {
@@ -269,6 +274,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/products",
             "requestParameters" : {
@@ -335,6 +341,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/products/{id}",
             "requestParameters" : {
@@ -364,6 +371,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/products/{id}",
             "requestParameters" : {
@@ -393,6 +401,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/products/{id}",
             "requestParameters" : {
@@ -466,6 +475,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossacore/{proxy}",
             "requestParameters" : {
@@ -534,6 +544,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossaadmin/login",
             "requestParameters" : {
@@ -551,6 +562,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossaadmin/login",
             "requestParameters" : {
@@ -601,6 +613,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossaadmin/login/{proxy}",
             "requestParameters" : {
@@ -652,6 +665,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossaadmin/main",
             "requestParameters" : {
@@ -698,6 +712,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "GET",
             "uri": "{{integration_uri}}/fossaadmin/health",
             "requestParameters" : {
@@ -716,6 +731,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossaadmin/customers/{proxy}",
             "requestParameters" : {
@@ -735,6 +751,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossaadmin/products/{proxy}",
             "requestParameters" : {
@@ -754,6 +771,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossaadmin/billing/{proxy}",
             "requestParameters" : {
@@ -773,6 +791,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossaadmin/operation/{proxy}",
             "requestParameters" : {
@@ -799,6 +818,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/fossaadmin/{proxy}",
             "requestParameters" : {
@@ -867,6 +887,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/users",
             "requestParameters" : {
@@ -890,6 +911,7 @@
           "x-amazon-apigateway-integration" : {
             "type" : "http_proxy",
             "connectionId" : "{{connection_id}}",
+            "integrationTarget" : "{{integration_target}}",
             "httpMethod" : "ANY",
             "uri": "{{integration_uri}}/users",
             "requestParameters" : {

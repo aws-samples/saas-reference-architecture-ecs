@@ -10,11 +10,6 @@ import { addTemplateTag } from "../utilities/helper-functions";
 import { ContainerInfo } from "../interfaces/container-info";
 import { IdentityDetails } from "../interfaces/identity-details";
 import { HttpNamespace } from "aws-cdk-lib/aws-servicediscovery";
-import {
-  AwsCustomResource,
-  AwsCustomResourcePolicy,
-  PhysicalResourceId,
-} from "aws-cdk-lib/custom-resources";
 import path = require("path");
 import * as fs from "fs";
 
@@ -186,9 +181,10 @@ export class TenantServiceStack extends cdk.Stack {
       );
     }
 
-    // MySQL schema provisioning via Lambda CustomResource
+    // MySQL schema provisioning via shared Custom Resource Lambda
     if (useMySQL) {
       const schemeLambdaArn = cdk.Fn.importValue("SchemeLambdaArn");
+      const customResourceFnArn = cdk.Fn.importValue('TenantCustomResourceFnArn');
 
       const shouldExecuteCustomResource = new cdk.CfnCondition(
         this,
@@ -198,32 +194,19 @@ export class TenantServiceStack extends cdk.Stack {
         }
       );
 
-      const mysqlCustomResource = new AwsCustomResource(
+      const mysqlCustomResource = new cdk.CustomResource(
         this,
         "InvokeLambdaCustomResource",
         {
-          installLatestAwsSdk: true,
-          onCreate: {
-            service: "Lambda",
-            action: "invoke",
-            physicalResourceId: PhysicalResourceId.of(
-              "InvokeLambdaCustomResource"
-            ),
-            parameters: {
-              FunctionName: schemeLambdaArn,
-              InvocationType: "Event",
-              Payload: JSON.stringify({
-                tenantName: props.tenantName,
-                stackName: cdk.Stack.of(this).stackName,
-              }),
-            },
-          },
-          policy: AwsCustomResourcePolicy.fromStatements([
-            new cdk.aws_iam.PolicyStatement({
-              actions: ["lambda:InvokeFunction"],
-              resources: [schemeLambdaArn],
+          serviceToken: customResourceFnArn,
+          properties: {
+            Action: 'LambdaInvoke',
+            FunctionName: schemeLambdaArn,
+            Payload: JSON.stringify({
+              tenantName: props.tenantName,
+              stackName: cdk.Stack.of(this).stackName,
             }),
-          ]),
+          },
         }
       );
 

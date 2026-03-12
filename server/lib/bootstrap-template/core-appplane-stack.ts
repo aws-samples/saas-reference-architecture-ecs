@@ -75,14 +75,13 @@ export class CoreAppPlaneStack extends cdk.Stack {
         ],
       }),
       script: fs.readFileSync('./lib/provision-scripts/deprovision-tenant.sh', 'utf8'),
-      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier'],
+      environmentStringVariablesFromIncomingEvent: ['tenantId', 'tier', 'tenantName'],
       environmentVariablesToOutgoingEvent: {
         tenantRegistrationData:['registrationStatus']
       },
 
       scriptEnvironmentVariables: {
         TENANT_STACK_MAPPING_TABLE: props.tenantMappingTable.tableName,
-        // CDK_PARAM_SYSTEM_ADMIN_EMAIL removed - not used in deprovision-tenant.sh
       },
       eventManager: props.eventManager
     };
