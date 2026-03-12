@@ -1,8 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import * as targets from 'aws-cdk-lib/aws-elasticloadbalancingv2-targets';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
 import { type Construct } from 'constructs';
 import { StringParameter } from 'aws-cdk-lib/aws-ssm';
@@ -28,7 +29,6 @@ export class SharedInfraStack extends cdk.Stack {
   alb: elbv2.ApplicationLoadBalancer;
   albSG: ec2.ISecurityGroup;
   listener: elbv2.ApplicationListener;
-  nlbListener: elbv2.NetworkListener;
   apiGateway: ApiGateway;
   adminSiteUrl: string;
   appSiteUrl: string;
@@ -91,20 +91,25 @@ export class SharedInfraStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'PrivateSubnetIds', { value: this.vpc.privateSubnets.map(subnet => subnet.subnetId).join(','), exportName: 'PrivateSubnetIds' });
     new cdk.CfnOutput(this, 'AvailabilityZones', { value: selectedAzs.join(','), exportName:'AvailabilityZones' });
 
+    // Security Group for VPC Link v2
+    const vpcLinkSG = new ec2.SecurityGroup(this, 'vpclink-sg', {
+      vpc: this.vpc,
+      description: 'Security group for VPC Link v2',
+      allowAllOutbound: true
+    });
+
     // use a security group to provide a secure connection between the ALB and the containers
     this.albSG = new ec2.SecurityGroup(this, 'alb-sg', {
       vpc: this.vpc,
       allowAllOutbound: true
     });
 
-    // Restrict ALB ingress to private subnets only (where NLB resides)
-    this.vpc.privateSubnets.forEach((subnet, index) => {
-      this.albSG.addIngressRule(
-        ec2.Peer.ipv4(subnet.ipv4CidrBlock),
-        ec2.Port.tcp(80),
-        `Allow traffic from private subnet ${index + 1} (NLB)`
-      );
-    });
+    // Allow traffic from VPC Link v2 Security Group to ALB
+    this.albSG.addIngressRule(
+      ec2.Peer.securityGroupId(vpcLinkSG.securityGroupId),
+      ec2.Port.tcp(80),
+      'Allow traffic from VPC Link v2'
+    );
 
     // ALB Creation
     this.alb = new elbv2.ApplicationLoadBalancer(this, 'sbt-ecs-alb', {
@@ -120,29 +125,6 @@ export class SharedInfraStack extends cdk.Stack {
       open: true,
       port: 80
     });
-
-    const nlb = new elbv2.NetworkLoadBalancer(this, 'sbt-ecs-nlb', {
-      vpc: this.vpc,
-      internetFacing: false,
-      crossZoneEnabled: true,
-      vpcSubnets: {
-        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
-      }
-    });
-
-    this.nlbListener = nlb.addListener('nlb-listener', {
-      port: 80
-    });
-
-    const nlbTargetGroup = this.nlbListener.addTargets('nlb-targets', {
-      targets: [new targets.AlbListenerTarget(this.listener)], 
-      port: 80,
-      healthCheck: {
-        protocol: elbv2.Protocol.HTTP
-      }
-    });
-
-    nlbTargetGroup.node.addDependency(this.listener);
 
     const targetGroupHttp = new elbv2.ApplicationTargetGroup(this, 'alb-tg', {
       port: 80,
@@ -210,15 +192,19 @@ export class SharedInfraStack extends cdk.Stack {
       description: 'Premium Tier API Key ID'
     });
 
-    const vpcLink = new apigateway.VpcLink(this, 'ecs-vpc-link', {
-      targets: [nlb]
+    // VPC Link v2 — connects API Gateway directly to ALB (no NLB needed)
+    const vpcLink = new apigatewayv2.CfnVpcLink(this, 'ecs-vpc-link-v2', {
+      name: 'ecs-vpc-link-v2',
+      securityGroupIds: [vpcLinkSG.securityGroupId],
+      subnetIds: this.vpc.privateSubnets.map(s => s.subnetId),
     });
 
     this.apiGateway = new ApiGateway(this, 'ApiGateway', {
       lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
       stageName: props.stageName,
-      nlb,
-      vpcLink: vpcLink,
+      vpcLinkId: vpcLink.ref,
+      albArn: this.alb.loadBalancerArn,
+      albDnsName: this.alb.loadBalancerDnsName,
       apiKeyBasicTier: {
         apiKeyId: basicKey.keyId,
         value: basicKey.keyId
@@ -281,6 +267,24 @@ export class SharedInfraStack extends cdk.Stack {
       pointInTimeRecoverySpecification: { 
         pointInTimeRecoveryEnabled: true 
       }
+    });
+
+    // Shared Custom Resource Lambda — single lambda reused by all tenant stacks
+    // Replaces per-stack AwsCustomResource lambdas (DynamoDB tenant mapping)
+    const tenantCustomResourceFn = new lambda.Function(this, 'TenantCustomResourceFn', {
+      runtime: Runtime.PYTHON_3_10,
+      handler: 'tenant_custom_resource.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, './Resources')),
+      timeout: cdk.Duration.minutes(5),
+      description: 'Shared custom resource handler for tenant lifecycle (DynamoDB mapping)',
+    });
+
+    // Grant DynamoDB access for tenant mapping operations
+    this.tenantMappingTable.grantReadWriteData(tenantCustomResourceFn);
+
+    new cdk.CfnOutput(this, 'TenantCustomResourceFnArn', {
+      value: tenantCustomResourceFn.functionArn,
+      exportName: 'TenantCustomResourceFnArn',
     });
 
     // Create Usage Plans for API rate limiting

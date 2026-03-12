@@ -8,11 +8,6 @@ import { EcsCluster } from "./ecs-cluster";
 import { TenantTemplateNag } from "../cdknag/tenant-template-nag";
 import { addTemplateTag } from "../utilities/helper-functions";
 import { HttpNamespace } from "aws-cdk-lib/aws-servicediscovery";
-import {
-  AwsCustomResource,
-  AwsCustomResourcePolicy,
-  PhysicalResourceId,
-} from "aws-cdk-lib/custom-resources";
 
 interface TenantTemplateStackProps extends cdk.StackProps {
   stageName: string;
@@ -107,50 +102,29 @@ export class TenantTemplateStack extends cdk.Stack {
       });
     }
 
-    new AwsCustomResource(this, "CreateTenantMapping", {
-      installLatestAwsSdk: true,
-      onCreate: {
-        service: "DynamoDB",
-        action: "putItem",
-        physicalResourceId: PhysicalResourceId.of("CreateTenantMapping"),
-        parameters: {
-          TableName: props.tenantMappingTable.tableName,
-          Item: {
-            tenantId: { S: props.tenantId },
-            stackName: { S: cdk.Stack.of(this).stackName },
-            codeCommitId: { S: props.commitId },
-            waveNumber: { S: waveNumber },
-          },
+    // Use shared Custom Resource Lambda (from shared-infra) for tenant mapping
+    const customResourceFnArn = cdk.Fn.importValue('TenantCustomResourceFnArn');
+
+    new cdk.CustomResource(this, "CreateTenantMapping", {
+      serviceToken: customResourceFnArn,
+      properties: {
+        Action: 'DynamoPutItem',
+        TableName: props.tenantMappingTable.tableName,
+        Item: {
+          tenantId: { S: props.tenantId },
+          tenantName: { S: props.tenantName },
+          stackName: { S: cdk.Stack.of(this).stackName },
+          codeCommitId: { S: props.commitId },
+          waveNumber: { S: waveNumber },
+        },
+        Key: {
+          tenantId: { S: props.tenantId },
+        },
+        UpdateExpression: 'set codeCommitId = :codeCommitId',
+        ExpressionAttributeValues: {
+          ':codeCommitId': { S: props.commitId },
         },
       },
-      onUpdate: {
-        service: "DynamoDB",
-        action: "updateItem",
-        physicalResourceId: PhysicalResourceId.of("CreateTenantMapping"),
-        parameters: {
-          TableName: props.tenantMappingTable.tableName,
-          Key: {
-            tenantId: { S: props.tenantId },
-          },
-          UpdateExpression: "set codeCommitId = :codeCommitId",
-          ExpressionAttributeValues: {
-            ":codeCommitId": { S: props.commitId },
-          },
-        },
-      },
-      onDelete: {
-        service: "DynamoDB",
-        action: "deleteItem",
-        parameters: {
-          TableName: props.tenantMappingTable.tableName,
-          Key: {
-            tenantId: { S: props.tenantId },
-          },
-        },
-      },
-      policy: AwsCustomResourcePolicy.fromSdkCalls({
-        resources: [props.tenantMappingTable.tableArn],
-      }),
     });
 
     new cdk.CfnOutput(this, "TenantUserpoolId", {
