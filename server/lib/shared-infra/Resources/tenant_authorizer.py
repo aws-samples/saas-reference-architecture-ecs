@@ -56,7 +56,13 @@ def lambda_handler(event, context):
     input_details={}
     input_details['idpDetails'] = idp_details
 
-    token = event['authorizationToken'].split(" ")
+    # Support both TOKEN type (authorizationToken) and REQUEST type (headers.Authorization)
+    auth_token = event.get('authorizationToken') or (event.get('headers', {}) or {}).get('Authorization', '')
+    if not auth_token:
+        logger.error('No authorization token found')
+        raise Exception('Unauthorized')
+
+    token = auth_token.split(" ")
     if (token[0] != 'Bearer'):
         raise Exception(
             'Authorization header should have a format Bearer <JWT> Token')
