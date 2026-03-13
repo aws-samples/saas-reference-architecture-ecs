@@ -8,13 +8,14 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as path from 'path';
 import * as fs from 'fs';
 import { LogGroup } from 'aws-cdk-lib/aws-logs';
-import type * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+
 
 interface ApiGatewayProps {
   lambdaEcsSaaSLayers: lambda.LayerVersion
   stageName: string
-  nlb: elbv2.INetworkLoadBalancer
-  vpcLink: cdk.aws_apigateway.VpcLink
+  vpcLinkId: string
+  albArn: string
+  albDnsName: string
   apiKeyBasicTier: CustomApiKey
   apiKeyAdvancedTier: CustomApiKey
   apiKeyPremiumTier: CustomApiKey
@@ -83,8 +84,9 @@ export class ApiGateway extends Construct {
       '{{version}}': '1.0.0',
       '{{API_TITLE}}': 'EcsTenantAPI',
       '{{stage}}': props.stageName,
-      '{{connection_id}}': props.vpcLink.vpcLinkId,
-      '{{integration_uri}}': `http://${props.nlb.loadBalancerDnsName}`,
+      '{{connection_id}}': props.vpcLinkId,
+      '{{integration_uri}}': `http://${props.albDnsName}`,
+      '{{integration_target}}': props.albArn,
       '{{region}}': cdk.Stack.of(this).region,
       '{{account_id}}': cdk.Stack.of(this).account,
       '{{authorizer_function}}': authorizerFunction.functionName

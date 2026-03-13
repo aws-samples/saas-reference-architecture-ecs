@@ -36,7 +36,7 @@ if(AzCount < 2 || AzCount > 3) {
 const systemAdminEmail = process.env.CDK_PARAM_SYSTEM_ADMIN_EMAIL;
 const tenantId = process.env.CDK_PARAM_TENANT_ID || basicId;
 const tenantName = process.env.CDK_PARAM_TENANT_NAME || basicName;
-const useFederation = process.env.CDK_PARAM_USE_FEDERATION || 'true';
+const useFederation = process.env.CDK_PARAM_USE_FEDERATION || 'false';
 
 const commitId = getEnv('CDK_PARAM_COMMIT_ID');
 const tier = getEnv('CDK_PARAM_TIER');
