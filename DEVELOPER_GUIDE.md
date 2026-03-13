@@ -111,7 +111,7 @@ Each request coming to these API resources will undergo for two verification ste
 1. Connect with a Lambda authorizer that will centrally cross-check the validity of the API request based on the authorization details (JWT token) and extract tenant identity (tenant Id) of the request.
 2. API Gateway will execute the Usage plans to validate the API throttling settings (API rate, burst and quota) allocated based on the tier of the tenant
 
-Upon successful validation of both steps, the requests will be connected to the downstream ECS microservices via a API Gateway HTTP integration. This integration happens from API resource to a private Network Load Balancer in the solution. This NLB will direct the traffic to central Application Load Balancer that will route the requests to the right tenant in the tier.
+Upon successful validation of both steps, the requests will be connected to the downstream ECS microservices via an API Gateway HTTP integration. This integration uses a VPC Link v2 to connect the API resource directly to an internal Application Load Balancer (ALB) deployed in private subnets within the VPC, ensuring that backend traffic never traverses the public internet. The ALB will then route the requests to the right tenant in the tier.
 
 
 ### Tier-wise API throttling and quota
@@ -362,7 +362,7 @@ Ningx manages the microservice endpoints and maps them to the relevant ECS Servi
 In this ECS SaaS reference solution, we have used the ALB to be shared across all the tenants in the tiers. If you are expecting to have a large number of tenants in the SaaS solution, you may want to evaluate more scalable mechanisms to extend the request routing architecture. Let's discuss a couple of strategies that help to scale the overall routing capabilities in ECS SaaS for making the overall solution architecture more robust.
 
 ### 1. Dedicated ALBs for Premium Tier tenants
-The premium tenants usually demand dedicated infrastructure in order to reduce cross tenant influence and leverage better tenant isolation, where an ALB per tenant can be allocated as shown in the following diagram. Given there are less than 100 microservices in the SaaS, an ALB itself can route requests for the microservices using target groups without any Nginx components allowing the SaaS providers to have a full-stack isolation with native AWS services. The flip side would be the additional infrastructure (ie NLB) required to connect the ALBs to the API Gateway and extra cost involved in this setup.
+The premium tenants usually demand dedicated infrastructure in order to reduce cross tenant influence and leverage better tenant isolation, where an ALB per tenant can be allocated as shown in the following diagram. Given there are less than 100 microservices in the SaaS, an ALB itself can route requests for the microservices using target groups without any Nginx components allowing the SaaS providers to have a full-stack isolation with native AWS services. The flip side would be the additional VPC Link configuration required to connect the ALBs to the API Gateway and extra cost involved in this setup.
 
 
 <p align="center">
