@@ -67,12 +67,23 @@ cd saas-reference-architecture-ecs/scripts
 
 **3. CDK 스택: `tenant-template-stack-basic`** (TenantTemplateStack)
 - Basic 티어용 ECS 클러스터(풀 모델)
-- ECS 서비스: order, product, user 마이크로서비스
-- 모든 Basic 티어 테넌트가 공유하는 리소스
+- 테넌트 인증을 위한 Amazon Cognito User Pool
+- 서비스 디스커버리를 위한 Cloud Map 네임스페이스
+- DynamoDB 테넌트 매핑 항목
 
-**4. CDK 스택: `tenant-template-stack-advanced`** (TenantTemplateStack)
+**4. CDK 스택: `tenant-service-stack-basic`** (TenantServiceStack)
+- ECS 서비스: order, product, user 마이크로서비스 및 Nginx 리버스 프록시
+- order, product 데이터를 위한 DynamoDB 테이블
+- 테넌트 라우팅을 위한 ALB 리스너 룰 및 타겟 그룹
+- 테넌트 범위 접근 정책이 적용된 IAM 태스크 역할
+
+**5. CDK 스택: `tenant-template-stack-advanced`** (TenantTemplateStack)
 - Advanced 티어용 ECS 클러스터(사일로 모델)
 - 클러스터만 생성 - 서비스는 테넌트 온보딩 중에 동적으로 프로비저닝됨
+
+**6. CDK 스택: `tenant-service-stack-advanced`** (TenantServiceStack)
+- Advanced 티어 테넌트 온보딩 시 동적으로 배포
+- 공유 Advanced 클러스터 내에서 테넌트별 전용 ECS 서비스 생성
 
 ### sbt-install.sh
 SaaS 컨트롤 플레인 및 애플리케이션 플레인을 배포합니다:
