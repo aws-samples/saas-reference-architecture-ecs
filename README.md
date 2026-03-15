@@ -70,12 +70,19 @@ Deploys the core infrastructure and tenant templates:
 
 **3. CDK Stack: `tenant-template-stack-basic`** (TenantTemplateStack)
 - ECS Cluster for Basic tier (pooled model)
-- ECS Services: order, product, user microservices
-- Shared resources across all Basic tier tenants
+- Amazon Cognito User Pool for tenant authentication
+- Cloud Map namespace for service discovery
+- DynamoDB tenant mapping entry
 
 **4. CDK Stack: `tenant-template-stack-advanced`** (TenantTemplateStack)
-- ECS Cluster for Advanced tier (silo model)
+- ECS Cluster for Advanced tier (silo model) with `CDK_ADV_CLUSTER=INACTIVE`
 - Cluster only - services are provisioned dynamically during tenant onboarding
+
+**5. CDK Stack: `tenant-service-stack-basic`** (TenantServiceStack)
+- ECS Services: order, product, user microservices with Nginx reverse proxy
+- DynamoDB tables for order and product data
+- ALB listener rules and target groups for tenant routing
+- IAM task roles with tenant-scoped access policies
 
 ### sbt-install.sh
 Deploys the SaaS control plane and application plane:
