@@ -20,7 +20,7 @@
     "react-dom": "^18.2.0",
     "react-oidc-context": "^3.1.0",
     "react-refresh": "^0.14.0",
-    "react-router-dom": "^6.20.0",
+    "react-router-dom": "^6.30.3",
     "react-scripts": "5.0.1",
     "typescript": "^5.3.0",
     "uuid": "^9.0.0",
@@ -55,5 +55,9 @@
   "proxy": "http://localhost:3001",
   "devDependencies": {
     "@types/uuid": "^9.0.0"
+  },
+  "overrides": {
+    "fast-xml-parser": ">=5.3.8",
+    "minimatch": ">=3.1.3"
   }
 }
