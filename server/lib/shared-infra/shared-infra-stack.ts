@@ -79,6 +79,13 @@ export class SharedInfraStack extends cdk.Stack {
     });
     cdk.Tags.of(this.vpc).add('sbt-ecs-vpc', 'true');
 
+    // DynamoDB Gateway Endpoint — routes traffic through AWS internal network
+    // instead of NAT Gateway, reducing cost and improving security
+    this.vpc.addGatewayEndpoint('DynamoDbEndpoint', {
+      service: ec2.GatewayVpcEndpointAwsService.DYNAMODB,
+      subnets: [{ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }],
+    });
+
     this.vpc.privateSubnets.forEach((subnet, index) => {
       const cfnSubnet = subnet.node.defaultChild as ec2.CfnSubnet;
       cfnSubnet.addPropertyOverride('CidrBlock', `10.0.${index * 64}.0/18`);
