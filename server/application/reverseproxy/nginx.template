@@ -10,7 +10,7 @@ http {
   gzip_min_length 1000;
 
   server {
-    listen 80;
+    listen 8080;
     server_name localhost;
     location / {
         root    /usr/share/nginx/html;

@@ -29,7 +29,7 @@ deploy_service () {
 
 
     # Docker Image Build for other services
-    docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
+    docker build --no-cache -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     # Docker Image Tag
     docker tag "$SERVICEECR" "$SERVICEECR:$VERSION"
     # Docker Image Push to ECR
