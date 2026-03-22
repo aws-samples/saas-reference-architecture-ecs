@@ -284,6 +284,13 @@ echo "$(date) running Cognito User Pool cleanup..."
 "$PROJECT_ROOT/scripts/cleanup/cleanup-cognito.sh" || echo "$(date) Cognito cleanup failed, continuing..."
 
 
+# Clean up retained DynamoDB table and Cognito User Pool
+TABLE=$(aws dynamodb list-tables --query 'TableNames[?starts_with(@, `shared-infra-stack-TenantMappingTable`)] | [0]' --output text 2>/dev/null)
+[[ -n "$TABLE" && "$TABLE" != "None" ]] && echo "$(date) deleting DynamoDB table: $TABLE" && aws dynamodb delete-table --table-name "$TABLE" --no-cli-pager 2>/dev/null || true
+
+POOL_ID=$(aws cognito-idp list-user-pools --max-results 60 --query 'UserPools[?starts_with(Name, `CognitoAuthUserPool`)].Id | [0]' --output text 2>/dev/null)
+[[ -n "$POOL_ID" && "$POOL_ID" != "None" ]] && echo "$(date) deleting CognitoAuthUserPool: $POOL_ID" && aws cognito-idp delete-user-pool --user-pool-id "$POOL_ID" 2>/dev/null || true
+
 #delete ecr repositories
 SERVICE_REPOS=("user" "product" "order" "rproxy")
 for SERVICE in "${SERVICE_REPOS[@]}"; do
