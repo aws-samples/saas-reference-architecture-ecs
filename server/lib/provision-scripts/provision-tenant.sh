@@ -115,6 +115,19 @@ SAAS_APP_USERPOOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NA
 SAAS_APP_CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='$APP_CLIENT_ID_OUTPUT_PARAM_NAME'].OutputValue" --output text)
 API_GATEWAY_URL=$(aws cloudformation describe-stacks --stack-name $BOOTSTRAP_STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='$API_GATEWAY_URL_OUTPUT_PARAM_NAME'].OutputValue" --output text)
 
+# Check for duplicate email in Basic tier (shared User Pool)
+if [[ $TIER == "BASIC" ]]; then
+  EXISTING_USER=$(aws cognito-idp list-users \
+    --user-pool-id "$SAAS_APP_USERPOOL_ID" \
+    --filter "email = \"$TENANT_ADMIN_EMAIL\"" \
+    --query 'Users[0].Username' --output text 2>/dev/null || echo "None")
+  if [[ "$EXISTING_USER" != "None" && -n "$EXISTING_USER" ]]; then
+    echo "ERROR: Email $TENANT_ADMIN_EMAIL already exists in the shared User Pool (user: $EXISTING_USER)."
+    echo "Basic tier shares a single User Pool — each tenant must use a unique admin email."
+    exit 1
+  fi
+fi
+
 # Create tenant admin user 
 aws cognito-idp admin-create-user \
   --user-pool-id "$SAAS_APP_USERPOOL_ID" \
