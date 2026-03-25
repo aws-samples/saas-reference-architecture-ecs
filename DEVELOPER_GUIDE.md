@@ -161,11 +161,11 @@ Following diagram provides a deeper technical view of the reference architecture
 
 There are many AWS constructs have been used in order to implement the multi-tenancy aspect of the ECS SaaS solution at the application layer. We will explore each tier separately with deeper details, before that, lets checkout some of the important AWS components that we are going to use in this ECS SaaS solution as follows.
 
-1. Amazon API Gateway - implements API authorisation (using a Lambda authorizer), throttling and quotas using Usage plans and API keys as described [here](#api-authorization-and-tenant-isolation)
-2. VPC Security Groups - helps to isolate compute resources / ECS Services to implement the compute tenant isolation. This allows to preserve the network level compute tenant isolation. More details [here](#implementing-multi-tenancy-in-ecs-saas-)
+1. Amazon API Gateway - implements API authorisation (using a Lambda authorizer), throttling and quotas using Usage plans and API keys as described [here](#tier-wise-api-throttling-and-quota)
+2. VPC Security Groups - helps to isolate compute resources / ECS Services to implement the compute tenant isolation. This allows to preserve the network level compute tenant isolation. More details [here](#implementing-multi-tenancy-in-ecs-saas)
 3. AWS Application Load Balancer – Centrally handles the request routing to the tenants that have been onboarded in different tiers. There are scalable routing options with ALBs to discuss that supports large no of tenants which has been explained under Strategies for Scaling API Routing
-4. Nginx – acts as a reverse-proxy that manages ECS microservice endpoints that will help to route API requests to the right ECS services in the Premium tier. More details [here](#nginx-routing-)
-5. ECS Service Connect – provides the service discovery capability to route requests to ECS microservices and to facilitate potential inter microservice communication within the cluster. More details [here](#ecs-service-discovery-)
+4. Nginx – acts as a reverse-proxy that manages ECS microservice endpoints that will help to route API requests to the right ECS services in the Premium tier. More details [here](#nginx-routing)
+5. ECS Service Connect – provides the service discovery capability to route requests to ECS microservices and to facilitate potential inter microservice communication within the cluster. More details [here](#ecs-service-discovery)
 6. AWS CloudMap – helps to maintain the updated metadata of ECS services dynamically that enables the service discovery
 7. [awsvpc](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-networking-awsvpc.html) network mode – the preferred network model to run ECS services in this reference architecture. With this, Amazon ECS creates and manages an Elastic Network Interface (ENI) for each task and each task receives its own private IP address within the VPC including when instance is running multiple tasks. It will also allow to increase overall no of ENIs attached per EC2 in the cluster using ENI trunking
 
