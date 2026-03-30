@@ -52,9 +52,6 @@ select_db_type () {
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 echo "Building AMD64 images for x86_64 ECS (host: $(uname -m))"
 
-SERVICE_REPOS=("user" "product" "order" "backend" "rproxy")
-# SERVICE_REPOS=("fossaadmin" "fossacore" "user" "product" "order" "rproxy")
-
 REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
@@ -115,7 +112,24 @@ deploy_service () {
 select_db_type
 
 CWD=$(pwd)
-cd ../server/application
+
+# Generate service-info.json from the selected service-info*.txt template
+cd ../server
+SERVICE_INFO_SRC="./service-info${DB_TYPE:+_$DB_TYPE}.txt"
+[ "$DB_TYPE" == "dynamodb" ] && SERVICE_INFO_SRC="./service-info.txt"
+sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" "$SERVICE_INFO_SRC" > ./lib/service-info.json
+echo "Generated service-info.json from $SERVICE_INFO_SRC (DB_TYPE=$DB_TYPE)"
+
+# Extract service names from service-info.json (single source of truth)
+SERVICE_REPOS=($(node -e "
+  const info = JSON.parse(require('fs').readFileSync('./lib/service-info.json', 'utf8'));
+  const names = info.Containers.map(c => c.name === 'orders' ? 'order' : c.name === 'products' ? 'product' : c.name === 'users' ? 'user' : c.name);
+  names.push(info.Rproxy.name);
+  console.log(names.join(' '));
+"))
+echo "Services to build: ${SERVICE_REPOS[@]}"
+
+cd application
 
 for SERVICE in "${SERVICE_REPOS[@]}"; do
   echo -e "\033[0;33m==========\033[0;32m Repository [$SERVICE] checking... \033[0;33m==========\033[0m"

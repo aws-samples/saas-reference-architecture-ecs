@@ -200,10 +200,10 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   
   echo "undeploying tenant service stack first"
   SERVICE_STACK_NAME=$(echo $STACK_NAME | sed 's/tenant-template-stack/tenant-service-stack/')
-  npx cdk destroy $SERVICE_STACK_NAME --force --concurrency 10 2>/dev/null || true
+  npx --yes cdk destroy $SERVICE_STACK_NAME --force --concurrency 10 2>/dev/null || true
 
   echo "undeploying tenant template $STACK_NAME"
-  npx cdk destroy $STACK_NAME --force --concurrency 10
+  npx --yes cdk destroy $STACK_NAME --force --concurrency 10
 
 else
   # BASIC tier cleanup

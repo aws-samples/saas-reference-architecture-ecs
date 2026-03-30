@@ -198,7 +198,7 @@ fi
 
 
 # Destroy stacks
-npx cdk destroy --all --force || echo "$(date) stack destroy failed, continuing..."
+npx --yes cdk destroy --all --force || echo "$(date) stack destroy failed, continuing..."
 
 echo "$(date) cleaning up user pools..."
 # Get all user pools at once to avoid pagination issues during deletion

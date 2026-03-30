@@ -20,7 +20,7 @@ export CDK_DISABLE_NOTICES=true
 
 cd ../server
 
-# npx cdk bootstrap
+# npx --yes cdk bootstrap
 export CDK_PARAM_TIER='BASIC'
 
 if [[ -f "package-lock.json" ]]; then
@@ -29,8 +29,8 @@ else
   npm install --silent
 fi
 # npm install
-#npx cdk deploy --all --require-approval=never
-npx cdk deploy \
+#npx --yes cdk deploy --all --require-approval=never
+npx --yes cdk deploy \
     controlplane-stack \
     core-appplane-stack \
     --exclusively --require-approval never --concurrency 10 --asset-parallelism true

@@ -31,7 +31,7 @@ while true; do
     else
         STACK_NAME=$(echo "$item" | jq -r '.stackName.S')
         export CDK_PARAM_TENANT_ID=$(echo "$item" | jq -r '.tenantId.S')
-        npx cdk deploy $STACK_NAME --require-approval never
+        npx --yes cdk deploy $STACK_NAME --require-approval never
     fi
 
   done
