@@ -40,13 +40,10 @@ COPY --from=build /app/libs ./libs
 COPY --from=build /app/ssl/ ./dist/microservices/product/
 
 ########################WORKSHOP-TEST##############################
-RUN apk add --no-cache curl unzip bash vim nano && \
-    ARCH=$(uname -m) && \
-    if [ "$ARCH" = "aarch64" ]; then CLI_ARCH="aarch64"; else CLI_ARCH="x86_64"; fi && \
-    curl -s "https://awscli.amazonaws.com/awscli-exe-linux-${CLI_ARCH}.zip" -o "awscliv2.zip" && \
-    unzip -q awscliv2.zip && \
-    ./aws/install && \
-    rm -rf awscliv2.zip aws
+# AWS CLI v2 binary requires glibc — use pip install on Alpine (musl)
+RUN apk add --no-cache bash vim nano python3 py3-pip && \
+    python3 -m pip install --break-system-packages --root-user-action=ignore awscli && \
+    rm -rf /root/.cache/pip
 ########################WORKSHOP-TEST##############################
 
 EXPOSE 3010

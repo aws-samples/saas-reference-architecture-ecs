@@ -38,7 +38,7 @@ export function createTaskDefinition (
       cpu: containerDef.cpu || 256,
       memoryLimitMiB: containerDef.memoryLimitMiB || 512,
       runtimePlatform: {
-        cpuArchitecture: ecs.CpuArchitecture.ARM64,
+        cpuArchitecture: ecs.CpuArchitecture.X86_64,
         operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
       },
     });

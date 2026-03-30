@@ -47,14 +47,10 @@ select_db_type () {
     echo "Selected DB_TYPE: $DB_TYPE"
 }
 
-# Always build ARM64 images for Graviton (ECS runs on ARM64)
-# On amd64 hosts, enable qemu emulation for cross-platform builds
-export DOCKER_DEFAULT_PLATFORM=linux/arm64
-ARCH=$(uname -m)
-if [ "$ARCH" != "arm64" ] && [ "$ARCH" != "aarch64" ]; then
-    echo "Host is $ARCH — enabling qemu ARM64 emulation for Docker builds"
-    docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
-fi
+# Always build x86_64 (AMD64) images for ECS
+# Works natively on x86_64 hosts, uses Rosetta/QEMU on Apple Silicon
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
+echo "Building AMD64 images for x86_64 ECS (host: $(uname -m))"
 
 SERVICE_REPOS=("user" "product" "order" "backend" "rproxy")
 # SERVICE_REPOS=("fossaadmin" "fossacore" "user" "product" "order" "rproxy")
@@ -98,7 +94,7 @@ deploy_service () {
       fi
     fi
 
-    # Docker Image Build for other services
+    # Docker Image Build
     docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     # Docker Image Tag
     docker tag "$SERVICEECR" "$SERVICEECR:$VERSION"
