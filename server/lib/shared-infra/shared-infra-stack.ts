@@ -303,12 +303,14 @@ export class SharedInfraStack extends cdk.Stack {
       apiKeyIdPremiumTier: premiumKey.keyId
     });
 
-    //=====>>MYSQL<<===========
-    if(process.env.CDK_USE_DB == 'mysql') {
+    //=====>>RDS (MySQL or PostgreSQL)===========
+    const dbEngine = process.env.CDK_USE_DB;
+    if (dbEngine === 'mysql' || dbEngine === 'postgresql') {
       const rdsCluster = new RdsCluster(this, 'RdsCluster', {
         vpc: this.vpc,
         stageName: props.stageName,
         lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
+        dbEngine: dbEngine,
         env: {
           account: this.account,
           region: this.region

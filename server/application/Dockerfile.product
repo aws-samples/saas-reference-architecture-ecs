@@ -14,7 +14,9 @@ RUN apk update && apk upgrade --no-cache && \
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=false
 COPY . .
-RUN yarn build product
+RUN yarn build product && \
+    mkdir -p /app/ssl && \
+    (cp /app/microservices/product/src/SSLCA.pem /app/ssl/SSLCA.pem 2>/dev/null || true)
 
 FROM node:20-alpine
 WORKDIR /app
@@ -33,14 +35,18 @@ COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=true && yarn cache clean
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/libs ./libs
-COPY --from=build /app/microservices/product/src/SSLCA.pem ./dist/microservices/product/SSLCA.pem
+
+# SSLCA.pem is only present for MySQL builds (copied to /app/ssl in build stage)
+COPY --from=build /app/ssl/ ./dist/microservices/product/
 
 ########################WORKSHOP-TEST##############################
 RUN apk add --no-cache curl unzip bash vim nano && \
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && \
+    ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then CLI_ARCH="aarch64"; else CLI_ARCH="x86_64"; fi && \
+    curl -s "https://awscli.amazonaws.com/awscli-exe-linux-${CLI_ARCH}.zip" -o "awscliv2.zip" && \
+    unzip -q awscliv2.zip && \
     ./aws/install && \
-    rm -rf awscliv2.zip
+    rm -rf awscliv2.zip aws
 ########################WORKSHOP-TEST##############################
 
 EXPOSE 3010

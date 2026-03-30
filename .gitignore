@@ -27,3 +27,5 @@ _*.sh
 .api-keys.env
 *fossa*
 
+*_ee*
+*backend*

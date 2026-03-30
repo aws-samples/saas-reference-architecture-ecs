@@ -91,13 +91,13 @@ export class TenantServiceStack extends cdk.Stack {
 
     const appSiteUrl = props.appSiteUrl || cdk.Fn.importValue("AppSiteUrl");
 
-    // Determine DB type and prepare RDS imports if MySQL
-    const useMySQL = process.env.CDK_USE_DB === "mysql";
+    // Determine DB type and prepare RDS imports if MySQL or PostgreSQL
+    const useRDS = process.env.CDK_USE_DB === "mysql" || process.env.CDK_USE_DB === "postgresql";
     let stsRoleArn = "";
     let dbProxyArn = "";
     let proxyName = "";
 
-    if (useMySQL) {
+    if (useRDS) {
       stsRoleArn = cdk.Fn.importValue("STSRoleArn").toString();
       dbProxyArn = cdk.Fn.importValue("DbProxyArn").toString();
       proxyName = cdk.Fn.select(6, cdk.Fn.split(":", cdk.Fn.importValue("DbProxyArn"))).toString();
@@ -113,8 +113,8 @@ export class TenantServiceStack extends cdk.Stack {
       "<APP_SITE_URL>": appSiteUrl.toString(),
     };
 
-    // Add MySQL-specific replacements
-    if (useMySQL) {
+    // Add RDS-specific replacements (MySQL or PostgreSQL)
+    if (useRDS) {
       replacements["<IAM_ARN>"] = stsRoleArn;
       replacements["<PROXY_ENDPOINT>"] = cdk.Fn.importValue("RdsProxyEndpoint").toString();
       replacements["<CLUSTER_ENDPOINT_RESOURCE>"] =
@@ -141,7 +141,7 @@ export class TenantServiceStack extends cdk.Stack {
         identityDetails,
         props.tier,
         props.tenantName,
-        useMySQL,
+        useRDS,
         proxyName,
         stsRoleArn
       );
@@ -181,8 +181,8 @@ export class TenantServiceStack extends cdk.Stack {
       );
     }
 
-    // MySQL schema provisioning via shared Custom Resource Lambda
-    if (useMySQL) {
+    // RDS schema provisioning via shared Custom Resource Lambda (MySQL or PostgreSQL)
+    if (useRDS) {
       const schemeLambdaArn = cdk.Fn.importValue("SchemeLambdaArn");
       const customResourceFnArn = cdk.Fn.importValue('TenantCustomResourceFnArn');
 
@@ -190,11 +190,14 @@ export class TenantServiceStack extends cdk.Stack {
         this,
         "ShouldExecuteCustomResource",
         {
-          expression: cdk.Fn.conditionEquals(process.env.CDK_USE_DB, "mysql"),
+          expression: cdk.Fn.conditionOr(
+            cdk.Fn.conditionEquals(process.env.CDK_USE_DB, "mysql"),
+            cdk.Fn.conditionEquals(process.env.CDK_USE_DB, "postgresql"),
+          ),
         }
       );
 
-      const mysqlCustomResource = new cdk.CustomResource(
+      const rdsCustomResource = new cdk.CustomResource(
         this,
         "InvokeLambdaCustomResource",
         {
@@ -211,11 +214,11 @@ export class TenantServiceStack extends cdk.Stack {
       );
 
       if (
-        mysqlCustomResource.node.defaultChild &&
-        mysqlCustomResource.node.defaultChild instanceof cdk.CfnResource
+        rdsCustomResource.node.defaultChild &&
+        rdsCustomResource.node.defaultChild instanceof cdk.CfnResource
       ) {
         (
-          mysqlCustomResource.node.defaultChild as cdk.CfnResource
+          rdsCustomResource.node.defaultChild as cdk.CfnResource
         ).cfnOptions.condition = shouldExecuteCustomResource;
       }
     }
@@ -253,7 +256,7 @@ export class TenantServiceStack extends cdk.Stack {
     identityDetails: IdentityDetails,
     tier: string,
     tenantName: string,
-    useMySQL: boolean,
+    useRDS: boolean,
     proxyName: string,
     stsRoleArn: string
   ): iam.IRole {
@@ -325,9 +328,9 @@ export class TenantServiceStack extends cdk.Stack {
       return taskRole;
     } else if (
       info.hasOwnProperty("database") &&
-      info.database?.kind === "mysql"
+      (info.database?.kind === "mysql" || info.database?.kind === "postgresql")
     ) {
-      // MySQL service — silo vs pool Task Role
+      // RDS service (MySQL or PostgreSQL) — silo vs pool Task Role
       const isSilo = ["advanced", "premium"].includes(tier.toLowerCase());
 
       if (isSilo) {

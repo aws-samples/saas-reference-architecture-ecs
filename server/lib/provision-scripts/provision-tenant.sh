@@ -35,12 +35,25 @@ if [ -z "$RDS_RESOURCES" ]
 then
   export CDK_USE_DB='dynamodb'
 else
-  export CDK_USE_DB='mysql'
+  # Detect engine type from RDS cluster
+  CLUSTER_ID=$(aws cloudformation describe-stack-resources --stack-name 'shared-infra-stack' --query "StackResources[?ResourceType=='AWS::RDS::DBCluster'].PhysicalResourceId" --output text 2>/dev/null || echo "")
+  if [ -n "$CLUSTER_ID" ]; then
+    ENGINE=$(aws rds describe-db-clusters --db-cluster-identifier "$CLUSTER_ID" --query "DBClusters[0].Engine" --output text 2>/dev/null || echo "")
+    if [[ "$ENGINE" == *"postgresql"* ]]; then
+      export CDK_USE_DB='postgresql'
+    else
+      export CDK_USE_DB='mysql'
+    fi
+  else
+    export CDK_USE_DB='mysql'
+  fi
 fi
 echo "CDK_USE_DB:$CDK_USE_DB"
 
 if [ "$CDK_USE_DB" == 'mysql' ]; then 
     sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
+elif [ "$CDK_USE_DB" == 'postgresql' ]; then
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_postgresql.txt > ./lib/service-info.json
 else
     sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
 fi
@@ -123,9 +136,9 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
 
 fi
 
-# Basic tier + MySQL: invoke schema creation Lambda directly (no cdk deploy for Basic)
-if [[ $TIER == "BASIC" && "$CDK_USE_DB" == "mysql" ]]; then
-    echo "Creating MySQL schema for Basic tier tenant: $TENANT_NAME"
+# Basic tier + RDS: invoke schema creation Lambda directly (no cdk deploy for Basic)
+if [[ $TIER == "BASIC" && ("$CDK_USE_DB" == "mysql" || "$CDK_USE_DB" == "postgresql") ]]; then
+    echo "Creating $CDK_USE_DB schema for Basic tier tenant: $TENANT_NAME"
     SCHEME_LAMBDA_ARN=$(aws cloudformation describe-stacks --stack-name "$BOOTSTRAP_STACK_NAME" \
       --query "Stacks[0].Outputs[?ExportName=='SchemeLambdaArn'].OutputValue" --output text)
 
@@ -136,9 +149,9 @@ if [[ $TIER == "BASIC" && "$CDK_USE_DB" == "mysql" ]]; then
           --cli-binary-format raw-in-base64-out \
           --payload "{\"tenantName\":\"$TENANT_NAME\"}" \
           /tmp/lambda-response.json
-        echo "MySQL schema creation Lambda invoked for tenant: $TENANT_NAME"
+        echo "$CDK_USE_DB schema creation Lambda invoked for tenant: $TENANT_NAME"
     else
-        echo "WARNING: SchemeLambdaArn not found. Skipping MySQL schema creation."
+        echo "WARNING: SchemeLambdaArn not found. Skipping $CDK_USE_DB schema creation."
     fi
 fi
 

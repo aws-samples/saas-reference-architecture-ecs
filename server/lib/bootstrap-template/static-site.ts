@@ -69,7 +69,7 @@ export class StaticSite extends Construct {
                 nodejs: "22",
               },
               commands: [
-                "npm install --legacy-peer-deps --no-optional",
+                "npm install --legacy-peer-deps",
               ],
             },
             build: {

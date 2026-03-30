@@ -43,7 +43,7 @@
         "cpu": 256,
         "containerPort": 3010,
         "database": {
-            "kind": "mysql",
+            "kind": "postgresql",
             "sortKey": "productId"
         },
         "portMappings": [{
@@ -85,78 +85,28 @@
           "appProtocol": "ecs.AppProtocol.http",
           "protocol": "ecs.Protocol.TCP"
         }]
-
       },
       {
-        "name": "fossaadmin",
-        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/fossaadmin",
+        "name": "backend",
+        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/backend",
         "memoryLimitMiB": 1024,
         "cpu": 512,
-        "containerPort": 80,
-        "policy": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Action": [
-                "cognito-idp:AdminDeleteUser", "cognito-idp:AdminEnableUser","cognito-idp:AdminCreateUser", "cognito-idp:CreateGroup", "cognito-idp:AdminDisableUser", "cognito-idp:AdminAddUserToGroup","cognito-idp:GetGroup", "cognito-idp:AdminUpdateUserAttributes","cognito-idp:AdminGetUser", "cognito-idp:ListUsers","cognito-idp:ListUsersInGroup", "cognito-idp:AdminListGroupsForUser"
-              ],
-              "Resource": 
-                "arn:aws:cognito-idp:<REGION>:<ACCOUNT_ID>:userpool/<USER_POOL_ID>"
-              ,
-              "Effect": "Allow"
-            },
-            {
-              "Effect": "Allow",
-              "Action": [ "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel","ssmmessages:OpenControlChannel","ssmmessages:OpenDataChannel"
-              ],
-              "Resource": "*"
-            }
-          ]
+        "containerPort": 8080,
+        "database": {
+            "kind": "postgresql",
+            "sortKey": "id"
         },
         "portMappings": [{
-          "name": "fossaadmin", 
-          "containerPort": 80,
+          "name": "backend", 
+          "containerPort": 8080,
           "appProtocol": "ecs.AppProtocol.http",
           "protocol": "ecs.Protocol.TCP"
         }],
         "environment" : {
-          "TABLE_NAME": "FOSSA_ADMIN_TABLE",
-          "FOSSAADMIN_STATIC_URL": "<APP_SITE_URL>/fossaadmin"
-        }
-      },
-      {
-        "name": "fossacore",
-        "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/fossacore",
-        "memoryLimitMiB": 1024,
-        "cpu": 512,
-        "containerPort": 81,
-        "policy": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Action": [ "ssmmessages:CreateControlChannel", "ssmmessages:CreateDataChannel","ssmmessages:OpenControlChannel","ssmmessages:OpenDataChannel"
-              ],
-              "Resource": "*"
-            }
-          ]
-        },
-        "portMappings": [{
-          "name": "fossacore", 
-          "containerPort": 81,
-          "appProtocol": "ecs.AppProtocol.http",
-          "protocol": "ecs.Protocol.TCP"
-        }],
-        "environment" : {
-          "TABLE_NAME": "FOSSA_CORE_TABLE",
-          "DB_DRIVER_CLASS": "com.mysql.cj.jdbc.Driver",
-          "DB_URL": "jdbc:mysql://dev-pb.czea826kc543.ap-northeast-2.rds.amazonaws.com:3306/pbrds?useSSL=false&serverTimezone=Asia/Seoul",
-          "DB_USERNAME": "fbuser",
-          "DB_PASSWORD": "ntels!123",
-          "DB_POOL_SIZE": "10",
-          "DB_POOL_MIN_IDLE": "5"
+          "PROXY_ENDPOINT": "<PROXY_ENDPOINT>",
+          "IAM_ARN": "<IAM_ARN>",
+          "CLUSTER_ENDPOINT_RESOURCE": "<CLUSTER_ENDPOINT_RESOURCE>"
         }
       }
     ]
 }
-  

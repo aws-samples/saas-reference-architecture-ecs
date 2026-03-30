@@ -25,6 +25,8 @@ select_db_type () {
     echo "1) DynamoDB"
     echo -n "2) MySQL: "
     echo -e "\033[38;5;172m\033[1m\033[4mScheme-per-tenant isolation in MySQL is only available for testing in Advanced Tier\033[0m"
+    echo -n "3) PostgreSQL: "
+    echo -e "\033[38;5;172m\033[1m\033[4mScheme-per-tenant isolation in PostgreSQL is only available for testing in Advanced Tier\033[0m"
 
     read -p "Enter the number corresponding to the database type [ default: 1) DynamoDB ]: " db_selection
 
@@ -32,6 +34,9 @@ select_db_type () {
         2)
             DB_TYPE="mysql"
             download_RDS_ssl
+            ;;
+        3)
+            DB_TYPE="postgresql"
             ;;
         *)
             DB_TYPE="dynamodb"
@@ -42,12 +47,17 @@ select_db_type () {
     echo "Selected DB_TYPE: $DB_TYPE"
 }
 
-export DOCKER_DEFAULT_PLATFORM=linux/amd64
+# Always build ARM64 images for Graviton (ECS runs on ARM64)
+# On amd64 hosts, enable qemu emulation for cross-platform builds
+export DOCKER_DEFAULT_PLATFORM=linux/arm64
+ARCH=$(uname -m)
+if [ "$ARCH" != "arm64" ] && [ "$ARCH" != "aarch64" ]; then
+    echo "Host is $ARCH — enabling qemu ARM64 emulation for Docker builds"
+    docker run --rm --privileged multiarch/qemu-user-static --reset -p yes 2>/dev/null || true
+fi
 
-SERVICE_REPOS=("fossaadmin" "fossacore" "user" "product" "order" "rproxy")
-# SERVICE_REPOS=("product")
-# When MySQL is selected, also build product-mysql image for Advanced tier
-MYSQL_SERVICE_REPOS=("product-mysql")
+SERVICE_REPOS=("user" "product" "order" "backend" "rproxy")
+# SERVICE_REPOS=("fossaadmin" "fossacore" "user" "product" "order" "rproxy")
 
 REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -76,6 +86,9 @@ deploy_service () {
       if [ "$DB_TYPE" == "mysql" ]; then
         echo "Building $SERVICE_NAME service for MySQL"
         cp -r ./microservices/product_mysql ./microservices/product
+      elif [ "$DB_TYPE" == "postgresql" ]; then
+        echo "Building $SERVICE_NAME service for PostgreSQL"
+        cp -r ./microservices/product_postgresql ./microservices/product
       elif [ "$DB_TYPE" == "dynamodb" ]; then
         echo "Building $SERVICE_NAME service for DynamoDB"
         cp -r ./microservices/product_dynamodb ./microservices/product

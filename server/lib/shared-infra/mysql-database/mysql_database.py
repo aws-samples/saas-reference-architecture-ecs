@@ -3,6 +3,7 @@ import pymysql.cursors
 import json
 import string
 import re
+import os
 from os import environ
 import logger
 
@@ -17,6 +18,21 @@ REGION = environ.get('REGION')
 environ['LIBMYSQL_ENABLE_CLEARTEXT_PLUGIN'] = '1'
 secrets_manager = boto3.client('secretsmanager')
 rds = boto3.client('rds')
+
+
+def load_schema():
+    """Load DDL statements from external schema.sql file."""
+    schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+    with open(schema_path, 'r') as f:
+        return f.read()
+
+
+def execute_schema(cursor):
+    """Execute all DDL statements from schema.sql."""
+    for statement in load_schema().split(';'):
+        stmt = statement.strip()
+        if stmt and not stmt.startswith('--'):
+            cursor.execute(stmt)
 
 def get_iam_auth_token():
     # Generate an IAM authentication token for RDS Proxy
@@ -93,33 +109,16 @@ def create_tenant_database_and_tables(connection, tenant_name):
         cursor = connection.cursor()
 
         queries = [
-            f"CREATE USER '{db_username}'@'%' IDENTIFIED BY '{user_password}';",
-            f"CREATE DATABASE {db_name};",
+            f"CREATE USER IF NOT EXISTS '{db_username}'@'%' IDENTIFIED BY '{user_password}';",
+            f"CREATE DATABASE IF NOT EXISTS {db_name};",
             f"GRANT CREATE VIEW, SHOW VIEW, SELECT, INSERT, UPDATE ON {db_name}.* TO '{db_username}'@'%';",
             f"USE {db_name}",
-            """
-            CREATE TABLE products (
-                productId VARCHAR(36) PRIMARY KEY,
-                tenantId VARCHAR(255),
-                sku VARCHAR(255),
-                category VARCHAR(255),
-                name VARCHAR(255),
-                price DECIMAL(10, 2)
-            );
-            """
-            # ,
-            # """
-            # CREATE TABLE orders (
-            #     orderId INT AUTO_INCREMENT PRIMARY KEY,
-            #     orderName VARCHAR(255),
-            #     tenantId VARCHAR(255),
-            #     orderProducts JSON
-            # );
-            # """
         ]
 
         for query in queries:
             cursor.execute(query)
+
+        execute_schema(cursor)
 
         # Tenant Secret creation in Secrets Manager 
         secret_name = f"rds_proxy_multitenant/proxy_secret_for_user_" + tenant_name

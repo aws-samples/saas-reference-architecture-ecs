@@ -26,7 +26,25 @@ fi
 export REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')  # Region setting
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-# Create S3 Bucket for provision source.
+# Detect DB type from build-application.sh selection
+if [ -f "/tmp/db_type.env" ]; then
+    source /tmp/db_type.env
+fi
+export CDK_USE_DB=${DB_TYPE:-"dynamodb"}
+echo "CDK_USE_DB: $CDK_USE_DB"
+
+# Generate service-info.json BEFORE uploading source.tar.gz
+cd ../server
+if [ "$CDK_USE_DB" == 'mysql' ]; then
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
+elif [ "$CDK_USE_DB" == 'postgresql' ]; then
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_postgresql.txt > ./lib/service-info.json
+else
+    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
+fi
+cd ../scripts
+
+# Create S3 Bucket and upload provision source (includes service-info.json)
 source ./utils/update-provision-source.sh
 
 echo "CDK_PARAM_COMMIT_ID exists: $CDK_PARAM_COMMIT_ID"
@@ -51,19 +69,6 @@ if [ ! -f ".env.example" ]; then
 fi
 cp .env.example .env
 echo "Created .env file from .env.example"
-
-# Detect DB type from build-application.sh selection
-if [ -f "/tmp/db_type.env" ]; then
-    source /tmp/db_type.env
-fi
-export CDK_USE_DB=${DB_TYPE:-"dynamodb"}
-echo "CDK_USE_DB: $CDK_USE_DB"
-
-if [ "$CDK_USE_DB" == 'mysql' ]; then
-    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info_mysql.txt > ./lib/service-info.json
-else
-    sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" ./service-info.txt > ./lib/service-info.json
-fi
 
 # npx cdk bootstrap
 export CDK_PARAM_ONBOARDING_DETAIL_TYPE='Onboarding'

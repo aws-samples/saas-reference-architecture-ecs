@@ -1,21 +1,19 @@
-FROM public.ecr.aws/nginx/nginx:1.27-alpine AS build
+# Stage 1: Prepare configuration files
+FROM alpine:latest AS config
+COPY ./reverseproxy/index.html /tmp/index.html
+COPY ./reverseproxy/nginx.template /tmp/nginx.template
+RUN chmod 644 /tmp/index.html /tmp/nginx.template
 
-COPY ./reverseproxy/index.html /etc/nginx/html/index.html
-COPY ./reverseproxy/nginx.template /etc/nginx/nginx.template 
+# Stage 2: Runtime environment (Chainguard Nginx image)
+# Using 'latest-dev' which includes sh for runtime template substitution
+FROM cgr.dev/chainguard/nginx:latest-dev
+WORKDIR /app
 
-RUN apk update && apk upgrade --no-cache && \
-    apk add --no-cache --upgrade \
-        libxml2>=2.13.9-r0 \
-        openssl>=3.5.5-r0 \
-        libpng>=1.6.55-r0 \
-        c-ares>=1.34.6-r0 \
-        busybox>=1.37.0-r20 \
-        expat>=2.7.4-r0 \
-        pcre2>=10.46-r0 \
-        curl>=8.14.1-r2 \
-        tiff>=4.7.1-r0 && \
-    chmod 644 /etc/nginx/html/index.html /etc/nginx/nginx.template
+# Copy files
+COPY --from=config /tmp/index.html /usr/share/nginx/html/index.html
+COPY --from=config /tmp/nginx.template /tmp/nginx.template
 
-ENTRYPOINT [ "sh", "-c", "envsubst '${NAMESPACE}' < /etc/nginx/nginx.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'" ]
+EXPOSE 8080
 
-EXPOSE 80
+# Use sed to substitute ${NAMESPACE} (no envsubst needed)
+ENTRYPOINT [ "sh", "-c", "sed \"s/\\${NAMESPACE}/$NAMESPACE/g\" /tmp/nginx.template > /tmp/nginx.conf && nginx -c /tmp/nginx.conf -g 'daemon off;'" ]

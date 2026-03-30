@@ -30,7 +30,17 @@ RDS_RESOURCES=$(aws cloudformation describe-stack-resources --stack-name "$BOOTS
 if [ -z "$RDS_RESOURCES" ]; then
   CDK_USE_DB='dynamodb'
 else
-  CDK_USE_DB='mysql'
+  CLUSTER_ID=$(aws cloudformation describe-stack-resources --stack-name "$BOOTSTRAP_STACK_NAME" --query "StackResources[?ResourceType=='AWS::RDS::DBCluster'].PhysicalResourceId" --output text 2>/dev/null || echo "")
+  if [ -n "$CLUSTER_ID" ]; then
+    ENGINE=$(aws rds describe-db-clusters --db-cluster-identifier "$CLUSTER_ID" --query "DBClusters[0].Engine" --output text 2>/dev/null || echo "")
+    if [[ "$ENGINE" == *"postgresql"* ]]; then
+      CDK_USE_DB='postgresql'
+    else
+      CDK_USE_DB='mysql'
+    fi
+  else
+    CDK_USE_DB='mysql'
+  fi
 fi
 echo "CDK_USE_DB: $CDK_USE_DB"
 
@@ -57,16 +67,16 @@ ORDER_TABLE_OUTPUT_PARAM_NAME="ordersTableOutputParam"
 PRODUCT_TABLE_NAME="product-table-basic"
 ORDER_TABLE_NAME="order-table-basic"
 
-# MySQL cleanup: invoke SchemeLambda with action=delete
+# RDS cleanup: invoke SchemeLambda with action=delete
 # Handles: DROP database/user, remove RDS Proxy Auth, delete Secrets Manager secret
-cleanup_mysql_tenant() {
+cleanup_rds_tenant() {
   local TENANT_NAME_TO_CLEAN="$1"
   if [[ -z "$TENANT_NAME_TO_CLEAN" ]]; then
-    echo "WARNING: tenantName is empty, skipping MySQL cleanup"
+    echo "WARNING: tenantName is empty, skipping RDS cleanup"
     return
   fi
 
-  echo "Cleaning up MySQL resources for tenant: $TENANT_NAME_TO_CLEAN"
+  echo "Cleaning up RDS resources for tenant: $TENANT_NAME_TO_CLEAN"
   SCHEME_LAMBDA_ARN=$(aws cloudformation describe-stacks --stack-name "$BOOTSTRAP_STACK_NAME" \
     --query "Stacks[0].Outputs[?ExportName=='SchemeLambdaArn'].OutputValue" --output text 2>/dev/null || echo "")
 
@@ -77,17 +87,17 @@ cleanup_mysql_tenant() {
       --invocation-type "RequestResponse" \
       --cli-binary-format raw-in-base64-out \
       --payload "{\"tenantName\":\"$TENANT_NAME_TO_CLEAN\",\"action\":\"delete\"}" \
-      /tmp/mysql-cleanup-response.json
+      /tmp/rds-cleanup-response.json
 
-    LAMBDA_RESULT=$(cat /tmp/mysql-cleanup-response.json 2>/dev/null || echo "{}")
-    echo "MySQL cleanup Lambda response: $LAMBDA_RESULT"
+    LAMBDA_RESULT=$(cat /tmp/rds-cleanup-response.json 2>/dev/null || echo "{}")
+    echo "RDS cleanup Lambda response: $LAMBDA_RESULT"
 
     # Check for Lambda error (FunctionError in response)
     if echo "$LAMBDA_RESULT" | grep -qi "error"; then
-      echo "WARNING: MySQL cleanup Lambda returned error, attempting direct secret cleanup..."
+      echo "WARNING: RDS cleanup Lambda returned error, attempting direct secret cleanup..."
       cleanup_secret_directly "$TENANT_NAME_TO_CLEAN"
     else
-      echo "MySQL cleanup completed for tenant: $TENANT_NAME_TO_CLEAN"
+      echo "RDS cleanup completed for tenant: $TENANT_NAME_TO_CLEAN"
     fi
   else
     echo "WARNING: SchemeLambdaArn not found. Attempting direct secret cleanup..."
@@ -159,9 +169,9 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
   STACK_NAME=$(sed -e 's/^"//' -e 's/"$//' <<<$STACK_NAME)
   echo "Stack name from $TENANT_STACK_MAPPING_TABLE is  $STACK_NAME"
 
-  # MySQL cleanup BEFORE stack destroy (Lambda needs VPC/RDS access)
-  if [[ "$CDK_USE_DB" == "mysql" ]]; then
-    cleanup_mysql_tenant "$TENANT_NAME"
+  # RDS cleanup BEFORE stack destroy (Lambda needs VPC/RDS access)
+  if [[ "$CDK_USE_DB" == "mysql" || "$CDK_USE_DB" == "postgresql" ]]; then
+    cleanup_rds_tenant "$TENANT_NAME"
   fi
 
   # Copy to S3 Bucket
@@ -198,9 +208,9 @@ if [[ $TIER == "PREMIUM" || $TIER == "ADVANCED" ]]; then
 else
   # BASIC tier cleanup
 
-  # MySQL cleanup for Basic tier
-  if [[ "$CDK_USE_DB" == "mysql" ]]; then
-    cleanup_mysql_tenant "$TENANT_NAME"
+  # RDS cleanup for Basic tier
+  if [[ "$CDK_USE_DB" == "mysql" || "$CDK_USE_DB" == "postgresql" ]]; then
+    cleanup_rds_tenant "$TENANT_NAME"
   fi
 
   # Read tenant details from the cloudformation stack output parameters
@@ -221,7 +231,7 @@ else
   echo "All users have been removed from the group and the group has been deleted."
 
   # Delete tenant items from the product and order tables (DynamoDB only)
-  if [[ "$CDK_USE_DB" != "mysql" ]]; then
+  if [[ "$CDK_USE_DB" != "mysql" && "$CDK_USE_DB" != "postgresql" ]]; then
     delete_items_if_exists $PRODUCT_TABLE_NAME $CDK_PARAM_TENANT_ID
     delete_items_if_exists $ORDER_TABLE_NAME $CDK_PARAM_TENANT_ID
   fi
