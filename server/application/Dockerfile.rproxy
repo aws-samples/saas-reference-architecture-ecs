@@ -1,17 +1,11 @@
-# Stage 1: Prepare configuration files
-FROM alpine:latest AS config
-COPY ./reverseproxy/index.html /tmp/index.html
-COPY ./reverseproxy/nginx.template /tmp/nginx.template
-RUN chmod 644 /tmp/index.html /tmp/nginx.template
-
-# Stage 2: Runtime environment (Chainguard Nginx image)
+# Single stage: Runtime environment (Chainguard Nginx image)
 # Using 'latest-dev' which includes sh for runtime template substitution
 FROM cgr.dev/chainguard/nginx:latest-dev
 WORKDIR /app
 
-# Copy files
-COPY --from=config /tmp/index.html /usr/share/nginx/html/index.html
-COPY --from=config /tmp/nginx.template /tmp/nginx.template
+# Copy files directly (no multi-stage needed for static files)
+COPY ./reverseproxy/index.html /usr/share/nginx/html/index.html
+COPY ./reverseproxy/nginx.template /tmp/nginx.template
 
 EXPOSE 8080
 

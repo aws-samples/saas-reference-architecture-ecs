@@ -28,10 +28,17 @@ def load_schema():
 
 def execute_schema(conn):
     """Execute all DDL statements from schema.sql."""
-    for statement in load_schema().split(';'):
+    raw = load_schema()
+    print(f"Schema SQL loaded ({len(raw)} chars)")
+    # Remove all comment lines first, then split by semicolon
+    lines = [l for l in raw.split('\n') if not l.strip().startswith('--')]
+    clean_sql = '\n'.join(lines)
+    for statement in clean_sql.split(';'):
         stmt = statement.strip()
-        if stmt and not stmt.startswith('--'):
+        if stmt:
+            print(f"Executing: {stmt[:80]}...")
             conn.run(stmt)
+            print(f"  OK")
 
 
 def get_admin_connection(db_name=None):
@@ -116,6 +123,7 @@ def create_tenant_database_and_tables(conn, tenant_name):
         conn.close()
 
         # Connect to tenant database to create tables
+        print(f"Connecting to tenant database {db_name} to create tables...")
         tenant_conn = get_admin_connection(db_name)
         tenant_conn.run(f"GRANT USAGE ON SCHEMA public TO {db_username}")
         tenant_conn.run(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {db_username}")
@@ -123,7 +131,12 @@ def create_tenant_database_and_tables(conn, tenant_name):
         tenant_conn.run(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {db_username}")
         tenant_conn.run(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {db_username}")
 
+        print(f"Executing schema.sql for tenant {tenant_name}...")
         execute_schema(tenant_conn)
+        # Verify tables were created
+        tables = tenant_conn.run("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+        print(f"Tables in {db_name}: {tables}")
+        print(f"Schema executed successfully for tenant {tenant_name}")
         tenant_conn.close()
 
         # Create secret and register with RDS Proxy
@@ -137,14 +150,24 @@ def create_tenant_database_and_tables(conn, tenant_name):
             "dbClusterIdentifier": "proxy"
         }
 
-        response = secrets_manager.create_secret(
-            Name=secret_name,
-            Description=f"Proxy secret created for tenant {tenant_name}",
-            SecretString=json.dumps(secret_string),
-            Tags=[{"Key": "Tenant", "Value": tenant_name}]
-        )
+        try:
+            response = secrets_manager.create_secret(
+                Name=secret_name,
+                Description=f"Proxy secret created for tenant {tenant_name}",
+                SecretString=json.dumps(secret_string),
+                Tags=[{"Key": "Tenant", "Value": tenant_name}]
+            )
+            secret_arn = response["ARN"]
+        except secrets_manager.exceptions.ResourceExistsException:
+            print(f"Secret {secret_name} already exists, reusing")
+            response = secrets_manager.describe_secret(SecretId=secret_name)
+            secret_arn = response["ARN"]
+            secrets_manager.update_secret(
+                SecretId=secret_name,
+                SecretString=json.dumps(secret_string)
+            )
 
-        proxy_auth = {'SecretArn': response["ARN"], 'IAMAuth': 'REQUIRED'}
+        proxy_auth = {'SecretArn': secret_arn, 'IAMAuth': 'REQUIRED'}
         update_rds_proxy(proxy_auth)
 
     except Exception as e:

@@ -373,19 +373,26 @@ export class TenantServiceStack extends cdk.Stack {
         );
       }
     } else {
-      // Stateless service (e.g., users) — Cognito policy
-      policy = policy.replace(
-        /<USER_POOL_ID>/g,
-        identityDetails.details.userPoolId
-      );
-      return new iam.Role(this, `${info.name}-ecsTaskRole`, {
-        assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
-        inlinePolicies: {
-          EcsContainerInlinePolicy: iam.PolicyDocument.fromJson(
-            JSON.parse(policy)
-          ),
-        },
-      });
+      // Stateless service — optional Cognito policy
+      if (policy && policy !== 'undefined') {
+        policy = policy.replace(
+          /<USER_POOL_ID>/g,
+          identityDetails.details.userPoolId
+        );
+        return new iam.Role(this, `${info.name}-ecsTaskRole`, {
+          assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+          inlinePolicies: {
+            EcsContainerInlinePolicy: iam.PolicyDocument.fromJson(
+              JSON.parse(policy)
+            ),
+          },
+        });
+      } else {
+        // No policy defined — basic task role
+        return new iam.Role(this, `${info.name}-ecsTaskRole`, {
+          assumedBy: new iam.ServicePrincipal("ecs-tasks.amazonaws.com"),
+        });
+      }
     }
   }
 

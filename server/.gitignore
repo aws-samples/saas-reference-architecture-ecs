@@ -20,7 +20,7 @@ cdk.out
 .DS_Store
 Thumbs.db
 *fossa*
-*saas-practice*
-
+*sample*
+*service-info_p*
 # Core dump files
 core

@@ -1,103 +1,120 @@
 import React, { useState } from 'react';
 import {
   Grid, Card, CardContent, Typography, Box, Paper,
-  Button, Chip, CircularProgress, Divider, Alert,
-  Accordion, AccordionSummary, AccordionDetails,
+  Button, Chip, CircularProgress, Alert, Accordion,
+  AccordionSummary, AccordionDetails, TextField,
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
   ShoppingCart as ShoppingCartIcon,
   TrendingUp as TrendingUpIcon,
   People as PeopleIcon,
+  Pets as PetsIcon,
   ExpandMore as ExpandMoreIcon,
-  PlayArrow as PlayArrowIcon,
-  AdminPanelSettings as AdminPanelSettingsIcon,
+  PlayArrow as PlayIcon,
+  Api as ApiIcon,
 } from '@mui/icons-material';
 import { useAuth } from 'react-oidc-context';
 import { useTenant } from '../../contexts/TenantContext';
 import { environment } from '../../config/environment';
-import {
-  FOSSACORE_APIS, FOSSAADMIN_APIS, FossaApiEndpoint, callFossaApi,
-} from '../../services/fossaService';
+import { httpClient } from '../../services/httpClient';
 
-const METHOD_COLORS: Record<string, 'success' | 'primary' | 'warning' | 'error'> = {
-  GET: 'success', POST: 'primary', PUT: 'warning', DELETE: 'error',
-};
-
-interface ApiResult {
-  loading: boolean;
-  data?: any;
-  error?: string;
+interface ApiEndpoint {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  path: string;
+  description: string;
+  sampleBody?: string;
 }
 
-const ApiPanel: React.FC<{ title: string; endpoints: FossaApiEndpoint[] }> = ({ title, endpoints }) => {
-  const [results, setResults] = useState<Record<string, ApiResult>>({});
+interface ApiService {
+  name: string;
+  endpoints: ApiEndpoint[];
+}
 
-  const handleCall = async (ep: FossaApiEndpoint): Promise<void> => {
-    const key = `${ep.service}${ep.path}`;
-    setResults((prev: Record<string, ApiResult>) => ({ ...prev, [key]: { loading: true } }));
+const API_SERVICES: ApiService[] = [
+  {
+    name: 'Orders',
+    endpoints: [
+      { method: 'GET', path: '/orders', description: 'List all orders' },
+      { method: 'POST', path: '/orders', description: 'Create an order', sampleBody: '{"orderName":"Order-001","orderProducts":[{"productName":"Widget","price":10,"quantity":2}]}' },
+    ],
+  },
+  {
+    name: 'Products',
+    endpoints: [
+      { method: 'GET', path: '/products', description: 'List all products' },
+      { method: 'POST', path: '/products', description: 'Create a product', sampleBody: '{"name":"Widget A","price":29.99,"sku":"WA-001","category":"Electronics"}' },
+    ],
+  },
+];
+
+const methodColor = (m: string) => {
+  switch (m) {
+    case 'GET': return 'success';
+    case 'POST': return 'primary';
+    case 'PUT': return 'warning';
+    case 'DELETE': return 'error';
+    default: return 'default';
+  }
+};
+
+const ApiTestPanel: React.FC<{ endpoint: ApiEndpoint }> = ({ endpoint }) => {
+  const [response, setResponse] = useState<string>('');
+  const [status, setStatus] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [body, setBody] = useState(endpoint.sampleBody || '');
+
+  const baseUrl = environment.apiUrl.replace(/\/$/, '');
+
+  const handleCall = async () => {
+    setLoading(true);
+    setResponse('');
+    setStatus(null);
     try {
-      const data = await callFossaApi(ep);
-      setResults((prev: Record<string, ApiResult>) => ({ ...prev, [key]: { loading: false, data } }));
-    } catch (e: any) {
-      const status = e?.response?.status;
-      const msg = e?.response?.data?.message || e?.response?.data || e?.message || 'Error';
-      const detail = status ? `[${status}] ${msg}` : msg;
-      setResults((prev: Record<string, ApiResult>) => ({ ...prev, [key]: { loading: false, error: detail } }));
+      let res;
+      const url = `${baseUrl}${endpoint.path}`;
+      switch (endpoint.method) {
+        case 'GET': res = await httpClient.get(url); break;
+        case 'POST': res = await httpClient.post(url, JSON.parse(body)); break;
+        case 'PUT': res = await httpClient.put(url, JSON.parse(body)); break;
+        case 'DELETE': res = await httpClient.delete(url); break;
+      }
+      setStatus(res.status);
+      setResponse(JSON.stringify(res.data, null, 2));
+    } catch (err: any) {
+      setStatus(err.response?.status || 0);
+      setResponse(err.response?.data ? JSON.stringify(err.response.data, null, 2) : err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Accordion defaultExpanded>
-      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
-      </AccordionSummary>
-      <AccordionDetails sx={{ p: 0 }}>
-        {endpoints.map((ep) => {
-          const key = `${ep.service}${ep.path}`;
-          const result = results[key];
-          return (
-            <Box key={key} sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                <Chip label={ep.method} color={METHOD_COLORS[ep.method]} size="small" sx={{ minWidth: 52, fontWeight: 'bold' }} />
-                <Typography variant="body2" fontFamily="monospace" sx={{ flex: 1 }}>
-                  {ep.path}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ flex: 1 }}>
-                  {ep.description}
-                </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={result?.loading ? <CircularProgress size={12} /> : <PlayArrowIcon />}
-                  onClick={() => handleCall(ep)}
-                  disabled={result?.loading}
-                >
-                  Call
-                </Button>
-              </Box>
-              {result && !result.loading && (
-                <Box sx={{ mt: 1 }}>
-                  {result.error ? (
-                    <Alert severity="error" sx={{ py: 0 }}>{result.error}</Alert>
-                  ) : (
-                    <Box
-                      component="pre"
-                      sx={{
-                        bgcolor: 'grey.100', borderRadius: 1, p: 1,
-                        fontSize: 11, overflow: 'auto', maxHeight: 150, m: 0,
-                      }}
-                    >
-                      {JSON.stringify(result.data, null, 2)}
-                    </Box>
-                  )}
-                </Box>
-              )}
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 1, borderBottom: '1px solid #eee' }}>
+      <Chip label={endpoint.method} color={methodColor(endpoint.method) as any} size="small" sx={{ minWidth: 70, fontWeight: 600 }} />
+      <Box sx={{ flex: 1 }}>
+        <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{endpoint.path}</Typography>
+        <Typography variant="caption" color="text.secondary">{endpoint.description}</Typography>
+        {endpoint.sampleBody && (
+          <TextField
+            size="small" fullWidth multiline rows={2} sx={{ mt: 1, '& textarea': { fontFamily: 'monospace', fontSize: '0.8rem' } }}
+            value={body} onChange={(e) => setBody(e.target.value)}
+          />
+        )}
+        {response && (
+          <Box sx={{ mt: 1 }}>
+            <Chip label={`${status}`} size="small" color={status && status < 400 ? 'success' : 'error'} sx={{ mb: 0.5 }} />
+            <Box sx={{ backgroundColor: '#f5f5f5', p: 1, borderRadius: 1, maxHeight: 200, overflow: 'auto' }}>
+              <pre style={{ margin: 0, fontSize: '0.75rem', whiteSpace: 'pre-wrap' }}>{response}</pre>
             </Box>
-          );
-        })}
-      </AccordionDetails>
-    </Accordion>
+          </Box>
+        )}
+      </Box>
+      <Button variant="outlined" size="small" startIcon={loading ? <CircularProgress size={14} /> : <PlayIcon />}
+        onClick={handleCall} disabled={loading} sx={{ minWidth: 80 }}>
+        Call
+      </Button>
+    </Box>
   );
 };
 
@@ -105,14 +122,11 @@ const Dashboard: React.FC = () => {
   const { tenant } = useTenant();
   const auth = useAuth();
 
-  const handleOpenFossaAdmin = (): void => {
+  const handleOpenPetclinic = (): void => {
     const token = auth.user?.id_token;
-    if (!token) {
-      alert('No auth token found. Please log in again.');
-      return;
-    }
+    if (!token) { alert('No auth token found.'); return; }
     const base = environment.apiUrl.replace(/\/$/, '');
-    window.open(`${base}/fossaadmin/login?_jwt=${encodeURIComponent(token)}`, '_blank');
+    window.open(`${base}/sso-entry?_jwt=${encodeURIComponent(token)}`, '_blank');
   };
 
   const stats = [
@@ -157,40 +171,44 @@ const Dashboard: React.FC = () => {
         ))}
       </Grid>
 
+      {/* API Test Panel */}
       <Box sx={{ mt: 4 }}>
         <Paper sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>Recent Activity</Typography>
-          <Typography variant="body2" color="text.secondary">• New order #1234 created</Typography>
-          <Typography variant="body2" color="text.secondary">• Product "Widget A" updated</Typography>
-          <Typography variant="body2" color="text.secondary">• User "[email]" registered</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <ApiIcon sx={{ mr: 1, color: '#1976d2' }} />
+            <Typography variant="h6">API Endpoints</Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Test your service APIs directly. Requests include your Cognito JWT token automatically.
+          </Typography>
+          {API_SERVICES.map((service) => (
+            <Accordion key={service.name} defaultExpanded={service.name.includes('Tutorials')}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography fontWeight={600}>{service.name}</Typography>
+                <Chip label={`${service.endpoints.length} endpoints`} size="small" sx={{ ml: 1 }} />
+              </AccordionSummary>
+              <AccordionDetails>
+                {service.endpoints.map((ep, i) => (
+                  <ApiTestPanel key={`${ep.method}-${ep.path}-${i}`} endpoint={ep} />
+                ))}
+              </AccordionDetails>
+            </Accordion>
+          ))}
         </Paper>
       </Box>
 
       <Box sx={{ mt: 3 }}>
         <Paper sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box>
-            <Typography variant="h6">Billing Admin Console</Typography>
+            <Typography variant="h6">Petclinic Application</Typography>
             <Typography variant="body2" color="text.secondary">
-              Open FOSSA Billing admin console in a new tab
+              Open Spring Petclinic (JSP) in a new tab
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<AdminPanelSettingsIcon />}
-            onClick={handleOpenFossaAdmin}
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            Open Admin Console
+          <Button variant="contained" startIcon={<PetsIcon />} onClick={handleOpenPetclinic} sx={{ whiteSpace: 'nowrap' }}>
+            Open Petclinic
           </Button>
         </Paper>
-      </Box>
-
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" gutterBottom>Fossa API Test</Typography>
-        <Divider sx={{ mb: 2 }} />
-        <ApiPanel title="fossacore API" endpoints={FOSSACORE_APIS} />
-        <Box sx={{ mt: 1 }} />
-        <ApiPanel title="fossaadmin API" endpoints={FOSSAADMIN_APIS} />
       </Box>
     </Box>
   );

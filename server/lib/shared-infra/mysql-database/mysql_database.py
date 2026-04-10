@@ -29,10 +29,16 @@ def load_schema():
 
 def execute_schema(cursor):
     """Execute all DDL statements from schema.sql."""
-    for statement in load_schema().split(';'):
+    raw = load_schema()
+    # Remove comment lines first, then split by semicolon
+    lines = [l for l in raw.split('\n') if not l.strip().startswith('--')]
+    clean_sql = '\n'.join(lines)
+    for statement in clean_sql.split(';'):
         stmt = statement.strip()
-        if stmt and not stmt.startswith('--'):
+        if stmt:
+            print(f"Executing: {stmt[:80]}...")
             cursor.execute(stmt)
+            print(f"  OK")
 
 def get_iam_auth_token():
     # Generate an IAM authentication token for RDS Proxy
@@ -120,7 +126,7 @@ def create_tenant_database_and_tables(connection, tenant_name):
 
         execute_schema(cursor)
 
-        # Tenant Secret creation in Secrets Manager 
+        # Tenant Secret creation in Secrets Manager (reuse if already exists)
         secret_name = f"rds_proxy_multitenant/proxy_secret_for_user_" + tenant_name
         secret_description = f"Proxy secret created for tenant {tenant_name}"
         secret_string = {
@@ -132,15 +138,26 @@ def create_tenant_database_and_tables(connection, tenant_name):
             "dbClusterIdentifier": "proxy"
         }
 
-        response = secrets_manager.create_secret(
-            Name=secret_name,
-            Description=secret_description,
-            SecretString=json.dumps(secret_string),
-            Tags=[{"Key": "Tenant", "Value": tenant_name}]
-        )
+        try:
+            response = secrets_manager.create_secret(
+                Name=secret_name,
+                Description=secret_description,
+                SecretString=json.dumps(secret_string),
+                Tags=[{"Key": "Tenant", "Value": tenant_name}]
+            )
+            secret_arn = response["ARN"]
+        except secrets_manager.exceptions.ResourceExistsException:
+            print(f"Secret {secret_name} already exists, reusing")
+            response = secrets_manager.describe_secret(SecretId=secret_name)
+            secret_arn = response["ARN"]
+            # Update password to match newly created DB user
+            secrets_manager.update_secret(
+                SecretId=secret_name,
+                SecretString=json.dumps(secret_string)
+            )
 
         proxy_auth = {
-            'SecretArn': response["ARN"],
+            'SecretArn': secret_arn,
             'IAMAuth': 'REQUIRED'
         }
         # RDS Proxy Auth Info update

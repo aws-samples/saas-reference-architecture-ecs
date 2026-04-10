@@ -2,6 +2,7 @@
 -- Modify this file to change table structures for your application.
 -- Each statement is separated by a semicolon and executed individually.
 
+-- Product service tables
 CREATE TABLE IF NOT EXISTS products (
     "productId" VARCHAR(36) PRIMARY KEY,
     "tenantId" VARCHAR(255),

@@ -277,3 +277,29 @@ for SERVICE in "${SERVICE_REPOS[@]}"; do
 done
 
 echo "$(date) cleanup completed!"
+
+# ---- Report remaining resources that may need manual cleanup ----
+echo ""
+echo "======================================================"
+echo " Remaining Resources Check"
+echo "======================================================"
+
+echo ""
+echo "[DynamoDB Tables]"
+aws dynamodb list-tables --query 'TableNames[*]' --output text --no-cli-pager 2>/dev/null | tr '\t' '\n' | grep -iE "tenant|saas|order|product" || echo "  (none found)"
+
+echo ""
+echo "[Secrets Manager - RDS Proxy Secrets]"
+aws secretsmanager list-secrets --query "SecretList[?contains(Name, 'rds_proxy_multitenant') || contains(Name, 'DBsecret') || contains(Name, 'RdsCluster')].Name" --output text --no-cli-pager 2>/dev/null | tr '\t' '\n' || echo "  (none found)"
+
+echo ""
+echo "[Cognito User Pools]"
+aws cognito-idp list-user-pools --max-results 60 --query "UserPools[].{Name:Name,Id:Id}" --output table --no-cli-pager 2>/dev/null || echo "  (none found)"
+
+echo ""
+echo "[ECR Repositories]"
+aws ecr describe-repositories --query "repositories[].repositoryName" --output text --no-cli-pager 2>/dev/null | tr '\t' '\n' || echo "  (none found)"
+
+echo ""
+echo "If any resources remain above, delete them manually."
+echo "======================================================"

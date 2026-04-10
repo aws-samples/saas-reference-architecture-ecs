@@ -92,7 +92,13 @@ deploy_service () {
     fi
 
     # Docker Image Build
-    docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
+    # Go services use cross-compilation — build without platform override to avoid QEMU issues on Apple Silicon
+    if [ -f "Dockerfile.$SERVICE_NAME" ] && grep -q "GOARCH=amd64" "Dockerfile.$SERVICE_NAME" 2>/dev/null; then
+      echo "Go cross-compile detected, building without platform override"
+      DOCKER_DEFAULT_PLATFORM= docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
+    else
+      docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
+    fi
     # Docker Image Tag
     docker tag "$SERVICEECR" "$SERVICEECR:$VERSION"
     # Docker Image Push to ECR
@@ -113,12 +119,10 @@ select_db_type
 
 CWD=$(pwd)
 
-# Generate service-info.json from the selected service-info*.txt template
+# Generate service-info.json from service-info.txt (single file for all DB types)
 cd ../server
-SERVICE_INFO_SRC="./service-info${DB_TYPE:+_$DB_TYPE}.txt"
-[ "$DB_TYPE" == "dynamodb" ] && SERVICE_INFO_SRC="./service-info.txt"
-sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" "$SERVICE_INFO_SRC" > ./lib/service-info.json
-echo "Generated service-info.json from $SERVICE_INFO_SRC (DB_TYPE=$DB_TYPE)"
+sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" "./service-info.txt" > ./lib/service-info.json
+echo "Generated service-info.json (DB_TYPE=$DB_TYPE)"
 
 # Extract service names from service-info.json (single source of truth)
 SERVICE_REPOS=($(node -e "

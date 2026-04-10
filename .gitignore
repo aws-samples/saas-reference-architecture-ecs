@@ -12,6 +12,8 @@ application-plane/
 cdk.out
 
 *service-info.json
+service-info_mysql.txt
+service-info_postgresql.txt
 cdk.context.json
 # ../server/lib/service-info.json
 .DS_Store
