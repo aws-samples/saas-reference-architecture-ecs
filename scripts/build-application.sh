@@ -97,6 +97,9 @@ deploy_service () {
       echo "Go cross-compile detected, building without platform override"
       DOCKER_DEFAULT_PLATFORM= docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     else
+      # Java: build JAR locally if pom.xml exists (avoids QEMU slowness on Apple Silicon)
+      [ -f "microservices/$SERVICE_NAME/pom.xml" ] && \
+        (cd microservices/$SERVICE_NAME && JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home} mvn clean package -DskipTests -q) && echo "JAR build complete"
       docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     fi
     # Docker Image Tag
@@ -119,9 +122,9 @@ select_db_type
 
 CWD=$(pwd)
 
-# Generate service-info.json from service-info.txt (single file for all DB types)
+# Generate service-info.json from service-info.txt (supports // JSONC comments)
 cd ../server
-sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" "./service-info.txt" > ./lib/service-info.json
+sed 's|//.*||' "./service-info.txt" | sed "s/<REGION>/$REGION/g; s/<ACCOUNT_ID>/$ACCOUNT_ID/g" > ./lib/service-info.json
 echo "Generated service-info.json (DB_TYPE=$DB_TYPE)"
 
 # Extract service names from service-info.json (single source of truth)

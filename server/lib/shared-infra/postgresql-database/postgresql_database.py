@@ -1,5 +1,6 @@
 import boto3
-import pg8000.native
+import psycopg2
+import psycopg2.extensions
 import json
 import string
 import re
@@ -20,39 +21,65 @@ rds = boto3.client('rds')
 
 
 def load_schema():
-    """Load DDL statements from external schema.sql file."""
-    schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
-    with open(schema_path, 'r') as f:
-        return f.read()
+    """Load DDL statements from all .sql files in sql/ subdirectory, sorted by filename."""
+    schema_dir = os.path.join(os.path.dirname(__file__), 'sql')
+    sql_files = sorted([f for f in os.listdir(schema_dir) if f.endswith('.sql')])
+    if not sql_files:
+        raise FileNotFoundError(f"No .sql files found in {schema_dir}")
+    combined = []
+    for sql_file in sql_files:
+        path = os.path.join(schema_dir, sql_file)
+        with open(path, 'r') as f:
+            content = f.read()
+        print(f"Loaded {sql_file} ({len(content)} chars)")
+        combined.append(content)
+    return '\n'.join(combined)
 
 
-def execute_schema(conn):
-    """Execute all DDL statements from schema.sql."""
+def execute_schema(conn, tenant_name=None):
+    """Execute all DDL statements from sql files.
+    psycopg2 sends the entire SQL to PostgreSQL server which handles
+    comments, $$ blocks, and semicolons natively.
+    Replaces __TENANT_CO_CD__ placeholder with actual tenant name for RLS compatibility.
+    """
     raw = load_schema()
     print(f"Schema SQL loaded ({len(raw)} chars)")
-    # Remove all comment lines first, then split by semicolon
-    lines = [l for l in raw.split('\n') if not l.strip().startswith('--')]
-    clean_sql = '\n'.join(lines)
-    for statement in clean_sql.split(';'):
-        stmt = statement.strip()
-        if stmt:
-            print(f"Executing: {stmt[:80]}...")
-            conn.run(stmt)
-            print(f"  OK")
+    if tenant_name:
+        raw = raw.replace('__TENANT_CO_CD__', tenant_name)
+        print(f"Replaced __TENANT_CO_CD__ with '{tenant_name}'")
+    cur = conn.cursor()
+    cur.execute(raw)
+    conn.commit()
+    cur.close()
+    print("Schema execution complete")
 
 
 def get_admin_connection(db_name=None):
-    """Create a pg8000 native connection using admin credentials."""
+    """Create a psycopg2 connection using admin credentials."""
     secret_value = json.loads(
         secrets_manager.get_secret_value(SecretId=SECRET_ARN)["SecretString"]
     )
-    return pg8000.native.Connection(
+    conn = psycopg2.connect(
         host=DB_ENDPOINT,
         user=secret_value['username'],
         password=secret_value['password'],
         port=PORT,
-        database=db_name or DB_NAME,
+        dbname=db_name or DB_NAME,
     )
+    conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+    return conn
+
+
+def run_sql(conn, sql, params=None):
+    """Execute a single SQL statement and return results."""
+    cur = conn.cursor()
+    cur.execute(sql, params)
+    try:
+        rows = cur.fetchall()
+    except psycopg2.ProgrammingError:
+        rows = []
+    cur.close()
+    return rows
 
 
 def lambda_handler(event, context):
@@ -75,7 +102,7 @@ def lambda_handler(event, context):
             delete_tenant(conn, tenant_name)
         else:
             db_name = f"tenant_{tenant_name}_db"
-            rows = conn.run("SELECT 1 FROM pg_database WHERE datname = :name", name=db_name)
+            rows = run_sql(conn, "SELECT 1 FROM pg_database WHERE datname = %s", (db_name,))
             if not rows:
                 print(f"Database for tenant {tenant_name} does not exist. Creating now...")
                 create_tenant_database_and_tables(conn, tenant_name)
@@ -102,39 +129,39 @@ def create_tenant_database_and_tables(conn, tenant_name):
     user_password = generate_password(32)
     try:
         # Create role (skip if exists)
-        rows = conn.run("SELECT 1 FROM pg_roles WHERE rolname = :name", name=db_username)
+        rows = run_sql(conn, "SELECT 1 FROM pg_roles WHERE rolname = %s", (db_username,))
         if not rows:
-            conn.run(f"CREATE ROLE {db_username} WITH LOGIN PASSWORD '{user_password}'")
+            run_sql(conn, f"CREATE ROLE {db_username} WITH LOGIN PASSWORD %s", (user_password,))
         else:
             print(f"Role {db_username} already exists, updating password")
-            conn.run(f"ALTER ROLE {db_username} WITH PASSWORD '{user_password}'")
+            run_sql(conn, f"ALTER ROLE {db_username} WITH PASSWORD %s", (user_password,))
 
         # Grant admin membership on tenant role (required for PostgreSQL 16+)
-        conn.run(f"GRANT {db_username} TO CURRENT_USER")
+        run_sql(conn, f"GRANT {db_username} TO CURRENT_USER")
 
         # Create database (skip if exists)
-        rows = conn.run("SELECT 1 FROM pg_database WHERE datname = :name", name=db_name)
+        rows = run_sql(conn, "SELECT 1 FROM pg_database WHERE datname = %s", (db_name,))
         if not rows:
-            conn.run(f"CREATE DATABASE {db_name} OWNER {db_username}")
+            run_sql(conn, f"CREATE DATABASE {db_name} OWNER {db_username}")
         else:
             print(f"Database {db_name} already exists")
 
-        conn.run(f"GRANT CONNECT ON DATABASE {db_name} TO {db_username}")
+        run_sql(conn, f"GRANT CONNECT ON DATABASE {db_name} TO {db_username}")
         conn.close()
 
         # Connect to tenant database to create tables
         print(f"Connecting to tenant database {db_name} to create tables...")
         tenant_conn = get_admin_connection(db_name)
-        tenant_conn.run(f"GRANT USAGE ON SCHEMA public TO {db_username}")
-        tenant_conn.run(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {db_username}")
-        tenant_conn.run(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {db_username}")
-        tenant_conn.run(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {db_username}")
-        tenant_conn.run(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {db_username}")
+        run_sql(tenant_conn, f"GRANT USAGE ON SCHEMA public TO {db_username}")
+        run_sql(tenant_conn, f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {db_username}")
+        run_sql(tenant_conn, f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {db_username}")
+        run_sql(tenant_conn, f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {db_username}")
+        run_sql(tenant_conn, f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {db_username}")
 
-        print(f"Executing schema.sql for tenant {tenant_name}...")
-        execute_schema(tenant_conn)
+        print(f"Executing schema for tenant {tenant_name}...")
+        execute_schema(tenant_conn, tenant_name)
         # Verify tables were created
-        tables = tenant_conn.run("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
+        tables = run_sql(tenant_conn, "SELECT tablename FROM pg_tables WHERE schemaname = 'public'")
         print(f"Tables in {db_name}: {tables}")
         print(f"Schema executed successfully for tenant {tenant_name}")
         tenant_conn.close()
@@ -183,13 +210,13 @@ def ensure_tables_exist(conn, tenant_name):
         conn.close()
         tenant_conn = get_admin_connection(db_name)
 
-        tenant_conn.run(f"GRANT USAGE ON SCHEMA public TO {db_username}")
-        tenant_conn.run(f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {db_username}")
-        tenant_conn.run(f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {db_username}")
-        tenant_conn.run(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {db_username}")
-        tenant_conn.run(f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {db_username}")
+        run_sql(tenant_conn, f"GRANT USAGE ON SCHEMA public TO {db_username}")
+        run_sql(tenant_conn, f"GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {db_username}")
+        run_sql(tenant_conn, f"GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO {db_username}")
+        run_sql(tenant_conn, f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO {db_username}")
+        run_sql(tenant_conn, f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {db_username}")
 
-        execute_schema(tenant_conn)
+        execute_schema(tenant_conn, tenant_name)
         tenant_conn.close()
         print(f"Tables ensured for tenant {tenant_name}")
     except Exception as e:
@@ -204,14 +231,14 @@ def delete_tenant(conn, tenant_name):
     remove_proxy_auth(tenant_name, secret_name)
 
     try:
-        conn.run(f"""
+        run_sql(conn, f"""
             SELECT pg_terminate_backend(pid)
             FROM pg_stat_activity
             WHERE datname = '{db_name}' AND pid <> pg_backend_pid()
         """)
-        conn.run(f"DROP DATABASE IF EXISTS {db_name}")
+        run_sql(conn, f"DROP DATABASE IF EXISTS {db_name}")
         print(f"Dropped database: {db_name}")
-        conn.run(f"DROP ROLE IF EXISTS {db_username}")
+        run_sql(conn, f"DROP ROLE IF EXISTS {db_username}")
         print(f"Dropped role: {db_username}")
     except Exception as e:
         print(f"Error dropping database/role for tenant {tenant_name}: {e}")

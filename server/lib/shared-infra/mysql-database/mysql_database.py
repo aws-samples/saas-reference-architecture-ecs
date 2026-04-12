@@ -21,10 +21,19 @@ rds = boto3.client('rds')
 
 
 def load_schema():
-    """Load DDL statements from external schema.sql file."""
-    schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
-    with open(schema_path, 'r') as f:
-        return f.read()
+    """Load DDL statements from all .sql files in sql/ subdirectory, sorted by filename."""
+    schema_dir = os.path.join(os.path.dirname(__file__), 'sql')
+    sql_files = sorted([f for f in os.listdir(schema_dir) if f.endswith('.sql')])
+    if not sql_files:
+        raise FileNotFoundError(f"No .sql files found in {schema_dir}")
+    combined = []
+    for sql_file in sql_files:
+        path = os.path.join(schema_dir, sql_file)
+        with open(path, 'r') as f:
+            content = f.read()
+        print(f"Loaded {sql_file} ({len(content)} chars)")
+        combined.append(content)
+    return '\n'.join(combined)
 
 
 def execute_schema(cursor):

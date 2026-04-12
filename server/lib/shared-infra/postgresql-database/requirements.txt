@@ -1,2 +1,2 @@
 boto3
-pg8000
+psycopg2-binary
