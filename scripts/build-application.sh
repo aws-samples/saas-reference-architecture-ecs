@@ -21,12 +21,12 @@ download_RDS_ssl() {
 
 # Prompt user for DB_TYPE selection
 select_db_type () {
-    echo "Select the database type for 'product' service:"
+    echo "Select the database type (determines Product service source and RDS provisioning):"
     echo "1) DynamoDB"
     echo -n "2) MySQL: "
-    echo -e "\033[38;5;172m\033[1m\033[4mScheme-per-tenant isolation in MySQL is only available for testing in Advanced Tier\033[0m"
+    echo -e "\033[38;5;172m\033[1m\033[4mSchema-per-tenant isolation in MySQL (selects Product service source only)\033[0m"
     echo -n "3) PostgreSQL: "
-    echo -e "\033[38;5;172m\033[1m\033[4mScheme-per-tenant isolation in PostgreSQL is only available for testing in Advanced Tier\033[0m"
+    echo -e "\033[38;5;172m\033[1m\033[4mSchema-per-tenant isolation in PostgreSQL (selects Product service source only)\033[0m"
 
     read -p "Enter the number corresponding to the database type [ default: 1) DynamoDB ]: " db_selection
 

@@ -705,33 +705,9 @@
       "x-amazon-apigateway-authtype": "custom",
       "x-amazon-apigateway-authorizer": {
         "type": "request",
-        "identitySource": "method.request.header.Authorization",
         "authorizerUri": "arn:aws:apigateway:{{region}}:lambda:path/2015-03-31/functions/arn:aws:lambda:{{region}}:{{account_id}}:function:{{authorizer_function}}/invocations",
-        "authorizerResultTtlInSeconds": 30
-      }
-    },
-    "queryJwtAuthorizer": {
-      "type": "apiKey",
-      "name": "_jwt",
-      "in": "query",
-      "x-amazon-apigateway-authtype": "custom",
-      "x-amazon-apigateway-authorizer": {
-        "type": "request",
-        "identitySource": "method.request.querystring._jwt",
-        "authorizerUri": "arn:aws:apigateway:{{region}}:lambda:path/2015-03-31/functions/arn:aws:lambda:{{region}}:{{account_id}}:function:{{authorizer_function}}/invocations",
-        "authorizerResultTtlInSeconds": 30
-      }
-    },
-    "cookieAuthorizer": {
-      "type": "apiKey",
-      "name": "Cookie",
-      "in": "header",
-      "x-amazon-apigateway-authtype": "custom",
-      "x-amazon-apigateway-authorizer": {
-        "type": "request",
-        "identitySource": "method.request.header.Cookie",
-        "authorizerUri": "arn:aws:apigateway:{{region}}:lambda:path/2015-03-31/functions/arn:aws:lambda:{{region}}:{{account_id}}:function:{{authorizer_function}}/invocations",
-        "authorizerResultTtlInSeconds": 0
+        "authorizerResultTtlInSeconds": 30,
+        "identitySource": "method.request.header.Authorization"
       }
     }
   }
