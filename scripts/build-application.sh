@@ -97,9 +97,10 @@ deploy_service () {
       echo "Go cross-compile detected, building without platform override"
       DOCKER_DEFAULT_PLATFORM= docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     else
-      # Java: build JAR locally if pom.xml exists (avoids QEMU slowness on Apple Silicon)
+      # Java: build JAR locally if pom.xml exists
       [ -f "microservices/$SERVICE_NAME/pom.xml" ] && \
-        (cd microservices/$SERVICE_NAME && JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home} mvn clean package -DskipTests -q) && echo "JAR build complete"
+        { command -v mvn &>/dev/null || { echo "ERROR: Maven not found. Install Maven and set JAVA_HOME."; exit 1; }; } && \
+        (cd microservices/$SERVICE_NAME && mvn clean package -DskipTests -q) && echo "JAR build complete"
       docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     fi
     # Docker Image Tag
