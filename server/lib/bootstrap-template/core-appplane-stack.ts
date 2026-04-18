@@ -104,7 +104,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
     });
 
     // Check if Application directory exists before creating StaticSite
-    const applicationPath = path.join(__dirname, '../../../client/Application');
+    const applicationPath = path.join(__dirname, '../../../client/', process.env.CDK_APP_FRONTEND_DIR || 'Application');
     
     let staticSite;
     if (fs.existsSync(applicationPath)) {

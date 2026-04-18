@@ -3,9 +3,15 @@ export PAGER=""
 export CDK_PARAM_SYSTEM_ADMIN_EMAIL="$1"
 
 if [[ -z "$CDK_PARAM_SYSTEM_ADMIN_EMAIL" ]]; then
-  echo "Please provide system admin email"
+  echo "Usage: ./sbt-install.sh <admin-email>"
   exit 1
 fi
+
+# Frontend directory selection
+read -p "Frontend directory under client/ [Application]: " FRONTEND_INPUT
+FRONTEND_INPUT=$(echo "${FRONTEND_INPUT:-Application}" | LC_ALL=C tr -cd 'a-zA-Z0-9_-')
+export CDK_APP_FRONTEND_DIR="$FRONTEND_INPUT"
+echo "Frontend directory: client/$CDK_APP_FRONTEND_DIR"
 
 REGION=$(aws ec2 describe-availability-zones --output text --query 'AvailabilityZones[0].[RegionName]')  # Region setting
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
