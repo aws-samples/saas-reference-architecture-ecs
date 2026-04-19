@@ -37,3 +37,11 @@ server/lib/shared-infra/mysql-database/sql/[0-9][1-9]_*.sql
 *dgis*
 
 Application_*
+
+# Client: only track AdminWeb and Application, ignore other folders
+client/*
+!client/AdminWeb/
+!client/Application/
+
+# Sample applications
+server/application/sample/
