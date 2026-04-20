@@ -97,12 +97,15 @@ deploy_service () {
       echo "Go cross-compile detected, building without platform override"
       DOCKER_DEFAULT_PLATFORM= docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     else
-      # Java: build JAR locally if pom.xml exists
+      # Java: build locally if pom.xml or build.gradle exists
       POM_PATH=$(find microservices/$SERVICE_NAME -maxdepth 2 -name pom.xml -type f 2>/dev/null | head -1)
       [ -n "$POM_PATH" ] && \
         { command -v mvn &>/dev/null || { echo "ERROR: Maven not found. Install Maven and set JAVA_HOME."; exit 1; }; } && \
         echo "Building JAR locally ($POM_PATH detected)..." && \
         (cd "$(dirname "$POM_PATH")" && mvn clean package -DskipTests -q) && echo "JAR build complete"
+      GRADLE_PATH=$(find microservices/$SERVICE_NAME -maxdepth 2 -name build.gradle -type f 2>/dev/null | head -1)
+      [ -n "$GRADLE_PATH" ] && [ -z "$POM_PATH" ] && \
+        echo "Building WAR locally (Gradle)..." && (cd "$(dirname "$GRADLE_PATH")" && chmod +x gradlew && ./gradlew war -x test --no-daemon -q)
       docker build -t $SERVICEECR -f Dockerfile.$SERVICE_NAME .
     fi
     # Docker Image Tag

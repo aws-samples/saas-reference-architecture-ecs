@@ -45,3 +45,11 @@ client/*
 
 # Sample applications
 server/application/sample/
+
+# Microservices - ignore all except core services
+server/application/microservices/*
+!server/application/microservices/order/
+!server/application/microservices/user/
+!server/application/microservices/product_dynamodb/
+!server/application/microservices/product_mysql/
+!server/application/microservices/product_postgresql/

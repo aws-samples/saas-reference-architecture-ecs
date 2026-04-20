@@ -33,17 +33,12 @@ interface ApiService {
 
 const API_SERVICES: ApiService[] = [
   {
-    name: 'Orders',
+    name: 'Employees',
     endpoints: [
-      { method: 'GET', path: '/orders', description: 'List all orders' },
-      { method: 'POST', path: '/orders', description: 'Create an order', sampleBody: '{"orderName":"Order-001","orderProducts":[{"productName":"Widget","price":10,"quantity":2}]}' },
-    ],
-  },
-  {
-    name: 'Products',
-    endpoints: [
-      { method: 'GET', path: '/products', description: 'List all products' },
-      { method: 'POST', path: '/products', description: 'Create a product', sampleBody: '{"name":"Widget A","price":29.99,"sku":"WA-001","category":"Electronics"}' },
+      { method: 'GET', path: '/api/employeeapp/employees', description: 'List all employees' },
+      { method: 'GET', path: '/api/employeeapp/employees/1', description: 'Get employee by ID' },
+      { method: 'POST', path: '/api/employeeapp/employees', description: 'Create an employee', sampleBody: '{"firstName":"John","lastName":"Doe","email":"john.doe@example.com"}' },
+      { method: 'DELETE', path: '/api/employeeapp/employees/1', description: 'Delete employee by ID' },
     ],
   },
 ];
@@ -200,13 +195,13 @@ const Dashboard: React.FC = () => {
       <Box sx={{ mt: 3 }}>
         <Paper sx={{ p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Box>
-            <Typography variant="h6">Petclinic Application</Typography>
+            <Typography variant="h6">Employee Application</Typography>
             <Typography variant="body2" color="text.secondary">
-              Open Spring Petclinic (JSP) in a new tab
+              Open Employee Management App (Thymeleaf SSR) in a new tab
             </Typography>
           </Box>
           <Button variant="contained" startIcon={<PetsIcon />} onClick={handleOpenPetclinic} sx={{ whiteSpace: 'nowrap' }}>
-            Open Petclinic
+            Open App
           </Button>
         </Paper>
       </Box>

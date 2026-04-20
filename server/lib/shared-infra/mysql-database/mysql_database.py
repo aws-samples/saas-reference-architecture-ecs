@@ -126,7 +126,7 @@ def create_tenant_database_and_tables(connection, tenant_name):
         queries = [
             f"CREATE USER IF NOT EXISTS '{db_username}'@'%' IDENTIFIED BY '{user_password}';",
             f"CREATE DATABASE IF NOT EXISTS {db_name};",
-            f"GRANT CREATE VIEW, SHOW VIEW, SELECT, INSERT, UPDATE ON {db_name}.* TO '{db_username}'@'%';",
+            f"GRANT CREATE VIEW, SHOW VIEW, SELECT, INSERT, UPDATE, DELETE ON {db_name}.* TO '{db_username}'@'%';",
             f"USE {db_name}",
         ]
 
