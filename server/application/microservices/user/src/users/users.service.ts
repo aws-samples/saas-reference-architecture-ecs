@@ -2,7 +2,7 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: MIT-0
  */
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { ForbiddenException, HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { type UserDto } from './dto/user.dto';
 import { type UpdateUserDto } from './dto/update-user.dto';
 import {
@@ -15,6 +15,7 @@ import {
   GetGroupCommand,
   CreateGroupCommand,
   AdminAddUserToGroupCommand,
+  AdminListGroupsForUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { UserInfo } from './entities/user.entity';
 
@@ -25,8 +26,50 @@ export class UsersService {
 
   userPoolId: string = process.env.COGNITO_USER_POOL_ID;
 
-  async create(userDto: UserDto, tenantId: string, tenantTier: string, tenantName: string) {
-    console.log('Creating user:', userDto);
+  private readonly assignableRoles = new Set(['TenantAdmin', 'TenantUser']);
+
+  private assertCanManageUsers(actorRole: string): void {
+    // Provider-level roles are intentionally not accepted from tenant pools.
+    // Provider administration belongs to the separate control-plane boundary.
+    if (actorRole !== 'TenantAdmin') {
+      throw new ForbiddenException('User management requires TenantAdmin');
+    }
+  }
+
+  private async assertUserInTenant(userName: string, tenantId: string): Promise<void> {
+    try {
+      const response = await this.cognitoClient.send(
+        new AdminListGroupsForUserCommand({
+          UserPoolId: this.userPoolId,
+          Username: userName,
+        })
+      );
+      const belongsToTenant = (response.Groups || [])
+        .some((group) => group.GroupName === tenantId);
+      if (!belongsToTenant) {
+        throw new ForbiddenException('User does not belong to this tenant');
+      }
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      // Avoid leaking whether a username exists in another tenant.
+      throw new ForbiddenException('User does not belong to this tenant');
+    }
+  }
+
+  async create(
+    userDto: UserDto,
+    tenantId: string,
+    tenantTier: string,
+    tenantName: string,
+    actorRole: string,
+  ) {
+    this.assertCanManageUsers(actorRole);
+    const requestedRole = userDto.userRole || 'TenantUser';
+    if (!this.assignableRoles.has(requestedRole)) {
+      throw new ForbiddenException('Role cannot be assigned by a tenant administrator');
+    }
     try {
       await this.cognitoClient.send(
         new AdminCreateUserCommand({
@@ -37,7 +80,7 @@ export class UsersService {
             { Name: 'email', Value: userDto.userEmail },
             { Name: 'email_verified', Value: 'true' },
             { Name: 'custom:tenantId', Value: tenantId },
-            { Name: 'custom:userRole', Value: userDto.userRole || 'TenantUser' },
+            { Name: 'custom:userRole', Value: requestedRole },
             { Name: 'custom:tenantTier', Value: tenantTier },
             { Name: 'custom:tenantName', Value: tenantName },
           ],
@@ -66,17 +109,19 @@ export class UsersService {
       );
 
       return { message: 'User created successfully' };
-    } catch (error) {
-      console.error(error);
+    } catch {
       throw new HttpException(
-        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'User management operation failed',
+        },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  async findAll(tenantId: string) {
-    console.log('Getting All Users for Tenant:', tenantId);
+  async findAll(tenantId: string, actorRole: string) {
+    this.assertCanManageUsers(actorRole);
     try {
       // Ensure tenant group exists before listing
       try {
@@ -113,16 +158,20 @@ export class UsersService {
         users.push(userInfo);
       }
       return users;
-    } catch (error) {
-      console.error(error);
+    } catch {
       throw new HttpException(
-        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'User management operation failed',
+        },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  async findOne(userName: string) {
+  async findOne(userName: string, tenantId: string, actorRole: string) {
+    this.assertCanManageUsers(actorRole);
+    await this.assertUserInTenant(userName, tenantId);
     try {
       const response = await this.cognitoClient.send(
         new AdminGetUserCommand({
@@ -131,16 +180,25 @@ export class UsersService {
         })
       );
       return response;
-    } catch (error) {
-      console.error(error);
+    } catch {
       throw new HttpException(
-        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'User management operation failed',
+        },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  async update(userName: string, updateUserDto: UpdateUserDto) {
+  async update(
+    userName: string,
+    updateUserDto: UpdateUserDto,
+    tenantId: string,
+    actorRole: string,
+  ) {
+    this.assertCanManageUsers(actorRole);
+    await this.assertUserInTenant(userName, tenantId);
     try {
       await this.cognitoClient.send(
         new AdminUpdateUserAttributesCommand({
@@ -152,16 +210,20 @@ export class UsersService {
         })
       );
       return updateUserDto;
-    } catch (error) {
-      console.error(error);
+    } catch {
       throw new HttpException(
-        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'User management operation failed',
+        },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }
   }
 
-  async delete(username: string) {
+  async delete(username: string, tenantId: string, actorRole: string) {
+    this.assertCanManageUsers(actorRole);
+    await this.assertUserInTenant(username, tenantId);
     try {
       await this.cognitoClient.send(
         new AdminDeleteUserCommand({
@@ -170,10 +232,12 @@ export class UsersService {
         })
       );
       return { message: 'User deleted successfully' };
-    } catch (error) {
-      console.error(error);
+    } catch {
       throw new HttpException(
-        { status: HttpStatus.INTERNAL_SERVER_ERROR, error },
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: 'User management operation failed',
+        },
         HttpStatus.INTERNAL_SERVER_ERROR
       );
     }

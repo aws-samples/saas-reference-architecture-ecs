@@ -1,40 +1,47 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
-import re
 import json
 import os
-import urllib.request
+import re
+
 import boto3
-import time
 import logger
-from jose import jwk, jwt
-from jose.utils import base64url_decode
 import auth_manager
 import utils
 import idp_object_factory
 
 
 region = os.environ['AWS_REGION']
-sts_client = boto3.client("sts", region_name=region)
 apigateway_client = boto3.client("apigateway", region_name=region)
 
-# api key IDs for different tiers
+# API key IDs for different tiers
 premium_tier_api_key_id = os.environ.get('PREMIUM_TIER_API_KEY', '')
 advanced_tier_api_key_id = os.environ.get('ADVANCED_TIER_API_KEY', '')
 basic_tier_api_key_id = os.environ.get('BASIC_TIER_API_KEY', '')
 
+SUPPORTED_ROLES = {
+    auth_manager.UserRoles.TENANT_ADMIN,
+    auth_manager.UserRoles.TENANT_USER,
+}
+SUPPORTED_TIERS = {
+    utils.TenantTier.PREMIUM.value.upper(),
+    utils.TenantTier.ADVANCED.value.upper(),
+    utils.TenantTier.BASIC.value.upper(),
+}
+
 # Cache for API key values to avoid repeated API calls
 api_key_cache = {}
 
+
 def get_api_key_value(api_key_id):
-    """Get API key value from API key ID, with caching"""
+    """Get API key value from API key ID, with caching."""
     if not api_key_id:
         return ''
-    
+
     if api_key_id in api_key_cache:
         return api_key_cache[api_key_id]
-    
+
     try:
         response = apigateway_client.get_api_key(
             apiKey=api_key_id,
@@ -43,115 +50,100 @@ def get_api_key_value(api_key_id):
         api_key_value = response.get('value', '')
         api_key_cache[api_key_id] = api_key_value
         return api_key_value
-    except Exception as e:
-        logger.error(f"Failed to get API key value for ID {api_key_id}: {str(e)}")
+    except Exception as error:
+        logger.error(
+            'Failed to get API key value ({})'.format(type(error).__name__))
         return ''
 
-authorizer_access_role = os.environ['AUTHORIZER_ACCESS_ROLE']
 
-idp_details=json.loads(os.environ['IDP_DETAILS'])
-idp_authorizer_service = idp_object_factory.get_idp_authorizer_object(idp_details['name'])
+idp_details = json.loads(os.environ['IDP_DETAILS'])
+idp_authorizer_service = idp_object_factory.get_idp_authorizer_object(
+    idp_details['name'])
+
 
 def lambda_handler(event, context):
-    input_details={}
-    input_details['idpDetails'] = idp_details
+    input_details = {
+        'idpDetails': idp_details,
+    }
 
-    # Support both TOKEN type (authorizationToken) and REQUEST type (headers.Authorization)
-    auth_token = event.get('authorizationToken') or (event.get('headers', {}) or {}).get('Authorization', '')
-    if not auth_token:
-        logger.error('No authorization token found')
+    # The API Gateway REQUEST authorizer uses the Authorization header as its
+    # sole identity source and cache key. Never validate a token from a
+    # different transport than the configured identity source.
+    headers = event.get('headers') or {}
+    auth_header = headers.get('Authorization') or headers.get('authorization') or ''
+    if not auth_header.startswith('Bearer '):
         raise Exception('Unauthorized')
 
-    token = auth_token.split(" ")
-    if (token[0] != 'Bearer'):
-        raise Exception(
-            'Authorization header should have a format Bearer <JWT> Token')
-    jwt_bearer_token = token[1]
+    jwt_bearer_token = auth_header[7:].strip()
+    if not jwt_bearer_token:
+        raise Exception('Unauthorized')
 
-    input_details['jwtToken']=jwt_bearer_token
+    input_details['jwtToken'] = jwt_bearer_token
     response = idp_authorizer_service.validateJWT(input_details)
-
-    # get authenticated claims
-    if (response == False):
+    if response is False:
         logger.error('Unauthorized')
         raise Exception('Unauthorized')
-    else:
-        logger.info(response)
-        principal_id = response["sub"]
-        user_name = response["cognito:username"]
-        tenant_id = response["custom:tenantId"]
-        user_role = response["custom:userRole"]
-        tenant_tier = response["custom:tenantTier"]
 
-    if (tenant_tier.upper() == utils.TenantTier.PREMIUM.value.upper()):
+    try:
+        principal_id = response['sub']
+        user_name = response['cognito:username']
+        tenant_id = response['custom:tenantId']
+        user_role = response['custom:userRole']
+        tenant_tier = response['custom:tenantTier']
+    except (KeyError, TypeError):
+        raise Exception('Unauthorized')
+
+    if user_role not in SUPPORTED_ROLES:
+        raise Exception('Unauthorized')
+
+    normalized_tier = tenant_tier.upper()
+    if normalized_tier not in SUPPORTED_TIERS:
+        raise Exception('Unauthorized')
+
+    if normalized_tier == utils.TenantTier.PREMIUM.value.upper():
         api_key = get_api_key_value(premium_tier_api_key_id)
-    elif (tenant_tier.upper() == utils.TenantTier.ADVANCED.value.upper()):
+    elif normalized_tier == utils.TenantTier.ADVANCED.value.upper():
         api_key = get_api_key_value(advanced_tier_api_key_id)
-    elif (tenant_tier.upper() == utils.TenantTier.BASIC.value.upper()):
+    else:
         api_key = get_api_key_value(basic_tier_api_key_id)
 
-    logger.info("Method ARN: " + event['methodArn'])    
+    method_arn = event.get('methodArn', '')
+    arn_parts = method_arn.split(':')
+    if len(arn_parts) < 6:
+        raise Exception('Unauthorized')
 
-    tmp = event['methodArn'].split(':') # arn:aws:execute-api:ap-northeast-2:1234567890:3uweihxqul/prod/GET/orders
-    aws_account_id = tmp[4] # 1234567890
+    aws_account_id = arn_parts[4]
+    api_gateway_arn_parts = arn_parts[5].split('/')
+    if len(api_gateway_arn_parts) < 3:
+        raise Exception('Unauthorized')
 
     policy = AuthPolicy(principal_id, aws_account_id)
-    policy.region = tmp[3] # ap-northeast-2
-    api_gateway_arn_tmp = tmp[5].split('/') # 3uweihxqul/prod/GET/orders
-    policy.restApiId = api_gateway_arn_tmp[0] # 3uweihxqul
-    policy.stage = api_gateway_arn_tmp[1] # prod
+    policy.region = arn_parts[3]
+    policy.restApiId = api_gateway_arn_parts[0]
+    policy.stage = api_gateway_arn_parts[1]
 
     policy.allowAllMethods()
-    is_denied_path = api_gateway_arn_tmp[3] in ['users']
-
-    if (auth_manager.isTenantUser(user_role) and is_denied_path):
+    resource_path = api_gateway_arn_parts[3] if len(api_gateway_arn_parts) > 3 else ''
+    if auth_manager.isTenantUser(user_role) and resource_path == 'users':
         policy.denyMethod(HttpVerb.ALL, "users")
         policy.denyMethod(HttpVerb.ALL, "users/*")
 
-    authResponse = policy.build()
+    auth_response = policy.build()
 
-    #   Generate STS credentials
+    tenant_path = tenant_id
+    if normalized_tier == utils.TenantTier.BASIC.value.upper():
+        tenant_path = tenant_tier.lower()
 
-    #   Important Note:
-    #   We are generating STS token inside Authorizer to take advantage of the caching behavior of authorizer
-    #   Another option is to generate the STS token inside the lambda function itself, as mentioned in this blog post: https://aws.amazon.com/blogs/apn/isolating-saas-tenants-with-dynamically-generated-iam-policies/
-    #   Finally, you can also consider creating one Authorizer per microservice in cases where you want the IAM policy specific to that service
-
-    iam_policy = auth_manager.getPolicyForUser(
-        user_role, utils.Service_Identifier.BUSINESS_SERVICES.value, tenant_id, region, aws_account_id)
-    logger.info(iam_policy)
-
-    role_arn = authorizer_access_role
-
-    assumed_role = sts_client.assume_role(
-        RoleArn=role_arn,
-        RoleSessionName="tenant-aware-session",
-        Policy=iam_policy,
-    )
-    credentials = assumed_role["Credentials"]
-
-    tenantPath = tenant_id
-    if (tenant_tier.upper() == utils.TenantTier.BASIC.value.upper()):
-        tenantPath = tenant_tier.lower()
-    
-    logger.info("Tenant Path: " + tenantPath)
-    # pass sts credentials to lambda
-    context = {
-        # $context.authorizer.key -> value
-        'accesskey': credentials['AccessKeyId'],
-        'secretkey': credentials['SecretAccessKey'],
-        'sessiontoken': credentials["SessionToken"],
+    # Keep authorizer context minimal. Temporary AWS credentials must never be
+    # generated or exposed by an API Gateway authorizer.
+    auth_response['context'] = {
         'userName': user_name,
-        'tenantPath': tenantPath,
-        'idpDetials': str(idp_details),
-        'apiKey': api_key,
-        'userRole': user_role
+        'tenantPath': tenant_path,
+        'userRole': user_role,
     }
+    auth_response['usageIdentifierKey'] = api_key
 
-    authResponse['context'] = context
-    authResponse['usageIdentifierKey'] = api_key
-
-    return authResponse
+    return auth_response
 
 
 def isTenantAuthorizedForThisAPI(apigateway_url, current_api_id):

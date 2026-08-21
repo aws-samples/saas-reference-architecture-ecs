@@ -14,7 +14,7 @@ export class ClientFactoryService {
     tenantId: string,
     jwtToken: string
   ) {
-    const tvm = new TokenVendingMachine(false);
+    const tvm = new TokenVendingMachine();
     const credsJson = await tvm.assumeRole(jwtToken, 3600);
     const creds = JSON.parse(credsJson);
     

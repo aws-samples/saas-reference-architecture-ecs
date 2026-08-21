@@ -24,26 +24,26 @@ import { JwksClient } from "jwks-rsa";
 export class TokenVendingMachine {
   private sts: STSClient;
 
-  constructor(private shouldValidateToken: boolean = false) {
+  constructor() {
     this.sts = new STSClient();
   }
 
   private async validateJwt(
     jwtToken: string,
     idpDetails: string,
-  ): Promise<boolean> {
+  ): Promise<jwt.JwtPayload | null> {
     const idpDetailsJson = JSON.parse(idpDetails);
     const issuer = idpDetailsJson.issuer;
     const audience = idpDetailsJson.audience;
 
     const client = new JwksClient({
-      jwksUri: `${issuer}.well-known/jwks.json`,
+      jwksUri: `${issuer}/.well-known/jwks.json`,
     });
 
     const decodedToken = jwt.decode(jwtToken, { complete: true });
     if (!decodedToken) {
       console.error("Decoding token has failed");
-      return false;
+      return null;
     }
 
     const kid = decodedToken.header.kid;
@@ -51,15 +51,26 @@ export class TokenVendingMachine {
     const signingKey = key.getPublicKey();
 
     try {
-      jwt.verify(jwtToken, signingKey, {
+      const verifiedToken = jwt.verify(jwtToken, signingKey, {
         algorithms: ["RS256"],
         issuer: issuer,
         audience: audience,
       });
-      return true;
+      if (
+        typeof verifiedToken !== "object" ||
+        verifiedToken.token_use !== "id" ||
+        typeof verifiedToken["custom:tenantId"] !== "string" ||
+        !Array.isArray(verifiedToken["cognito:groups"]) ||
+        !verifiedToken["cognito:groups"].includes(
+          verifiedToken["custom:tenantId"],
+        )
+      ) {
+        return null;
+      }
+      return verifiedToken;
     } catch (error: any) {
-      console.error("JWT validation error:", error);
-      return false;
+      console.error("JWT validation failed");
+      return null;
     }
   }
 
@@ -106,7 +117,11 @@ export class TokenVendingMachine {
 
     for (const key in requestTagKeysMappingAttributes) {
       const value = requestTagKeysMappingAttributes[key];
-      requestTagKeyValueArray.push({ Key: key, Value: decodedToken[value] });
+      const tagValue = decodedToken[value];
+      if (typeof tagValue !== "string" || tagValue.length === 0) {
+        throw new Error("Verified token is missing a required session tag claim");
+      }
+      requestTagKeyValueArray.push({ Key: key, Value: tagValue });
     }
     return requestTagKeyValueArray;
   }
@@ -115,20 +130,18 @@ export class TokenVendingMachine {
    * This method is used to dynamically assume an ABAC role
    * which is provided through environment variables
    * and obtain temporary tenant-scoped credentials.It takes in a json web token and a time to live (ttl) in seconds as input.
-   * If isValidateToken is set to true, the method will validate the input json web token against identity provider details provided through environment variables.
+   * It always validates the input ID token before deriving STS session tags.
    * It returns a json string containing the temporary tenant-scoped credentials.
    */
   public async assumeRole(jwtToken: string, ttl: number): Promise<string> {
     try {
-      if (this.shouldValidateToken === true) {
-        const idpDetails = process.env.IDP_DETAILS;
-        if (!idpDetails) {
-          throw new Error("IDP_DETAILS environment variable is not set");
-        }
-        const isValid: boolean = await this.validateJwt(jwtToken, idpDetails);
-        if (isValid !== true) {
-          throw new Error("Invalid JWT token");
-        }
+      const idpDetails = process.env.IDP_DETAILS;
+      if (!idpDetails) {
+        throw new Error("IDP_DETAILS environment variable is not set");
+      }
+      const verifiedToken = await this.validateJwt(jwtToken, idpDetails);
+      if (!verifiedToken) {
+        throw new Error("Invalid JWT token");
       }
 
       const roleArn = process.env.IAM_ROLE_ARN;
@@ -144,20 +157,14 @@ export class TokenVendingMachine {
         process.env.REQUEST_TAG_KEYS_MAPPING_ATTRIBUTES,
       );
 
-      const decodedToken = jwt.decode(jwtToken);
-      if (!decodedToken) {
-        console.error("Decoding token has failed");
-        throw new Error("Decoding token has failed");
-      }
-
       return await this.getTemporaryCredentails(
         roleArn,
         requestTagKeysMappingAttributes,
-        decodedToken,
+        verifiedToken,
         ttl,
       );
     } catch (error: any) {
-      console.error(`Error occured:`, error);
+      console.error('Unable to obtain tenant-scoped credentials');
       throw error;
     }
   }

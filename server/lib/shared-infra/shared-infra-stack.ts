@@ -206,8 +206,16 @@ export class SharedInfraStack extends cdk.Stack {
       subnetIds: this.vpc.privateSubnets.map(s => s.subnetId),
     });
 
+    this.tenantMappingTable = new Table(this, 'TenantMappingTable', {
+      partitionKey: { name: 'tenantId', type: AttributeType.STRING },
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true
+      }
+    });
+
     this.apiGateway = new ApiGateway(this, 'ApiGateway', {
       lambdaEcsSaaSLayers: lambdaEcsSaaSLayers,
+      tenantRegistryTable: this.tenantMappingTable,
       stageName: props.stageName,
       vpcLinkId: vpcLink.ref,
       albArn: this.alb.loadBalancerArn,
@@ -268,13 +276,6 @@ export class SharedInfraStack extends cdk.Stack {
     });
     this.appSiteUrl = `https://${this.appSiteDistro.cloudfrontDistribution.domainName}`;
     //******/
-
-    this.tenantMappingTable = new Table(this, 'TenantMappingTable', {
-      partitionKey: { name: 'tenantId', type: AttributeType.STRING },
-      pointInTimeRecoverySpecification: { 
-        pointInTimeRecoveryEnabled: true 
-      }
-    });
 
     // Shared Custom Resource Lambda — single lambda reused by all tenant stacks
     // Replaces per-stack AwsCustomResource lambdas (DynamoDB tenant mapping)
