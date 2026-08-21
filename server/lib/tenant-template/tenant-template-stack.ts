@@ -113,6 +113,9 @@ export class TenantTemplateStack extends cdk.Stack {
         Item: {
           tenantId: { S: props.tenantId },
           tenantName: { S: props.tenantName },
+          userPoolId: { S: identityProvider.tenantUserPool.userPoolId },
+          appClientId: { S: identityProvider.tenantUserPoolClient.userPoolClientId },
+          tenantTier: { S: props.tier },
           stackName: { S: cdk.Stack.of(this).stackName },
           codeCommitId: { S: props.commitId },
           waveNumber: { S: waveNumber },
@@ -120,9 +123,12 @@ export class TenantTemplateStack extends cdk.Stack {
         Key: {
           tenantId: { S: props.tenantId },
         },
-        UpdateExpression: 'set codeCommitId = :codeCommitId',
+        UpdateExpression: 'set codeCommitId = :codeCommitId, userPoolId = :userPoolId, appClientId = :appClientId, tenantTier = :tenantTier',
         ExpressionAttributeValues: {
           ':codeCommitId': { S: props.commitId },
+          ':userPoolId': { S: identityProvider.tenantUserPool.userPoolId },
+          ':appClientId': { S: identityProvider.tenantUserPoolClient.userPoolClientId },
+          ':tenantTier': { S: props.tier },
         },
       },
     });

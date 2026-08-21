@@ -19,7 +19,10 @@ export class IdentityProvider extends Construct {
     this.tenantUserPool = new aws_cognito.UserPool(this, props.tenantId, {
       autoVerify: { email: true },
       advancedSecurityMode: aws_cognito.AdvancedSecurityMode.OFF,
-      selfSignUpEnabled: props.useFederation.toLowerCase() === 'true',
+      // Authorization claims and tenant-group membership are provisioned by
+      // trusted Admin* APIs. Self-sign-up stays disabled until a reviewed
+      // post-confirmation/pre-token trigger can establish those bindings.
+      selfSignUpEnabled: false,
 
       accountRecovery: aws_cognito.AccountRecovery.EMAIL_ONLY,
       signInAliases: {
@@ -79,9 +82,15 @@ export class IdentityProvider extends Construct {
     // Add tags for cleanup identification
     Tags.of(this.tenantUserPool).add('SaaSFactory', 'ECS-SaaS-Ref');
 
-    const writeAttributes = new aws_cognito.ClientAttributes()
+    // Authorization attributes must be readable in ID tokens but never
+    // writable through the public app client. They are managed only by the
+    // server-side Admin* Cognito APIs used during tenant/user provisioning.
+    const readAttributes = new aws_cognito.ClientAttributes()
       .withStandardAttributes({ email: true })
       .withCustomAttributes('tenantId', 'userRole', 'apiKey', 'tenantTier', 'tenantName');
+
+    const writeAttributes = new aws_cognito.ClientAttributes()
+      .withStandardAttributes({ email: true });
 
     this.tenantUserPoolClient = new aws_cognito.UserPoolClient(this, 'tenantUserPoolClient', {
       userPool: this.tenantUserPool,
@@ -92,6 +101,7 @@ export class IdentityProvider extends Construct {
         userSrp: true,
         custom: false
       },
+      readAttributes: readAttributes,
       writeAttributes: writeAttributes,
       oAuth: {
         scopes: [

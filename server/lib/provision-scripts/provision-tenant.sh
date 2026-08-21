@@ -128,6 +128,28 @@ if [[ $TIER == "BASIC" ]]; then
   fi
 fi
 
+# Register the exact tenant-to-pool/client binding before issuing credentials.
+# This creates one row per actual tenant, including tenants sharing the Basic pool.
+if [[ -z "$TENANT_STACK_MAPPING_TABLE" ]]; then
+  echo "ERROR: TENANT_STACK_MAPPING_TABLE is required for trusted Cognito registration"
+  exit 1
+fi
+REGISTRY_KEY=$(jq -n --arg tenantId "$CDK_PARAM_TENANT_ID" '{"tenantId":{"S":$tenantId}}')
+TOKENS_VALID_AFTER=$(date +%s)
+REGISTRY_VALUES=$(jq -n \
+  --arg tenantName "$TENANT_NAME" \
+  --arg userPoolId "$SAAS_APP_USERPOOL_ID" \
+  --arg appClientId "$SAAS_APP_CLIENT_ID" \
+  --arg tenantTier "$TIER" \
+  --arg tokensValidAfter "$TOKENS_VALID_AFTER" \
+  '{":tenantName":{"S":$tenantName},":userPoolId":{"S":$userPoolId},":appClientId":{"S":$appClientId},":tenantTier":{"S":$tenantTier},":tokensValidAfter":{"N":$tokensValidAfter}}')
+aws dynamodb update-item \
+  --table-name "$TENANT_STACK_MAPPING_TABLE" \
+  --key "$REGISTRY_KEY" \
+  --update-expression "SET tenantName = :tenantName, userPoolId = :userPoolId, appClientId = :appClientId, tenantTier = :tenantTier, tokensValidAfter = :tokensValidAfter" \
+  --condition-expression "attribute_not_exists(userPoolId) OR (userPoolId = :userPoolId AND appClientId = :appClientId)" \
+  --expression-attribute-values "$REGISTRY_VALUES"
+
 # Create tenant admin user 
 aws cognito-idp admin-create-user \
   --user-pool-id "$SAAS_APP_USERPOOL_ID" \

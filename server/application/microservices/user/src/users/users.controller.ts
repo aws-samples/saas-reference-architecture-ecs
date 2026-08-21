@@ -25,12 +25,18 @@ export class UsersController {
 
   @Post()
   async create(@Body() userDto: UserDto, @TenantCredentials() tenant) {
-    return await this.usersService.create(userDto, tenant.tenantId, tenant.tenantTier, tenant.tenantName);
+    return await this.usersService.create(
+      userDto,
+      tenant.tenantId,
+      tenant.tenantTier,
+      tenant.tenantName,
+      tenant.userRole,
+    );
   }
 
   @Get()
   async findAll(@TenantCredentials() tenant) {
-    return await this.usersService.findAll(tenant.tenantId);
+    return await this.usersService.findAll(tenant.tenantId, tenant.userRole);
   }
 
   @Get('/health')
@@ -39,20 +45,30 @@ export class UsersController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') username: string) {
-    return await this.usersService.findOne(username);
+  async findOne(
+    @Param('id') username: string,
+    @TenantCredentials() tenant,
+  ) {
+    return await this.usersService.findOne(
+      username, tenant.tenantId, tenant.userRole);
   }
 
   @Put(':id')
   async update(
     @Param('id') username: string,
     @Body() updateUserDto: UpdateUserDto,
+    @TenantCredentials() tenant,
   ) {
-    return await this.usersService.update(username, updateUserDto);
+    return await this.usersService.update(
+      username, updateUserDto, tenant.tenantId, tenant.userRole);
   }
 
   @Delete(':id')
-  async remove(@Param('id') username: string) {
-    return await this.usersService.delete(username);
+  async remove(
+    @Param('id') username: string,
+    @TenantCredentials() tenant,
+  ) {
+    return await this.usersService.delete(
+      username, tenant.tenantId, tenant.userRole);
   }
 }

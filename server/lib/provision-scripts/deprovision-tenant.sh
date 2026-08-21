@@ -143,6 +143,17 @@ else
 
 fi
 
+# Remove the exact authorizer trust binding only after tenant resources/users
+# have been deprovisioned. DynamoDB DeleteItem is idempotent.
+if [[ -z "$TENANT_STACK_MAPPING_TABLE" ]]; then
+  echo "ERROR: TENANT_STACK_MAPPING_TABLE is required for trusted Cognito deregistration"
+  exit 1
+fi
+REGISTRY_KEY=$(jq -n --arg tenantId "$CDK_PARAM_TENANT_ID" '{"tenantId":{"S":$tenantId}}')
+aws dynamodb delete-item \
+  --table-name "$TENANT_STACK_MAPPING_TABLE" \
+  --key "$REGISTRY_KEY"
+
 # Create JSON response of output parameters
 export registrationStatus="Deleted"
 

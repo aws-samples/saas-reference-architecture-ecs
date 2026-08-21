@@ -57,7 +57,7 @@ export class CoreAppPlaneStack extends cdk.Stack {
         tenantRegistrationData: ['registrationStatus'],
       },
       scriptEnvironmentVariables: {
-        // CDK_PARAM_SYSTEM_ADMIN_EMAIL removed - not used in provision-tenant.sh
+        TENANT_STACK_MAPPING_TABLE: props.tenantMappingTable.tableName,
       },
       eventManager: props.eventManager
     };

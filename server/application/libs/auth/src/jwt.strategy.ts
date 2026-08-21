@@ -4,7 +4,7 @@
  */
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { passportJwtSecret } from 'jwks-rsa';
 import { AuthConfig } from './auth-config';
 
@@ -29,6 +29,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate (payload: any) {
+    const requiredClaims = [
+      payload.sub,
+      payload.iss,
+      payload.aud,
+      payload['cognito:username'],
+      payload['custom:tenantId'],
+      payload['custom:tenantTier'],
+      payload['custom:userRole']
+    ];
+    if (
+      payload.token_use !== 'id' ||
+      requiredClaims.some(value => typeof value !== 'string' || value.length === 0) ||
+      !Array.isArray(payload['cognito:groups']) ||
+      !payload['cognito:groups'].includes(payload['custom:tenantId'])
+    ) {
+      throw new UnauthorizedException('Invalid Cognito ID token claims');
+    }
     const match = payload.iss.match(/([a-z\d\_\-]+)(\/*|)$/gi);
     return {
       userId: payload.sub,
@@ -36,6 +53,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       tenantId: payload['custom:tenantId'],
       tenantTier: payload['custom:tenantTier'],
       tenantName: payload['custom:tenantName'],
+      userRole: payload['custom:userRole'],
       email: payload.email,
       userPoolId: match?.[0],
       appClientId: payload.aud
