@@ -120,6 +120,7 @@ const tenantServiceStack = new TenantServiceStack(app, `tenant-service-stack-${t
   tier: tier,
   advancedCluster: advancedCluster,
   appSiteUrl: sharedInfraStack.appSiteUrl,
+  stageName: stageName,
   useEc2: useEc2,
   useRProxy: useRProxy,
   env

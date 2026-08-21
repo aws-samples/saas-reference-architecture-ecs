@@ -1,4 +1,4 @@
-/* Global Styles - AdminWeb-React 스타일과 동일 */
+/* Global Styles — shared with AdminWeb-React */
 
 /* CSS Variables for consistent theming */
 :root {
@@ -103,7 +103,7 @@ body {
 .mt-lg { margin-top: var(--spacing-lg); }
 .mt-xl { margin-top: var(--spacing-xl); }
 
-/* Page Header Styles - AdminWeb-React와 동일 */
+/* Page Header Styles — shared with AdminWeb-React */
 .page-header {
   display: flex;
   align-items: flex-start;

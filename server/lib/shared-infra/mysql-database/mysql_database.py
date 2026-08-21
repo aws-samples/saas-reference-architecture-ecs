@@ -296,31 +296,32 @@ def ensure_proxy_auth_registered(tenant_name):
         print(f"Error ensuring Proxy Auth for tenant {tenant_name}: {e}")
         raise
 
-# RDS Proxy Auth Info Add.
-# RDS Proxy는 한 번에 하나의 modify만 허용 (MODIFYING 상태에서 추가 modify 불가).
-# Lambda 타임아웃 15분 내에서 충분히 retry. 동시 프로비저닝 시 직렬화됨.
+# RDS Proxy Auth: register a new secret ARN.
+# RDS Proxy only allows a single `modify` at a time (it rejects additional
+# modifies while in MODIFYING state). Retries are bounded by the Lambda
+# 15-minute timeout. Concurrent tenant provisioning is serialized here.
 def update_rds_proxy(proxy_auth):
     import time
     import random
     max_retries = 40
-    base_delay = 20  # seconds — 총 최대 ~13분 (40 * 20s)
+    base_delay = 20  # seconds — up to ~13 minutes total (40 * 20s)
 
     target_secret_arn = proxy_auth['SecretArn']
 
     for attempt in range(max_retries):
         try:
-            # 매 시도마다 최신 Auth 목록을 읽어서 race condition 방지
+            # Re-read the Auth list on every attempt to avoid race conditions
             proxy_info = rds.describe_db_proxies(DBProxyName=PROXY_NAME)['DBProxies'][0]
             current_auth = proxy_info['Auth']
             proxy_status = proxy_info['Status']
 
-            # 이미 등록되어 있으면 스킵 (다른 Lambda가 먼저 등록한 경우)
+            # Skip if already registered (another Lambda may have beaten us to it)
             registered_arns = [a.get('SecretArn', '') for a in current_auth]
             if target_secret_arn in registered_arns:
                 print(f"Proxy Auth already registered (by another process): {target_secret_arn}")
                 return
 
-            # MODIFYING 상태면 대기 후 retry
+            # If the proxy is MODIFYING, wait and retry
             if proxy_status != 'available':
                 jitter = random.uniform(0, 5)
                 wait_time = base_delay + jitter
@@ -328,7 +329,7 @@ def update_rds_proxy(proxy_auth):
                 time.sleep(wait_time)
                 continue
 
-            # available 상태 → modify 시도
+            # proxy is available — attempt the modify
             current_auth.append(proxy_auth)
             rds.modify_db_proxy(DBProxyName=PROXY_NAME, Auth=current_auth)
             print(f"Successfully updated RDS Proxy with {proxy_auth}")

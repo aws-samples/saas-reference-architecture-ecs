@@ -56,14 +56,14 @@ def lambda_handler(event, context):
     input_details={}
     input_details['idpDetails'] = idp_details
 
-    # REQUEST 타입: Authorization 헤더 또는 _jwt 쿼리 파라미터에서 JWT 추출
+    # REQUEST type: extract JWT from the Authorization header or the `_jwt` query parameter.
     headers = event.get('headers') or {}
     query_params = event.get('queryStringParameters') or {}
 
     auth_header = headers.get('Authorization') or headers.get('authorization') or ''
     jwt_from_query = query_params.get('_jwt') or ''
 
-    # Cookie 헤더에서 authToken 파싱
+    # Parse authToken from the Cookie header
     jwt_from_cookie = ''
     cookie_header = headers.get('Cookie') or headers.get('cookie') or ''
     for cookie in cookie_header.split(';'):

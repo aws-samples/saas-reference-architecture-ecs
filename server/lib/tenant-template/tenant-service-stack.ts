@@ -19,6 +19,11 @@ interface TenantServiceStackProps extends cdk.StackProps {
   tier: string;
   advancedCluster: string;
   appSiteUrl: string;
+  /**
+   * API Gateway stage name (e.g. "prod"). Propagated to each EcsService so
+   * that `BASE_PATH` env var can be auto-derived as `/<stage>/<service-name>`.
+   */
+  stageName?: string;
   useEc2?: boolean;
   useRProxy?: boolean;
 }
@@ -159,6 +164,8 @@ export class TenantServiceStack extends cdk.Stack {
         namespace: namespace as HttpNamespace,
         info,
         identityDetails: identityDetails,
+        stageName: props.stageName,
+        appSiteUrl: props.appSiteUrl,
       });
 
       ecsService.service.node.addDependency(cluster);
@@ -437,6 +444,8 @@ export class TenantServiceStack extends cdk.Stack {
       namespace: namespace,
       info: rProxyInfo,
       identityDetails: identityDetails,
+      stageName: props.stageName,
+      appSiteUrl: props.appSiteUrl,
     });
 
     // rProxy depends on ALL core services

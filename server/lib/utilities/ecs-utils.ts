@@ -49,15 +49,27 @@ export function createTaskDefinition (
 export function getContainerDefinitionOptions(
   stack: cdk.Stack,
   jsonConfig: any,
-  idpDetails: IdentityDetails
+  idpDetails: IdentityDetails,
+  extraDefaults?: Record<string, string>,
 ): ecs.ContainerDefinitionOptions {
   // Set default environment values (region and account)
-  const defaultEnvironmentVariables = {
+  const defaultEnvironmentVariables: Record<string, string> = {
     AWS_REGION: cdk.Stack.of(stack).region,
     AWS_ACCOUNT_ID: cdk.Stack.of(stack).account,
     COGNITO_USER_POOL_ID: idpDetails.details.userPoolId,
     COGNITO_CLIENT_ID: idpDetails.details.appClientId,
     COGNITO_REGION: cdk.Stack.of(stack).region,
+    // Routing-related env vars:
+    //   · SERVICE_PATH_PREFIX — /<service-name>. Framework context-path
+    //     (Spring `server.servlet.context-path`, Flask WSGI mount, etc.)
+    //     binds to this so controllers use clean paths.
+    //   · BASE_PATH           — /<stage>/<service-name>. Used by SSR templates
+    //     for absolute Location headers, link rewriting (basePath), and
+    //     controller-issued redirects.
+    //   · Optional override:    values in service-info.txt override these
+    //     auto-defaults (see spread below).
+    SERVICE_PATH_PREFIX: `/${jsonConfig.name}`,
+    ...(extraDefaults || {}),
   };
 
   // Dynamically add environment values
